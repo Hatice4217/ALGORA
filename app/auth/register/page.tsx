@@ -216,7 +216,7 @@ export default function RegisterPage() {
         Ana Sayfa
       </Link>
 
-      <div className="max-w-md w-full">
+      <main className="max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-6">
           <Link href="/">
@@ -458,7 +458,7 @@ export default function RegisterPage() {
             Giriş Yap
           </Link>
         </p>
-      </div>
+      </main>
       </div>
     </div>
   );

@@ -61,7 +61,7 @@ export default function LogoPreviewPage() {
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-purple-50 via-white to-blue-50'}`}>
       {/* Header */}
-      <div className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -90,9 +90,9 @@ export default function LogoPreviewPage() {
 
         {/* Size Selector */}
         <div className="mb-8">
-          <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <h2 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
             Logo Boyutu
-          </h3>
+          </h2>
           <div className="flex gap-2">
             {sizes.map((size) => (
               <button
@@ -147,9 +147,9 @@ export default function LogoPreviewPage() {
 
                 {/* Logo Info */}
                 <div className="text-center">
-                  <h3 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <h2 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     {logo.name}
-                  </h3>
+                  </h2>
                   <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                     {logo.description}
                   </p>
@@ -167,9 +167,9 @@ export default function LogoPreviewPage() {
           <div className={`p-8 rounded-xl border-2 ${
             isDarkMode ? 'bg-gray-800 border-purple-600' : 'bg-white border-purple-300'
           } mb-8`}>
-            <h3 className={`text-lg font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <h2 className={`text-lg font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               Seçilen Logo - Büyük Önizleme
-            </h3>
+            </h2>
             <div className="flex items-center justify-center py-8">
               {(() => {
                 const selectedLogoData = logos.find(l => l.id === selectedLogo);
@@ -187,7 +187,7 @@ export default function LogoPreviewPage() {
             Seçiminizi yapıp geliştiriciye bildirin
           </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

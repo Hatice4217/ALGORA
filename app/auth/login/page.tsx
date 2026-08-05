@@ -186,7 +186,7 @@ export default function LoginPage() {
         Ana Sayfa
       </Link>
 
-      <div className="max-w-md w-full">
+      <main className="max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-6">
           <Link href="/">
@@ -359,7 +359,7 @@ export default function LoginPage() {
             Kayıt Ol
           </Link>
         </p>
-      </div>
+      </main>
     </div>
     </div>
   );

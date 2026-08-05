@@ -60,7 +60,8 @@ export default function LandingPage() {
         onClose={() => setIsMobileMenuOpen(false)}
       />
 
-      {/* Hero Section */}
+      <main>
+        {/* Hero Section */}
       <section className="container mx-auto px-6 py-20">
         <div className="flex flex-col lg:flex-row items-center gap-12">
           <div className="lg:w-1/2">
@@ -107,7 +108,7 @@ export default function LandingPage() {
                       <span className="text-2xl">📚</span>
                     </div>
                     <div>
-                      <h3 className="font-semibold">Kişiselleştirilmiş Sorular</h3>
+                      <h2 className="font-semibold">Kişiselleştirilmiş Sorular</h2>
                       <p className="text-sm text-gray-600">Seviyene uygun sorular</p>
                     </div>
                   </div>
@@ -116,7 +117,7 @@ export default function LandingPage() {
                       <span className="text-2xl">📊</span>
                     </div>
                     <div>
-                      <h3 className="font-semibold">Detaylı Analiz</h3>
+                      <h2 className="font-semibold">Detaylı Analiz</h2>
                       <p className="text-sm text-gray-600">İlerleme takibi</p>
                     </div>
                   </div>
@@ -125,7 +126,7 @@ export default function LandingPage() {
                       <span className="text-2xl">🎯</span>
                     </div>
                     <div>
-                      <h3 className="font-semibold">Hedef Odaklı</h3>
+                      <h2 className="font-semibold">Hedef Odaklı</h2>
                       <p className="text-sm text-gray-600">TYT, AYT, LGS</p>
                     </div>
                   </div>
@@ -344,6 +345,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <Footer />

@@ -65,7 +65,7 @@ export default function AuthCallbackPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center px-6">
-      <div className="max-w-md w-full text-center">
+      <main className="max-w-md w-full text-center">
         {/* Logo */}
         <div className="mb-8">
           <Logo size="lg" />
@@ -120,7 +120,7 @@ export default function AuthCallbackPage() {
             </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

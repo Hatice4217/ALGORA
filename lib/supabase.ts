@@ -11,14 +11,35 @@ export const supabase = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null; // Mock client yerine null kullan
 
+// Generic connection check wrapper
+const withConnectionCheck = async <T,>(
+  operation: () => Promise<T>,
+  defaultValue: T,
+  context: string
+): Promise<T> => {
+  if (!supabase) {
+    console.log(`Supabase bağlantısı yok, ${context} atlanıyor`);
+    return defaultValue;
+  }
+  return operation();
+};
+
 // Error handler wrapper
-const handleDbError = (error: any, context: string) => {
+interface DbError {
+  message?: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+}
+
+const handleDbError = (error: DbError | unknown, context: string) => {
   console.error(`Database error in ${context}:`, error);
+  const err = error as DbError;
   return {
-    error: error?.message || 'Database operation failed',
-    code: error?.code,
-    details: error?.details,
-    hint: error?.hint,
+    error: err?.message || 'Database operation failed',
+    code: err?.code,
+    details: err?.details,
+    hint: err?.hint,
   };
 };
 
@@ -100,27 +121,28 @@ export const authHelpers = {
 export const dbHelpers = {
   // User Profile
   getUserProfile: async (userId: string) => {
-    if (!supabase) {
-      console.log('Supabase bağlantısı yok, getUserProfile atlanıyor');
-      return { data: null, error: null };
-    }
+    return withConnectionCheck(
+      async () => {
+        try {
+          const { data, error } = await supabase!
+            .from('user_profiles')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle();
 
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle(); // .single() yerine .maybeSingle()
-
-      if (error) {
-        console.log('getUserProfile hatası (normal durum):', error.message);
-        return { data: null, error: null };
-      }
-      return { data, error: null };
-    } catch (error) {
-      console.log('getUserProfile istisnası (normal durum):', error);
-      return { data: null, error: null };
-    }
+          if (error) {
+            console.log('getUserProfile hatası (normal durum):', error.message);
+            return { data: null, error: null };
+          }
+          return { data, error: null };
+        } catch (error) {
+          console.log('getUserProfile istisnası (normal durum):', error);
+          return { data: null, error: null };
+        }
+      },
+      { data: null, error: null },
+      'getUserProfile'
+    );
   },
 
   createUserProfile: async (profile: {
@@ -143,7 +165,7 @@ export const dbHelpers = {
     return { data, error };
   },
 
-  updateUserProfile: async (userId: string, updates: any) => {
+  updateUserProfile: async (userId: string, updates: Record<string, unknown>) => {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
@@ -230,30 +252,31 @@ export const dbHelpers = {
 
   // Subject breakdown stats
   getSubjectBreakdown: async (userId: string) => {
-    if (!supabase) {
-      console.log('Supabase bağlantısı yok, getSubjectBreakdown atlanıyor');
-      return { data: [], error: null };
-    }
+    return withConnectionCheck(
+      async () => {
+        try {
+          const { data, error } = await supabase!
+            .from('subject_breakdown')
+            .select('*')
+            .eq('user_id', userId);
 
-    try {
-      const { data, error } = await supabase
-        .from('subject_breakdown')
-        .select('*')
-        .eq('user_id', userId);
-
-      if (error) {
-        console.log('getSubjectBreakdown hatası (normal durum):', error.message);
-        return { data: [], error: null };
-      }
-      return { data: data || [], error: null };
-    } catch (error) {
-      console.log('getSubjectBreakdown istisnası (normal durum):', error);
-      return { data: [], error: null };
-    }
+          if (error) {
+            console.log('getSubjectBreakdown hatası (normal durum):', error.message);
+            return { data: [], error: null };
+          }
+          return { data: data || [], error: null };
+        } catch (error) {
+          console.log('getSubjectBreakdown istisnası (normal durum):', error);
+          return { data: [], error: null };
+        }
+      },
+      { data: [], error: null },
+      'getSubjectBreakdown'
+    );
   },
 
   // Questions
-  saveGeneratedQuestion: async (question: any) => {
+  saveGeneratedQuestion: async (question: Record<string, unknown>) => {
     const { data, error } = await supabase
       .from('questions')
       .insert(question)
@@ -298,54 +321,56 @@ export const dbHelpers = {
     is_correct: boolean;
     time_spent: number;
   }) => {
-    if (!supabase) {
-      console.log('Supabase bağlantısı yok, saveAnswer atlanıyor');
-      return { data: null, error: 'Bağlantı yok' };
-    }
+    return withConnectionCheck(
+      async () => {
+        try {
+          const { data, error } = await supabase!
+            .from('answers')
+            .insert({
+              ...answer,
+              answered_at: new Date().toISOString(),
+            })
+            .select()
+            .maybeSingle();
 
-    try {
-      const { data, error } = await supabase
-        .from('answers')
-        .insert({
-          ...answer,
-          answered_at: new Date().toISOString(),
-        })
-        .select()
-        .maybeSingle();
-
-      if (error) {
-        console.log('saveAnswer hatası:', error.message);
-        return { data: null, error: error.message };
-      }
-      return { data, error: null };
-    } catch (error) {
-      console.log('saveAnswer istisnası:', error);
-      return { data: null, error: 'Cevap kaydedilemedi' };
-    }
+          if (error) {
+            console.log('saveAnswer hatası:', error.message);
+            return { data: null, error: error.message };
+          }
+          return { data, error: null };
+        } catch (error) {
+          console.log('saveAnswer istisnası:', error);
+          return { data: null, error: 'Cevap kaydedilemedi' };
+        }
+      },
+      { data: null, error: 'Bağlantı yok' },
+      'saveAnswer'
+    );
   },
 
   getUserStats: async (userId: string) => {
-    if (!supabase) {
-      console.log('Supabase bağlantısı yok, getUserStats atlanıyor');
-      return { data: null, error: null };
-    }
+    return withConnectionCheck(
+      async () => {
+        try {
+          const { data, error } = await supabase!
+            .from('user_stats')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle();
 
-    try {
-      const { data, error } = await supabase
-        .from('user_stats')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (error) {
-        console.log('getUserStats hatası (normal durum):', error.message);
-        return { data: null, error: null };
-      }
-      return { data, error: null };
-    } catch (error) {
-      console.log('getUserStats istisnası (normal durum):', error);
-      return { data: null, error: null };
-    }
+          if (error) {
+            console.log('getUserStats hatası (normal durum):', error.message);
+            return { data: null, error: null };
+          }
+          return { data, error: null };
+        } catch (error) {
+          console.log('getUserStats istisnası (normal durum):', error);
+          return { data: null, error: null };
+        }
+      },
+      { data: null, error: null },
+      'getUserStats'
+    );
   },
 
   // Helper function to check if user has completed onboarding
