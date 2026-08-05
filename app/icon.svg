@@ -1,0 +1,12 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Kare arka plan, hafif yuvarlatılmış köşeler -->
+  <rect width="512" height="512" rx="96" fill="#9333ea"/>
+
+  <!-- Ortada bembeyaz "A" harfi -->
+  <text x="256" y="380"
+        text-anchor="middle"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="380"
+        font-weight="bold"
+        fill="white">A</text>
+</svg>
