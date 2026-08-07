@@ -45,17 +45,97 @@ const handleDbError = (error: DbError | unknown, context: string) => {
 
 // Auth Helpers
 export const authHelpers = {
+  // Email'in zaten kayıtlı olup olmadığını kontrol et
+  checkEmailExists: async (email: string): Promise<boolean> => {
+    try {
+      // Email ile login denemesi yaparak kontrol et
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: 'dummy-password-for-check-12345', // Şifre yanlış olsa bile, email var mı öğreniriz
+      });
+
+      // Eğer "Invalid login credentials" hatası alırsak, email var demektir
+      // (şifre yanlış olsa bile email kayıtlı)
+      if (error && !error.message.includes('Invalid login credentials')) {
+        // Diğer hatalar email yok demektir
+        return false;
+      }
+
+      // Eğer data.user varsa veya Invalid login credentials hatası alıyorsak, email var
+      if (data?.user || (error && error.message.includes('Invalid login credentials'))) {
+        return true; // Email zaten kayıtlı
+      }
+
+      return false; // Email kayıtlı değil
+    } catch (err) {
+      console.error('Email check error:', err);
+      return false; // Hata durumunda false dön (kayıta devam etsin)
+    }
+  },
+
   signUp: async (email: string, password: string, name: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
+    try {
+      // ÖNCE email'in zaten kayıtlı olup olmadığını KONTROL ET
+      const emailExists = await authHelpers.checkEmailExists(email);
+
+      if (emailExists) {
+        return {
+          data: null,
+          error: { message: 'Bu e-posta adresi zaten kullanımda. Giriş yapmayı deneyin.' }
+        };
+      }
+
+      console.log('Email check passed, proceeding with signup:', email);
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
         },
-      },
-    });
-    return { data, error };
+      });
+
+      // 🚨 EMAIL ENUMERATION PROTECTION KONTROLÜ
+      // Supabase Email Enumeration Protection nedeniyle duplicate kontrolü
+      if (data?.user && data.user.identities && data.user.identities.length === 0) {
+        console.error('🚨 Email Enumeration Protection: Email zaten kayıtlı');
+        return {
+          data: null,
+          error: { message: 'Bu e-posta adresi sistemde zaten kayıtlı.' }
+        };
+      }
+
+      // Ek duplicate kontrol (çift güvenlik)
+      if (error) {
+        console.error('Supabase signUp error:', error);
+
+        // Hata mesajını normalize et
+        const errorMessage = (error.message || error.toString()).toLowerCase();
+
+        if (errorMessage.includes('already') ||
+            errorMessage.includes('registered') ||
+            errorMessage.includes('exists') ||
+            errorMessage.includes('taken') ||
+            errorMessage.includes('duplicate') ||
+            errorMessage.includes('user already')) {
+
+          return {
+            data: null,
+            error: { message: 'Bu e-posta adresi zaten kullanımda. Giriş yapmayı deneyin.' }
+          };
+        }
+      }
+
+      return { data, error };
+    } catch (err) {
+      console.error('SignUp exception:', err);
+      return {
+        data: null,
+        error: { message: 'Kayıt işlemi sırasında bir hata oluştu' }
+      };
+    }
   },
 
   signIn: async (email: string, password: string) => {
@@ -75,19 +155,38 @@ export const authHelpers = {
 
   signInWithGoogle: async () => {
     if (!supabase) {
-      return { data: null, error: 'Supabase not initialized' };
+      console.error('Supabase client not initialized');
+      return { data: null, error: 'Supabase bağlantısı kurulamadı. Lütfen sayfayı yenileyin.' };
     }
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          prompt: 'select_account', // Her zaman hesap seçimi göster
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      console.log('Google OAuth redirect:', redirectTo);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            prompt: 'select_account', // Her zaman hesap seçimi göster
+          },
         },
-      },
-    });
-    return { data, error };
+      });
+
+      if (error) {
+        console.error('Google OAuth Error:', error);
+        return { data: null, error: error.message };
+      }
+
+      if (data?.url) {
+        console.log('Google OAuth URL:', data.url.substring(0, 50) + '...');
+      }
+
+      return { data, error: null };
+    } catch (err) {
+      console.error('Google OAuth Exception:', err);
+      return { data: null, error: 'Google ile giriş sırasında bir hata oluştu.' };
+    }
   },
 
   signOut: async () => {

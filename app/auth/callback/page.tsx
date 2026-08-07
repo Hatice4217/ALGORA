@@ -21,8 +21,10 @@ export default function AuthCallbackPage() {
 
         if (error) {
           setStatus('error');
-          setErrorMessage(errorDescription || 'Google ile giriş işlemi başarısız oldu');
-          setTimeout(() => router.push('/auth/login'), 3000);
+          const errorMsg = errorDescription || error || 'Google ile giriş işlemi başarısız oldu';
+          setErrorMessage(`${errorMsg} (Hata kodu: ${error})`);
+          console.error('Google OAuth Error:', { error, errorDescription });
+          setTimeout(() => router.push('/auth/login'), 5000);
           return;
         }
 
