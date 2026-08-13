@@ -14,15 +14,19 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Body scroll lock when menu is open
+  // Body scroll lock when menu is open - Optimized to prevent forced reflow
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
+    // Use requestAnimationFrame to batch DOM updates and prevent forced reflow
+    requestAnimationFrame(() => {
+      if (isOpen) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    });
+
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
     };
   }, [isOpen]);
 
@@ -34,14 +38,15 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 
   const handleLinkClick = (href: string) => {
     onClose();
-    // Smooth scroll to section if it's an anchor link
+    // Smooth scroll to section if it's an anchor link - Optimized to prevent forced reflow
     if (href.startsWith('#')) {
-      setTimeout(() => {
+      // Use requestAnimationFrame to batch DOM read and write operations
+      requestAnimationFrame(() => {
         const element = document.querySelector(href);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth' });
         }
-      }, 100);
+      });
     }
   };
 
@@ -49,7 +54,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 md:hidden ${
+        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 md:hidden gpu-accel will-change-opacity ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
@@ -57,7 +62,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 
       {/* Mobile Menu Panel */}
       <div
-        className={`fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white z-50 transform transition-transform duration-300 ease-in-out shadow-2xl md:hidden ${
+        className={`fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white z-50 transform transition-transform duration-300 ease-in-out shadow-2xl md:hidden gpu-accel will-change-transform ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -189,24 +194,24 @@ export function HamburgerButton({ onClick, isOpen }: { onClick: () => void; isOp
   return (
     <button
       onClick={onClick}
-      className={`md:hidden flex flex-col items-center justify-center gap-1.5 p-2 rounded-lg transition-all hover:bg-gray-100 ${
+      className={`md:hidden flex flex-col items-center justify-center gap-1.5 p-2 rounded-lg transition-all hover:bg-gray-100 gpu-accel will-change-shadow ${
         isOpen ? 'bg-gray-100' : ''
       }`}
       aria-label={isOpen ? 'Menüyü Kapat' : 'Menüyü Aç'}
       aria-expanded={isOpen}
     >
       <span
-        className={`w-6 h-0.5 bg-gray-700 rounded-full transition-all duration-300 ${
+        className={`w-6 h-0.5 bg-gray-700 rounded-full transition-all duration-300 gpu-accel will-change-transform ${
           isOpen ? 'rotate-45 translate-y-1' : ''
         }`}
       />
       <span
-        className={`w-6 h-0.5 bg-gray-700 rounded-full transition-all duration-300 ${
+        className={`w-6 h-0.5 bg-gray-700 rounded-full transition-all duration-300 gpu-accel will-change-opacity ${
           isOpen ? 'opacity-0' : ''
         }`}
       />
       <span
-        className={`w-6 h-0.5 bg-gray-700 rounded-full transition-all duration-300 ${
+        className={`w-6 h-0.5 bg-gray-700 rounded-full transition-all duration-300 gpu-accel will-change-transform ${
           isOpen ? '-rotate-45 -translate-y-1' : ''
         }`}
       />

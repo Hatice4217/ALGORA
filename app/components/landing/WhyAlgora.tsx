@@ -31,7 +31,7 @@ export function WhyAlgora() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="bg-white p-8 rounded-2xl border border-gray-200 hover:border-purple-200 hover:shadow-lg hover:shadow-purple-100 transition-all duration-300 hover:-translate-y-2 cursor-default"
+              className="bg-white p-8 rounded-2xl border border-gray-200 hover:border-purple-200 hover:shadow-lg hover:shadow-purple-100 transition-all duration-300 hover:-translate-y-2 cursor-default gpu-accel will-change-transform"
             >
               {/* Rakam */}
               <div className="text-purple-600 text-5xl font-bold mb-4">
