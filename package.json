@@ -3,15 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "browserslist": [
-    "last 2 versions",
-    "> 0.5%",
-    "not dead",
-    "not IE 11",
     "Chrome >= 90",
     "Edge >= 90",
     "Firefox >= 88",
     "Safari >= 14",
-    "iOS >= 14"
+    "iOS >= 14",
+    "Opera >= 76",
+    "not dead",
+    "supports es6-module",
+    "supports async-functions"
   ],
   "scripts": {
     "dev": "next dev",

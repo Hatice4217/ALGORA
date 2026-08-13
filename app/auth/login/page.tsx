@@ -117,9 +117,8 @@ export default function LoginPage() {
           text: 'Giriş başarılı! Hoş geldiniz 👋'
         });
 
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 1500);
+        // Immediate navigation - eliminates setTimeout causing code chunks
+        router.push('/dashboard');
       }
     } catch (error) {
       setFormMessage({

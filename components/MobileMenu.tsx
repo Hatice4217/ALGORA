@@ -14,19 +14,17 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Body scroll lock when menu is open - Optimized to prevent forced reflow
+  // Body scroll lock when menu is open - CSS-based approach eliminates forced reflow
   useEffect(() => {
-    // Use requestAnimationFrame to batch DOM updates and prevent forced reflow
-    requestAnimationFrame(() => {
-      if (isOpen) {
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = '';
-      }
-    });
+    // Use CSS class instead of direct DOM manipulation to prevent forced reflow
+    if (isOpen) {
+      document.body.classList.add('scroll-lock');
+    } else {
+      document.body.classList.remove('scroll-lock');
+    }
 
     return () => {
-      document.body.style.overflow = '';
+      document.body.classList.remove('scroll-lock');
     };
   }, [isOpen]);
 

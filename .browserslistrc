@@ -1,14 +1,11 @@
-# Modern browsers - no legacy polyfills needed
-last 2 versions
-> 0.5%
-not dead
-not IE 11
+# Modern browsers only - no legacy polyfills needed for 95-100 Lighthouse score
+# Removed "last 2 versions" and "> 0.5%" to eliminate 13KB of legacy JavaScript
 
 # ES2020+ features supported
 supports es6-module
 supports async-functions
 
-# Target modern browsers
+# Target modern browsers (2020+)
 Chrome >= 90
 Edge >= 90
 Firefox >= 88

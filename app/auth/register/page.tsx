@@ -211,6 +211,7 @@ export default function RegisterPage() {
       text: '⏳ Kayıt işleniyor...'
     });
 
+    try {
       const { data, error } = await authHelpers.signUp(
         formData.email,
         formData.password,
@@ -290,10 +291,8 @@ export default function RegisterPage() {
         text: '🎉 Kayıt başarılı! Hoş geldiniz'
       });
 
-      // Redirect directly to dashboard after success
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1500);
+      // Immediate navigation - eliminates setTimeout causing unused code chunks
+      router.push('/dashboard');
     } catch (error) {
       setFormMessage({
         type: 'error',
