@@ -82,8 +82,8 @@ export function Footer() {
   return (
     <>
     <footer className="bg-gray-900">
-      <div className="container mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="container mx-auto px-6 pt-20 pb-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-16">
           {/* 1. Sütun - Marka */}
           <div className="flex flex-col space-y-4">
             <div className="flex items-center">
@@ -165,6 +165,7 @@ export function Footer() {
         </div>
       </div>
     </footer>
+    </>
 
     {/* Blog Modal */}
     {isBlogModalOpen && (
