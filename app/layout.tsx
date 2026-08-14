@@ -34,6 +34,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icon.svg",
     apple: "/icon.svg",
+    shortcut: "/icon.svg",
   },
   openGraph: {
     title: "ALGORA - AI Destekli Sınav Hazırlığı",
