@@ -18,7 +18,7 @@ export function LandingHeader() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden sm:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-gray-600 hover:text-purple-600 transition">
               Özellikler
             </a>
@@ -31,7 +31,7 @@ export function LandingHeader() {
           </div>
 
           {/* Desktop Auth Buttons */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-3">
             <Link href="/auth/login">
               <Button variant="ghost" size="md">
                 Giriş Yap

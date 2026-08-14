@@ -52,7 +52,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 sm:hidden gpu-accel will-change-opacity ${
+        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 md:hidden gpu-accel will-change-opacity ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
@@ -60,7 +60,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 
       {/* Mobile Menu Panel */}
       <div
-        className={`sm:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white z-50 transform transition-transform duration-300 ease-in-out shadow-2xl gpu-accel will-change-transform ${
+        className={`md:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white z-50 transform transition-transform duration-300 ease-in-out shadow-2xl gpu-accel will-change-transform ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -192,7 +192,7 @@ export function HamburgerButton({ onClick, isOpen }: { onClick: () => void; isOp
   return (
     <button
       onClick={onClick}
-      className={`flex sm:hidden flex-col items-center justify-center gap-1.5 p-2 rounded-lg transition-all hover:bg-gray-100 gpu-accel will-change-shadow ${
+      className={`flex md:hidden flex-col items-center justify-center gap-1.5 p-2 rounded-lg transition-all hover:bg-gray-100 gpu-accel will-change-shadow ${
         isOpen ? 'bg-gray-100' : ''
       }`}
       aria-label={isOpen ? 'Menüyü Kapat' : 'Menüyü Aç'}
