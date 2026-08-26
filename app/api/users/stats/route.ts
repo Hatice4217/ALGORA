@@ -41,7 +41,25 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function calculateUserStats(answers: any) {
+interface UserAnswers {
+  user_id?: string;
+  total_answered?: number;
+  correct_answers?: number;
+  average_time?: number;
+  subjects_breakdown?: Array<{
+    subject: string;
+    total: number;
+    correct: number;
+    accuracy_rate?: number;
+  }>;
+  weekly_progress?: Array<{
+    date: string;
+    total: number;
+    correct: number;
+  }>;
+}
+
+function calculateUserStats(answers: UserAnswers) {
   // Calculate total questions answered
   const totalQuestions = answers?.total_answered || 0;
   const correctAnswers = answers?.correct_answers || 0;
@@ -54,19 +72,19 @@ function calculateUserStats(answers: any) {
   const averageTime = answers?.average_time || 0;
 
   // Subject breakdown (mock data - will be replaced with actual DB query)
-  const subjectBreakdown = answers?.subject_breakdown || [];
+  const subjectBreakdown = answers?.subjects_breakdown || [];
 
   // Weekly progress (last 7 days)
   const weeklyProgress = generateWeeklyProgress();
 
   // Identify weak and strong areas
   const weakAreas = subjectBreakdown
-    .filter((s: any) => s.accuracy_rate < 50)
-    .map((s: any) => s.subject);
+    .filter((s) => s.accuracy_rate !== undefined && s.accuracy_rate < 50)
+    .map((s) => s.subject);
 
   const strongAreas = subjectBreakdown
-    .filter((s: any) => s.accuracy_rate >= 70)
-    .map((s: any) => s.subject);
+    .filter((s) => s.accuracy_rate !== undefined && s.accuracy_rate >= 70)
+    .map((s) => s.subject);
 
   return {
     user_id: answers?.user_id || '',

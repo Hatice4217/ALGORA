@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
   typescript: {
-    ignoreBuildErrors: true, // Geçici: TypeScript hatalarını yoksay (3. adımda düzelteceğiz)
+    ignoreBuildErrors: false,
   },
   // Performance optimizations
   compress: true,
@@ -52,9 +52,15 @@ const nextConfig: NextConfig = {
                 (assets: any) => {
                   for (const name in assets) {
                     if (name.endsWith('.js')) {
+                      // Remove debug console logs but keep error logs for production debugging
                       assets[name] = assets[name].replace(
-                        /console\.(log|warn|error|debug|info)\([^)]*\);?/g,
-                        ''
+                        /console\.(log|warn|debug|info)\([^)]*\);?/g,
+                        '// Console removed for production'
+                      );
+                      // Keep error logs but minimize them
+                      assets[name] = assets[name].replace(
+                        /console\.error\([^)]*\);?/g,
+                        'console.error && console.error(...arguments);'
                       );
                     }
                   }

@@ -3,8 +3,15 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+console.log('🔧 Supabase Environment Check:', {
+  hasUrl: !!supabaseUrl,
+  hasKey: !!supabaseAnonKey,
+  urlPrefix: supabaseUrl?.substring(0, 30) + '...',
+  keyPrefix: supabaseAnonKey?.substring(0, 20) + '...'
+});
+
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase environment variables missing. Some features will not work.');
+  console.warn('⚠️ Supabase environment variables missing. Some features will not work.');
 }
 
 export const supabase = supabaseUrl && supabaseAnonKey
@@ -45,47 +52,13 @@ const handleDbError = (error: DbError | unknown, context: string) => {
 
 // Auth Helpers
 export const authHelpers = {
-  // Email'in zaten kayıtlı olup olmadığını kontrol et
-  checkEmailExists: async (email: string): Promise<boolean> => {
-    try {
-      // Email ile login denemesi yaparak kontrol et
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: 'dummy-password-for-check-12345', // Şifre yanlış olsa bile, email var mı öğreniriz
-      });
-
-      // Eğer "Invalid login credentials" hatası alırsak, email var demektir
-      // (şifre yanlış olsa bile email kayıtlı)
-      if (error && !error.message.includes('Invalid login credentials')) {
-        // Diğer hatalar email yok demektir
-        return false;
-      }
-
-      // Eğer data.user varsa veya Invalid login credentials hatası alıyorsak, email var
-      if (data?.user || (error && error.message.includes('Invalid login credentials'))) {
-        return true; // Email zaten kayıtlı
-      }
-
-      return false; // Email kayıtlı değil
-    } catch (err) {
-      console.error('Email check error:', err);
-      return false; // Hata durumunda false dön (kayıta devam etsin)
-    }
-  },
-
   signUp: async (email: string, password: string, name: string) => {
     try {
-      // ÖNCE email'in zaten kayıtlı olup olmadığını KONTROL ET
-      const emailExists = await authHelpers.checkEmailExists(email);
-
-      if (emailExists) {
-        return {
-          data: null,
-          error: { message: 'Bu e-posta adresi zaten kullanımda. Giriş yapmayı deneyin.' }
-        };
+      if (!supabase) {
+        return { data: null, error: { message: 'Supabase bağlantısı yok' } };
       }
 
-      console.log('Email check passed, proceeding with signup:', email);
+      console.log('🔄 SignUp başlatılıyor:', { email, name });
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -94,22 +67,16 @@ export const authHelpers = {
           data: {
             name,
           },
+          // Email confirmation disabled for demo - auto confirm
+          emailRedirectTo: undefined,
         },
       });
 
-      // 🚨 EMAIL ENUMERATION PROTECTION KONTROLÜ
-      // Supabase Email Enumeration Protection nedeniyle duplicate kontrolü
-      if (data?.user && data.user.identities && data.user.identities.length === 0) {
-        console.error('🚨 Email Enumeration Protection: Email zaten kayıtlı');
-        return {
-          data: null,
-          error: { message: 'Bu e-posta adresi sistemde zaten kayıtlı.' }
-        };
-      }
+      console.log('📊 SignUp sonucu:', { data, error });
 
-      // Ek duplicate kontrol (çift güvenlik)
+      // Hata kontrolü
       if (error) {
-        console.error('Supabase signUp error:', error);
+        console.error('❌ Supabase signUp error:', error);
 
         // Hata mesajını normalize et
         const errorMessage = (error.message || error.toString()).toLowerCase();
@@ -126,11 +93,30 @@ export const authHelpers = {
             error: { message: 'Bu e-posta adresi zaten kullanımda. Giriş yapmayı deneyin.' }
           };
         }
+
+        return {
+          data: null,
+          error: { message: error.message || 'Kayıt başarısız oldu' }
+        };
       }
 
-      return { data, error };
+      // 🚨 EMAIL ENUMERATION PROTECTION KONTROLÜ
+      // Supabase Email Enumeration Protection nedeniyle duplicate kontrolü
+      // Eğer user var ama identities boş ise, email zaten kayıtlı demektir
+      if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+        console.error('🚨 Email Enumeration Protection: Email zaten kayıtlı');
+        return {
+          data: null,
+          error: { message: 'Bu e-posta adresi zaten kullanımda. Giriş yapmayı deneyin.' }
+        };
+      }
+
+      // Başarılı kayıt
+      console.log('✅ Kayıt başarılı!');
+      return { data, error: null };
+
     } catch (err) {
-      console.error('SignUp exception:', err);
+      console.error('❌ SignUp exception:', err);
       return {
         data: null,
         error: { message: 'Kayıt işlemi sırasında bir hata oluştu' }
@@ -140,15 +126,41 @@ export const authHelpers = {
 
   signIn: async (email: string, password: string) => {
     try {
+      if (!supabase) {
+        return { data: null, error: 'Supabase bağlantısı yok' };
+      }
+
+      console.log('🔄 SignIn başlatılıyor:', { email });
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
+      console.log('📊 SignIn sonucu:', { data: !!data, error });
+
       if (error) {
-        return { data: null, error: error.message };
+        console.error('❌ SignIn error:', error);
+
+        // Daha spesifik hata mesajları
+        const errorMessage = error.message || '';
+
+        if (errorMessage.includes('Invalid login credentials')) {
+          return { data: null, error: 'E-posta veya şifre hatalı' };
+        }
+
+        if (errorMessage.includes('Email not confirmed')) {
+          return { data: null, error: 'EMAIL_NOT_CONFIRMED' };
+        }
+
+        return { data: null, error: errorMessage };
       }
+
+      console.log('✅ SignIn başarılı!');
       return { data, error: null };
+
     } catch (error) {
+      console.error('❌ SignIn exception:', error);
       return { data: null, error: 'Giriş işlemi başarısız' };
     }
   },
@@ -266,6 +278,10 @@ export const dbHelpers = {
 
   updateUserProfile: async (userId: string, updates: Record<string, unknown>) => {
     try {
+      if (!supabase) {
+        return { data: null, error: 'Supabase bağlantısı yok' };
+      }
+
       const { data, error } = await supabase
         .from('user_profiles')
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -288,6 +304,10 @@ export const dbHelpers = {
     subject: string;
   }) => {
     try {
+      if (!supabase) {
+        return { data: null, error: 'Supabase bağlantısı yok' };
+      }
+
       const { data, error } = await supabase
         .from('study_sessions')
         .insert({
@@ -312,6 +332,10 @@ export const dbHelpers = {
     duration_seconds: number;
   }) => {
     try {
+      if (!supabase) {
+        return { data: null, error: 'Supabase bağlantısı yok' };
+      }
+
       const { data, error } = await supabase
         .from('study_sessions')
         .update({
@@ -333,6 +357,10 @@ export const dbHelpers = {
 
   getUserStudySessions: async (userId: string, limit = 10) => {
     try {
+      if (!supabase) {
+        return { data: null, error: 'Supabase bağlantısı yok' };
+      }
+
       const { data, error } = await supabase
         .from('study_sessions')
         .select('*')
@@ -376,6 +404,10 @@ export const dbHelpers = {
 
   // Questions
   saveGeneratedQuestion: async (question: Record<string, unknown>) => {
+    if (!supabase) {
+      return { data: null, error: 'Supabase bağlantısı yok' };
+    }
+
     const { data, error } = await supabase
       .from('questions')
       .insert(question)
@@ -390,6 +422,10 @@ export const dbHelpers = {
     exam_type?: string;
     limit?: number;
   }) => {
+    if (!supabase) {
+      return { data: null, error: 'Supabase bağlantısı yok' };
+    }
+
     let query = supabase
       .from('questions')
       .select('*')
@@ -472,9 +508,70 @@ export const dbHelpers = {
     );
   },
 
-  // Helper function to check if user has completed onboarding
+  // Settings Helpers
+  updateUserSettings: async (userId: string, settings: {
+    name?: string;
+    exam_type?: string;
+    target_score?: number;
+    exam_date?: string;
+    study_hours_per_day?: number;
+    email_notifications?: boolean;
+    theme?: string;
+    language?: string;
+  }) => {
+    if (!supabase) {
+      return { data: null, error: 'Supabase not initialized' };
+    }
+
+    try {
+      // Update user_profiles table
+      const profileData: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (settings.exam_type !== undefined) profileData.exam_type = settings.exam_type;
+      if (settings.target_score !== undefined) profileData.target_score = settings.target_score;
+      if (settings.exam_date !== undefined) profileData.exam_date = settings.exam_date;
+      if (settings.study_hours_per_day !== undefined) profileData.study_hours_per_day = settings.study_hours_per_day;
+      if (settings.email_notifications !== undefined) profileData.email_notifications = settings.email_notifications;
+      if (settings.theme !== undefined) profileData.theme = settings.theme;
+      if (settings.language !== undefined) profileData.language = settings.language;
+
+      // Update profile
+      const { data: profileDataResult, error: profileError } = await supabase
+        .from('user_profiles')
+        .update(profileData)
+        .eq('user_id', userId)
+        .select()
+        .maybeSingle();
+
+      // Update user metadata name if provided
+      if (settings.name && supabase.auth) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.auth.updateUser({
+            data: { name: settings.name }
+          });
+        }
+      }
+
+      if (profileError) {
+        return { data: null, error: profileError.message };
+      }
+
+      return { data: profileDataResult, error: null };
+    } catch (error) {
+      console.error('updateUserSettings error:', error);
+      return { data: null, error: 'Ayarlar güncellenirken bir hata oluştu' };
+    }
+  },
+
   hasCompletedOnboarding: async (userId: string) => {
     try {
+      if (!supabase) {
+        return { completed: false, error: 'Supabase bağlantısı yok' };
+      }
+
       const { data, error } = await supabase
         .from('user_profiles')
         .select('id')
@@ -487,6 +584,94 @@ export const dbHelpers = {
       return { completed: !!data, error: null };
     } catch (error) {
       return { completed: false, error: 'Onboarding durumu kontrol edilemedi' };
+    }
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    if (!supabase) {
+      return { data: null, error: 'Supabase not initialized' };
+    }
+
+    try {
+      // First verify current password by trying to sign in
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !user.email) {
+        return { data: null, error: 'Kullanıcı bulunamadı' };
+      }
+
+      // Verify current password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        return { data: null, error: 'Mevcut şifre hatalı' };
+      }
+
+      // Update password
+      const { data, error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('changePassword error:', error);
+      return { data: null, error: 'Şifre değiştirilirken bir hata oluştu' };
+    }
+  },
+
+  deleteAccount: async (userId: string, password: string) => {
+    if (!supabase) {
+      return { data: null, error: 'Supabase not initialized' };
+    }
+
+    try {
+      // Verify password first
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !user.email) {
+        return { data: null, error: 'Kullanıcı bulunamadı' };
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password,
+      });
+
+      if (signInError) {
+        return { data: null, error: 'Şifre hatalı' };
+      }
+
+      // Delete user data from user_profiles
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (profileError) {
+        console.log('Profile delete warning (may not exist):', profileError.message);
+      }
+
+      // Delete the auth user
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+
+      if (deleteError) {
+        // Fallback: sign out the user
+        await supabase.auth.signOut();
+        return { data: null, error: 'Kullanıcı silinemedi, oturum kapatıldı' };
+      }
+
+      // Sign out after deletion
+      await supabase.auth.signOut();
+
+      return { data: { success: true }, error: null };
+    } catch (error) {
+      console.error('deleteAccount error:', error);
+      return { data: null, error: 'Hesap silinirken bir hata oluştu' };
     }
   },
 };

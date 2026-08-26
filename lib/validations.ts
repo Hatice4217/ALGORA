@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 // Re-export all schemas from types
-export { RegisterSchema, LoginSchema, OnboardingSchema } from '@/types/user';
-export { QuestionGenerationSchema, AnswerQuestionSchema } from '@/types/question';
-export { AnswerSubmissionSchema } from '@/types/answer';
+// export { RegisterSchema, LoginSchema, OnboardingSchema } from '@/types/user';
+// export { QuestionGenerationSchema, AnswerQuestionSchema } from '@/types/question';
+// export { AnswerSubmissionSchema } from '@/types/answer';
 
 // Additional validation helpers
 export const validateEmail = (email: string): boolean => {
