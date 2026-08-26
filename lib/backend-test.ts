@@ -89,7 +89,7 @@ export async function testBackendEmailCheck() {
 
   } catch (error) {
     console.error('❌ Backend test hatası:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: (error as Error).message };
   }
 }
 
@@ -152,6 +152,6 @@ export async function testRealSignUp() {
 
   } catch (error) {
     console.error('❌ Gerçek kayıt test hatası:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: (error as Error).message };
   }
 }

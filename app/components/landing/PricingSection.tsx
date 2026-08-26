@@ -5,7 +5,7 @@ import { Button } from '@/app/components/ui/Button';
 
 export function PricingSection() {
   return (
-    <section id="pricing" className="container mx-auto px-6 py-20">
+    <section id="pricing" className="w-full px-4 md:px-6 lg:px-8 py-20">
       <h2 className="text-4xl font-bold text-center text-gray-900 mb-4">
         Fiyatlandırma
       </h2>
@@ -13,7 +13,7 @@ export function PricingSection() {
         Size en uygun paketi seçin ve sınava hazırlanmaya başlayın
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
         {/* Başlangıç Paketi */}
         <div
           className="bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-md transition-all duration-300 gpu-accel will-change-shadow"

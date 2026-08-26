@@ -56,3 +56,50 @@ export interface WeeklyStats {
   buHaftaToplamSoru: number;
   buGunToplam: string;
 }
+
+// Settings Types
+export interface UserProfile {
+  id?: string;
+  user_id?: string;
+  name: string;
+  email: string;
+  exam_type: 'TYT' | 'AYT' | 'LGS';
+  target_score: number;
+  exam_date?: string;
+  study_hours_per_day: number;
+  email_notifications: boolean;
+  theme: 'light' | 'dark';
+  language: 'tr' | 'en';
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SettingsFormState {
+  // Profile section
+  name: string;
+  email: string;
+  // Exam targets section
+  exam_type: 'TYT' | 'AYT' | 'LGS';
+  target_score: string;
+  exam_date: string;
+  study_hours_per_day: string;
+  // Notifications section
+  email_notifications: boolean;
+  theme: 'light' | 'dark';
+  language: 'tr' | 'en';
+  // Account section
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+}
+
+export interface SettingsValidationErrors {
+  name?: string;
+  email?: string;
+  target_score?: string;
+  exam_date?: string;
+  study_hours_per_day?: string;
+  current_password?: string;
+  new_password?: string;
+  confirm_password?: string;
+}

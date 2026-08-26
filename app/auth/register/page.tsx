@@ -14,7 +14,6 @@ import {
   checkPasswordStrength,
   sanitizeInput
 } from '@/lib/security';
-import { checkEmailAvailability } from '@/lib/email-check';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -48,9 +47,6 @@ export default function RegisterPage() {
     requirements: { met: boolean; text: string }[];
   } | null>(null);
 
-  // Email availability check
-  const [emailStatus, setEmailStatus] = useState<'available' | 'taken' | 'checking' | null>(null);
-  const [emailMessage, setEmailMessage] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -67,33 +63,6 @@ export default function RegisterPage() {
       setPasswordStrength(checkPasswordStrength(sanitized));
     } else if (name === 'password' && !sanitized) {
       setPasswordStrength(null);
-    }
-
-    // Check email availability in real-time
-    if (name === 'email') {
-      if (sanitized && sanitized.includes('@') && sanitized.includes('.')) {
-        // Email formatı geçerli, kontrol et
-        setEmailStatus('checking');
-        setEmailMessage('E-posta kontrol ediliyor...');
-
-        checkEmailAvailability(sanitized).then(result => {
-          if (!result.available) {
-            setEmailStatus('taken');
-            setEmailMessage(result.message || 'Bu e-posta zaten kullanımda');
-          } else {
-            setEmailStatus('available');
-            setEmailMessage('E-posta kullanılabilir');
-          }
-        }).catch(() => {
-          // Hata durumunda sessizce geç
-          setEmailStatus(null);
-          setEmailMessage('');
-        });
-      } else {
-        // Email formatı geçerli değil
-        setEmailStatus(null);
-        setEmailMessage('');
-      }
     }
   };
 
@@ -143,12 +112,6 @@ export default function RegisterPage() {
       hasError = true;
     }
 
-    // Check if email is already taken
-    if (emailStatus === 'taken') {
-      showFieldError('email', 'Bu e-posta adresi zaten kullanımda');
-      hasError = true;
-    }
-
     return !hasError;
   };
 
@@ -160,47 +123,6 @@ export default function RegisterPage() {
 
     if (!validateForm()) {
       return;
-    }
-
-    // 🚨 ACİL EMAIL KONTROLÜ - BASİT VE GÜVENLİ
-    console.log('🔍 ACİL EMAIL KONTROLÜ BAŞLATILIYOR...');
-    console.log('📧 Email:', formData.email);
-
-    // Alert ile anında feedback
-    window.alert('🔍 Email kontrol ediliyor...');
-
-    try {
-      // Email varlığını kontrol et
-      const { data: loginData, error: loginError } = await authHelpers.signIn(
-        formData.email,
-        'dummy-password-for-check-12345'
-      );
-
-      console.log('🔍 Login kontrol sonucu:', { loginData, loginError });
-
-      // Email zaten kayıtlı mı?
-      const isEmailAlreadyRegistered = (
-        (loginError && loginError.message && loginError.message.includes('Invalid login credentials')) ||
-        loginData?.user
-      );
-
-      if (isEmailAlreadyRegistered) {
-        console.log('🚫 EMAIL ZATEN KAYITLI TESPİT EDİLDİ!');
-
-        window.alert('🚫 BU E-POSTA ZATEN KAYITLI! Lütfen giriş yapın.');
-        setFormMessage({
-          type: 'error',
-          text: '🚫 Bu e-posta adresi zaten kayıtlı! Lütfen giriş yapın veya farklı bir e-posta kullanın.'
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('✅ Email kontrolü geçti, kayıt işleniyor...');
-      window.alert('✅ Email kontrolü geçti, kayıt işleniyor...');
-
-    } catch (loginCheckError) {
-      console.log('⚠️ Email kontrolü hatası, kayda devam ediliyor:', loginCheckError);
     }
 
     setIsLoading(true);
@@ -220,43 +142,11 @@ export default function RegisterPage() {
 
       console.log('Kayıt sonucu:', { data, error });
 
-      // 🚨 EMAIL ENUMERATION PROTECTION KONTROLÜ
-      if (data?.user) {
-        console.log('🔍 User oluşturuldu, identities kontrol ediliyor...');
-        console.log('📊 Identities:', data.user.identities);
-        console.log('📊 Identities length:', data.user.identities?.length);
-
-        if (!data.user.identities || data.user.identities.length === 0) {
-          console.error('🚨 EMAIL ENUMERATION PROTECTION: Email zaten kayıtlı!');
-
-          // 🚨 FRONTEND GÖRÜNÜR HATA MESAJI
-          setIsLoading(false);
-
-          // Form message göster
-          setFormMessage({
-            type: 'error',
-            text: '🚫 BU E-POSTA ZATEN KULLANILIYOR!'
-          });
-
-          // Email input'ta da hata göster
-          setErrors({
-            email: 'Bu e-posta zaten kullanımda'
-          });
-
-          // Alert ile ekstra güvenlik
-          alert('🚫 BU E-POSTA ZATEN KULLANILIYOR! Lütfen giriş yapın.');
-
-          return;
-        }
-
-        console.log('✅ Email yeni kayıt - identities length:', data.user.identities.length);
-      }
-
-      // Hata kontrolü - daha kapsamlı
+      // 1. YÖNTEM: Supabase'den direkt hata mesajını kontrol et
       if (error) {
         console.error('Kayıt hatası:', error);
 
-        // ÇEŞİTLİ hata mesajlarını kontrol et
+        // Duplicate email kontrolü - Supabase'in hata mesajlarını kontrol et
         const errorMessage = (error.message || error.toString()).toLowerCase();
 
         if (errorMessage.includes('already') ||
@@ -264,22 +154,40 @@ export default function RegisterPage() {
             errorMessage.includes('exists') ||
             errorMessage.includes('taken') ||
             errorMessage.includes('duplicate') ||
-            errorMessage.includes('user already') ||
-            errorMessage.includes('aile') ||
-            errorMessage === 'user already registered') {
+            errorMessage.includes('user already')) {
 
           setFormMessage({
             type: 'error',
-            text: '🚫 Bu e-posta adresi zaten kayıtlı! Lütfen giriş yapın veya farklı bir e-posta kullanın.'
+            text: 'Bu e-posta adresi zaten kayıtlı! Lütfen giriş yapın.'
           });
           setIsLoading(false);
           return;
         }
 
-        // Diğer hatalar için
+        // Diğer hatalar için - kullanıcı dostu mesajlar
+        let userFriendlyMessage = error.message || 'Bilinmeyen hata';
+
+        // Email invalid hatası için daha anlaşılır mesaj
+        if (userFriendlyMessage.toLowerCase().includes('email') && userFriendlyMessage.toLowerCase().includes('invalid')) {
+          userFriendlyMessage = 'Geçersiz e-posta adresi! Lütfen geçerli bir e-posta adresi girin.';
+        }
+
         setFormMessage({
           type: 'error',
-          text: `Kayıt başarısız: ${error.message || 'Bilinmeyen hata'}`
+          text: userFriendlyMessage
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Supabase helper zaten Email Enumeration Protection kontrolü yapıyor
+      // Sadece data var mı kontrol etmemiz yeterli
+      if (!data || !data.user) {
+        console.error('❌ Kayıt başarısız - user data yok');
+
+        setFormMessage({
+          type: 'error',
+          text: 'Kayıt başarısız oldu. Lütfen tekrar deneyin.'
         });
         setIsLoading(false);
         return;
@@ -288,11 +196,46 @@ export default function RegisterPage() {
       // Show success message
       setFormMessage({
         type: 'success',
-        text: '🎉 Kayıt başarılı! Hoş geldiniz'
+        text: '⏳ Kayıt başarılı! E-posta onay linki gönderiliyor...'
       });
 
-      // Immediate navigation - eliminates setTimeout causing unused code chunks
-      router.push('/dashboard');
+      // Send verification email
+      try {
+        const emailResponse = await fetch('/api/auth/verify-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: formData.email,
+          }),
+        });
+
+        const emailData = await emailResponse.json();
+
+        if (emailData.success) {
+          setFormMessage({
+            type: 'success',
+            text: '🎉 Kayıt başarılı! Lütfen e-posta kutunuzu kontrol edin ve onay linkine tıklayın.'
+          });
+        } else {
+          setFormMessage({
+            type: 'success',
+            text: '🎉 Kayıt başarılı! E-posta gönderilirken bir sorun oluştu ama hesabınız oluşturuldu.'
+          });
+        }
+      } catch (emailError) {
+        console.error('Email sending error:', emailError);
+        setFormMessage({
+          type: 'success',
+          text: '🎉 Kayıt başarılı! Hesabınız oluşturuldu. E-posta onayı için daha sonra deneyebilirsiniz.'
+        });
+      }
+
+      // Redirect to login page after a delay
+      setTimeout(() => {
+        router.push(`/auth/login?email=${encodeURIComponent(formData.email)}&registered=true`);
+      }, 3000);
     } catch (error) {
       setFormMessage({
         type: 'error',
@@ -368,6 +311,18 @@ export default function RegisterPage() {
             Ücretsiz hesabını oluştur ve sınav hazırlığına başla
           </p>
 
+          {/* Email Notice */}
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-xs text-blue-800">
+                <strong>Bilgi:</strong> Kayıt olduktan sonra e-posta adresinize bir onay linki gönderilecektir. Giriş yapabilmek için bu linke tıklamanız gerekmektedir.
+              </p>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {/* Ad Soyad */}
             <Input
@@ -396,38 +351,6 @@ export default function RegisterPage() {
               required
               maxLength={254}
             />
-
-            {/* Email Durum Mesajı */}
-            {emailStatus && (
-              <div className={`mt-2 text-sm flex items-center gap-2 ${
-                emailStatus === 'available' ? 'text-green-600' :
-                emailStatus === 'taken' ? 'text-red-600' :
-                'text-gray-500'
-              }`}>
-                {emailStatus === 'checking' && (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
-                    <span>E-posta kontrol ediliyor...</span>
-                  </>
-                )}
-                {emailStatus === 'available' && (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>{emailMessage}</span>
-                  </>
-                )}
-                {emailStatus === 'taken' && (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    <span>{emailMessage}</span>
-                  </>
-                )}
-              </div>
-            )}
 
             {/* Şifre ve Şifre Tekrarı - Yan Yana */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

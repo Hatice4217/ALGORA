@@ -18,7 +18,7 @@ export function FeaturesSection() {
   ];
 
   return (
-    <section id="features" className="container mx-auto px-6 py-20">
+    <section id="features" className="w-full px-4 md:px-6 lg:px-8 py-20">
       <h2 className="text-4xl font-bold text-center text-gray-900 mb-10">
         Neden ALGORA?
       </h2>

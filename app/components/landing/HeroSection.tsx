@@ -1,9 +1,15 @@
+'use client';
+
 import Link from 'next/link';
+import { useState } from 'react';
 import { Button } from '@/app/components/ui/Button';
+import { DemoModal } from './DemoModal';
 
 export function HeroSection() {
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+
   return (
-    <section className="container mx-auto px-6 py-20">
+    <section className="w-full px-4 md:px-6 lg:px-8 py-20">
       <div className="flex flex-col lg:flex-row items-center gap-12">
         <div className="lg:w-1/2">
           <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
@@ -20,10 +26,21 @@ export function HeroSection() {
                 Ücretsiz Başla
               </Button>
             </Link>
-            <Button variant="outline" size="lg" fullWidth>
+            <Button
+              variant="outline"
+              size="lg"
+              fullWidth
+              onClick={() => setIsDemoModalOpen(true)}
+            >
               Demo İzle
             </Button>
           </div>
+
+          {/* Demo Modal */}
+          <DemoModal
+            isOpen={isDemoModalOpen}
+            onClose={() => setIsDemoModalOpen(false)}
+          />
           <div className="mt-8 flex items-center gap-6">
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4].map((i) => (

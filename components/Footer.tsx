@@ -165,7 +165,6 @@ export function Footer() {
         </div>
       </div>
     </footer>
-    </>
 
     {/* Blog Modal */}
     {isBlogModalOpen && (

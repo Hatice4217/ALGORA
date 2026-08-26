@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { authHelpers } from '@/lib/supabase';
+import { authHelpers, dbHelpers } from '@/lib/supabase';
 import { Logo } from '../../components/ui/Logo';
 import { validateEmail, sanitizeInput, loginRateLimiter } from '@/lib/security';
 
@@ -24,6 +24,28 @@ export default function LoginPage() {
   // Rate limiting state
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [remainingTime, setRemainingTime] = useState<number>(0);
+  const [registeredMessage, setRegisteredMessage] = useState<string | null>(null);
+  const [verifiedMessage, setVerifiedMessage] = useState<string | null>(null);
+
+  // URL params'dan email ve registered bilgisini al
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const emailParam = urlParams.get('email');
+    const registeredParam = urlParams.get('registered');
+    const verifiedParam = urlParams.get('verified');
+
+    if (emailParam) {
+      setFormData(prev => ({ ...prev, email: emailParam }));
+    }
+
+    if (registeredParam === 'true') {
+      setRegisteredMessage('Kayıt başarılı! Şimdi giriş yapabilirsiniz.');
+    }
+
+    if (verifiedParam === 'true') {
+      setVerifiedMessage('🎉 E-posta adresiniz başarıyla onaylandı! Şimdi giriş yapabilirsiniz.');
+    }
+  }, []);
 
   // Form message
   const [formMessage, setFormMessage] = useState<{
@@ -104,6 +126,15 @@ export default function LoginPage() {
       const { data, error } = await authHelpers.signIn(formData.email, formData.password);
 
       if (error) {
+        // Email confirmation hatası için özel mesaj
+        if (error === 'EMAIL_NOT_CONFIRMED') {
+          setFormMessage({
+            type: 'error',
+            text: '📧 E-posta adresiniz henüz onaylanmamış! Lütfen e-posta kutunuzu kontrol edin ve onay linkine tıklayın. Spam klasörünü de kontrol etmeyi unutmayın.'
+          });
+          return;
+        }
+
         setFormMessage({
           type: 'error',
           text: 'E-posta veya şifre hatalı'
@@ -117,8 +148,14 @@ export default function LoginPage() {
           text: 'Giriş başarılı! Hoş geldiniz 👋'
         });
 
-        // Immediate navigation - eliminates setTimeout causing code chunks
-        router.push('/dashboard');
+        // Check if user has completed onboarding
+        const { completed } = await dbHelpers.hasCompletedOnboarding(data.user.id);
+
+        if (completed) {
+          router.push('/dashboard');
+        } else {
+          router.push('/onboarding');
+        }
       }
     } catch (error) {
       setFormMessage({
@@ -201,6 +238,18 @@ export default function LoginPage() {
           <p className="text-gray-600 mb-8">
             Hesabına giriş yaparak öğrenmeye devam et
           </p>
+
+          {/* Email Verified Success Message */}
+          {verifiedMessage && (
+            <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <p className="text-sm text-green-800">{verifiedMessage}</p>
+              </div>
+            </div>
+          )}
 
           {/* Rate Limit Warning */}
           {rateLimitError && (

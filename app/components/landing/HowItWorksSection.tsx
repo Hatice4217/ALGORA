@@ -23,7 +23,7 @@ export function HowItWorksSection() {
   ];
 
   return (
-    <section id="how-it-works" className="container mx-auto px-6 py-20 bg-purple-50 rounded-3xl mb-20">
+    <section id="how-it-works" className="w-full px-4 md:px-6 lg:px-8 py-20 bg-purple-50 rounded-3xl mb-20">
       <h2 className="text-4xl font-bold text-center text-gray-900 mb-12">
         Nasıl Çalışır?
       </h2>

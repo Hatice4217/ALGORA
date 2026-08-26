@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '../components/ui/Button';
 import { Logo } from '../components/ui/Logo';
 import { MobileMenu, HamburgerButton } from '../../components/MobileMenu';
@@ -11,23 +12,34 @@ import { StatisticsCards } from '../../components/dashboard/StatisticsCards';
 import { WorkRecords } from '../../components/dashboard/WorkRecords';
 import { AnalysisPanel } from '../../components/dashboard/AnalysisPanel';
 import { QuestionPractice } from '../../components/dashboard/QuestionPractice';
+import { SettingsPanel } from '../../components/dashboard/SettingsPanel';
+
 import type { Question, StudyRecord, Statistics, NewRecord, WeeklyStats } from '../../types/question';
 
-// Mock data - to be replaced with API calls
-const mockStatistics: Statistics = {
-  toplamSoru: 24,
-  dogruCevap: 18,
-  basariOrani: 75,
-  ortalamaSüre: 42,
-  dersler: [
-    { ders: 'Matematik', toplam: 12, dogru: 8, basari: 67 },
-    { ders: 'Türkçe', toplam: 8, dogru: 7, basari: 88 },
-    { ders: 'Fizik', toplam: 4, dogru: 3, basari: 75 },
-  ],
-  haftalıkIlerleme: [], // Will be updated dynamically
-  gelisimGerekenler: ['Matematik'],
-  gucluAlanlar: ['Türkçe', 'Fizik'],
-};
+// Type definitions for dashboard
+interface SubjectStat {
+  ders: string;
+  toplam: number;
+  dogru: number;
+  basari: number;
+}
+
+interface DailyProgress {
+  tarih: string;
+  sorular: number;
+  basari: number;
+}
+
+interface DashboardStatistics {
+  toplamSoru: number;
+  dogruCevap: number;
+  basariOrani: number;
+  ortalamaSüre: number;
+  dersler: SubjectStat[];
+  haftalıkIlerleme: DailyProgress[];
+  gelisimGerekenler: string[];
+  gucluAlanlar: string[];
+}
 
 const SUBJECTS = [
   'Matematik',
@@ -42,38 +54,46 @@ const SUBJECTS = [
 ];
 
 const DIFFICULTIES = [
-  { value: 'baslangic', label: 'Başlangıç' },
-  { value: 'orta', label: 'Orta' },
-  { value: 'ileri', label: 'İleri' },
+  { deger: 'baslangic', etiket: 'Başlangıç' },
+  { deger: 'orta', etiket: 'Orta' },
+  { deger: 'ileri', etiket: 'İleri' },
 ];
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'practiceRoom' | 'analysis'>('overview');
-  const [statistics, setStatistics] = useState(mockStatistics);
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'overview' | 'practiceRoom' | 'analysis' | 'settings'>('overview');
+  const [statistics, setStatistics] = useState<DashboardStatistics>({
+    toplamSoru: 0,
+    dogruCevap: 0,
+    basariOrani: 0,
+    ortalamaSüre: 0,
+    dersler: [],
+    haftalıkIlerleme: [],
+    gelisimGerekenler: [],
+    gucluAlanlar: [],
+  }); // Empty state - no mock data
   const [selectedSubject, setSelectedSubject] = useState('Matematik');
   const [selectedDifficulty, setSelectedDifficulty] = useState('baslangic');
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [userName, setUserName] = useState('Öğrenci');
+  const [userName, setUserName] = useState<string | null>(null); // null = not loaded yet
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Loading state for auth check
 
-  // Load study records from localStorage
-  const [studyRecords, setStudyRecords] = useState<StudyRecord[]>(() => {
+  // Initialize userName from localStorage immediately (prevents flash)
+  useEffect(() => {
     if (typeof window !== 'undefined') {
-      const storedData = localStorage.getItem('calismaKayitlari');
-      if (storedData) {
-        return JSON.parse(storedData);
+      const cachedName = localStorage.getItem('userName');
+      if (cachedName) {
+        setUserName(cachedName);
       }
     }
-    // Default demo data
-    return [
-      { id: 1, tarih: '02.08.2026', ders: 'Matematik', saat: 2, soru: 15 },
-      { id: 2, tarih: '01.08.2026', ders: 'Türkçe', saat: 1.5, soru: 12 },
-      { id: 3, tarih: '31.07.2026', ders: 'Fizik', saat: 1, soru: 8 },
-    ];
-  });
+  }, []);
+
+  // Load study records from database
+  const [studyRecords, setStudyRecords] = useState<StudyRecord[]>([]); // Empty state - no mock data
 
   const [newRecord, setNewRecord] = useState<NewRecord>({
     ders: '',
@@ -88,40 +108,38 @@ export default function DashboardPage() {
     buGunToplam: '2.0'
   });
 
-  // Save to localStorage (when study records change)
-  useEffect(() => {
-    if (typeof window !== 'undefined' && studyRecords.length > 0) {
-      localStorage.setItem('calismaKayitlari', JSON.stringify(studyRecords));
 
-      // Update weekly statistics
-      const thisWeekTotalHours = studyRecords.reduce((total: number, record: StudyRecord) => total + record.saat, 0);
-      const thisWeekTotalQuestions = studyRecords.reduce((total: number, record: StudyRecord) => total + record.soru, 0);
-      const todayTotal = studyRecords
-        .filter((r: StudyRecord) => r.tarih === studyRecords[0]?.tarih)
-        .reduce((total: number, record: StudyRecord) => total + record.saat, 0);
-
-      setWeeklyStats({
-        buHaftaToplamSaat: thisWeekTotalHours.toFixed(1),
-        buHaftaToplamSoru: thisWeekTotalQuestions,
-        buGunToplam: todayTotal.toFixed(1)
-      });
-    }
-  }, [studyRecords]);
-
-  // Fetch user data
+  // Authentication check and fetch user data
   useEffect(() => {
     const fetchData = async () => {
       try {
         const { user } = await authHelpers.getCurrentUser();
-        if (user) {
-          const name = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Öğrenci';
-          setUserName(name);
+        if (!user) {
+          // No user found, redirect to login
+          router.push('/auth/login');
+          return;
+        }
 
+        // User found, set name
+        const name = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Öğrenci';
+        setUserName(name);
+        setIsLoading(false); // Auth check complete
+
+        // Cache userName in localStorage (prevents flash on reload)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('userName', name);
+        }
+
+        if (user) {
           // Fetch profile data
           try {
             const profile = await dbHelpers.getUserProfile(user.id);
             if (profile && profile.data && profile.data.name) {
               setUserName(profile.data.name);
+              // Update localStorage cache
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('userName', profile.data.name);
+              }
             }
           } catch (profileError) {
             console.log('Profile not found, using metadata');
@@ -156,7 +174,7 @@ export default function DashboardPage() {
           try {
             const subjectData = await dbHelpers.getSubjectBreakdown(user.id);
             if (subjectData.data && subjectData.data.length > 0) {
-              const subjectBreakdown = subjectData.data.map((subject: SubjectStat) => ({
+              const subjectBreakdown = subjectData.data.map((subject: any) => ({
                 ders: subject.ders,
                 toplam: subject.toplam || 0,
                 dogru: subject.dogru || 0,
@@ -165,7 +183,7 @@ export default function DashboardPage() {
                   : 0,
               }));
 
-              setStatistics((previous: Statistics) => ({
+              setStatistics((previous: DashboardStatistics) => ({
                 ...previous,
                 dersler: subjectBreakdown,
               }));
@@ -174,7 +192,7 @@ export default function DashboardPage() {
             console.log('Subject-based performance not found, using empty:', subjectError);
             // Continue with empty values if subject breakdown not found
           }
-        }
+        } // Close if (user) block
       } catch (error) {
         console.error('Could not fetch data:', error);
       }
@@ -227,7 +245,7 @@ export default function DashboardPage() {
     setSelectedAnswer(index);
     setShowAnswer(true);
 
-    const isCorrect = index === currentQuestion.correctAnswer;
+    const isCorrect = index === (currentQuestion?.correctAnswer ?? -1);
 
     try {
       // First get current user
@@ -241,7 +259,7 @@ export default function DashboardPage() {
       try {
         const answerRecord = await dbHelpers.saveAnswer({
           user_id: user.id,
-          question_id: currentQuestion.id || `temp_${Date.now()}`,
+          question_id: currentQuestion?.id || `temp_${Date.now()}`,
           selected_answer: index,
           is_correct: isCorrect,
           time_spent: 30, // Mock value, real timer needed
@@ -339,8 +357,9 @@ export default function DashboardPage() {
 
   const tabs = [
     { id: 'overview' as const, label: 'Genel Bakış' },
-    { id: 'practiceRoom' as const, label: 'Pratik Odası' },
+    { id: 'practiceRoom' as const, label: 'Soru Laboratuvarı' },
     { id: 'analysis' as const, label: 'Analizler' },
+    { id: 'settings' as const, label: 'Ayarlar' },
   ];
 
   // Add study record function
@@ -372,7 +391,7 @@ export default function DashboardPage() {
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
       {/* Üst Bar */}
       <header className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-6 py-4">
+        <div className="w-full px-4 md:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Link href="/">
@@ -422,14 +441,14 @@ export default function DashboardPage() {
         onClose={() => setIsMobileMenuOpen(false)}
       />
 
-      <main className="container mx-auto px-6 py-8 flex-1 overflow-hidden">
+      <main className="w-full px-4 md:px-6 lg:px-8 py-8 flex-1 overflow-hidden">
         {/* Genel Bakış Sekmesi */}
         {activeTab === 'overview' && (
           <div className="space-y-4 h-full flex flex-col">
             {/* Hoş Geldin Mesajı */}
             <div className="bg-white rounded-2xl shadow-sm p-4">
               <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                Merhaba, {userName}! 👋
+                {userName ? `Merhaba, ${userName}! 👋` : 'Yükleniyor...'}
               </h1>
               <p className="text-gray-600 text-sm">
                 Bugün sınav hazırlığına devam etmeye hazır mısın?
@@ -466,11 +485,19 @@ export default function DashboardPage() {
             setSeciliZorluk={setSelectedDifficulty}
             soruUret={generateQuestion}
             cevapSec={selectAnswer}
+            modalKapat={() => {
+              setCurrentQuestion(null);
+              setShowAnswer(false);
+              setSelectedAnswer(null);
+            }}
           />
         )}
 
         {/* Analizler Sekmesi */}
         {activeTab === 'analysis' && <AnalysisPanel istatistikler={statistics} />}
+
+        {/* Ayarlar Sekmesi */}
+        {activeTab === 'settings' && <SettingsPanel />}
       </main>
     </div>
   );

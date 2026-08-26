@@ -195,8 +195,6 @@ export function HamburgerButton({ onClick, isOpen }: { onClick: () => void; isOp
       className={`flex md:!hidden flex-col items-center justify-center gap-1.5 p-2 rounded-lg transition-all hover:bg-gray-100 gpu-accel will-change-shadow ${
         isOpen ? 'bg-gray-100' : ''
       } md-hidden-force`}
-        isOpen ? 'bg-gray-100' : ''
-      }`}
       aria-label={isOpen ? 'Menüyü Kapat' : 'Menüyü Aç'}
       aria-expanded={isOpen}
     >
