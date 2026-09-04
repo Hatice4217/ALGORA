@@ -174,7 +174,7 @@ export default function DashboardPage() {
           try {
             const subjectData = await dbHelpers.getSubjectBreakdown(user.id);
             if (subjectData.data && subjectData.data.length > 0) {
-              const subjectBreakdown = subjectData.data.map((subject: any) => ({
+              const subjectBreakdown = subjectData.data.map((subject: { ders: string; toplam: number; dogru: number }) => ({
                 ders: subject.ders,
                 toplam: subject.toplam || 0,
                 dogru: subject.dogru || 0,

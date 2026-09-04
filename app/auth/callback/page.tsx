@@ -98,7 +98,7 @@ export default function AuthCallbackPage() {
                 Giriş Başarılı!
               </h2>
               <p className="text-gray-600">
-                Dashboard'a yönlendiriliyorsunuz...
+                Dashboard&apos;a yönlendiriliyorsunuz...
               </p>
             </div>
           )}

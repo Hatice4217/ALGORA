@@ -8,7 +8,9 @@
 process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.SUPABASE_TEST_URL || 'https://test.supabase.co';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.SUPABASE_TEST_KEY || 'test-anon-key';
 process.env.OPENAI_API_KEY = process.env.OPENAI_TEST_KEY || 'test-openai-key';
-process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
+// Ortam değişkeni verilirse onu kullan (ör. production'a karşı test),
+// verilmezse localhost'a düş
+process.env.NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 // Mock console methods to reduce noise in test output
 global.console = {

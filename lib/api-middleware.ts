@@ -130,31 +130,32 @@ export function withErrorHandler(
   return async (req: NextRequest) => {
     try {
       return await handler(req);
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { message?: string; stack?: string; name?: string; code?: string };
       console.error('API Error:', {
-        error: error?.message,
-        stack: error?.stack,
+        error: err?.message,
+        stack: err?.stack,
         url: req.url,
         method: req.method,
       });
 
       // Handle specific error types
-      if (error?.name === 'OpenAIError') {
+      if (err?.name === 'OpenAIError') {
         return NextResponse.json(
           {
             error: 'AI service error',
-            message: error?.message || 'Soru üretimi başarısız',
-            code: error?.code,
+            message: err?.message || 'Soru üretimi başarısız',
+            code: err?.code,
           },
-          { status: error?.code === 'rate_limit_exceeded' ? 429 : 500 }
+          { status: err?.code === 'rate_limit_exceeded' ? 429 : 500 }
         );
       }
 
-      if (error?.name === 'ValidationError') {
+      if (err?.name === 'ValidationError') {
         return NextResponse.json(
           {
             error: 'Validation error',
-            message: error?.message || 'Geçersiz veri',
+            message: err?.message || 'Geçersiz veri',
           },
           { status: 400 }
         );
@@ -220,29 +221,29 @@ export function withAuth(
 export function withMiddleware(
   handlers: {
     rateLimit?: boolean;
-    validation?: z.ZodSchema<any>;
+    validation?: z.ZodSchema<unknown>;
     auth?: boolean;
   },
-  handler: (req: NextRequest, ...args: any[]) => Promise<NextResponse>
+  handler: (req: NextRequest, ...args: unknown[]) => Promise<NextResponse>
 ) {
-  let wrappedHandler = handler;
+  let wrappedHandler: (req: NextRequest) => Promise<NextResponse> = handler;
 
   // Add error handling
-  wrappedHandler = withErrorHandler(wrappedHandler as any);
+  wrappedHandler = withErrorHandler(wrappedHandler);
 
   // Add validation
   if (handlers.validation) {
-    wrappedHandler = withValidation(handlers.validation, wrappedHandler as any);
+    wrappedHandler = withValidation(handlers.validation, wrappedHandler);
   }
 
   // Add rate limiting
   if (handlers.rateLimit) {
-    wrappedHandler = withRateLimit(wrappedHandler as any);
+    wrappedHandler = withRateLimit(wrappedHandler);
   }
 
   // Add auth
   if (handlers.auth) {
-    wrappedHandler = withAuth(wrappedHandler as any);
+    wrappedHandler = withAuth(wrappedHandler);
   }
 
   return wrappedHandler;

@@ -298,7 +298,7 @@ export function Footer() {
                     <div>
                       <h4 className="text-lg font-semibold text-purple-900 mb-2">Bunu Biliyor Muydun?</h4>
                       <p className="text-gray-700 text-base leading-relaxed">
-                        Sınavda derece yapan öğrencilerin %80'i, bildikleri konulardan ziyade sadece yanlış yaptıkları soruların analizine odaklanıyor.
+                        Sınavda derece yapan öğrencilerin %80&apos;i, bildikleri konulardan ziyade sadece yanlış yaptıkları soruların analizine odaklanıyor.
                       </p>
                     </div>
                   </div>

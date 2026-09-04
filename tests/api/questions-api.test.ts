@@ -16,7 +16,7 @@ const TEST_TIMEOUT = 30000; // 30 seconds for AI generation
 const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 // Helper function to make authenticated requests
-async function authenticatedRequest(endpoint: string, method: string, body?: any) {
+async function authenticatedRequest(endpoint: string, method: string, body?: unknown) {
   // This would need a real session token from Supabase
   // For now, we'll test the authentication requirement
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {

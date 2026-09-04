@@ -44,12 +44,22 @@ const nextConfig: NextConfig = {
       config.optimization = {
         ...config.optimization,
         minimizer: [
-          ...((config.optimization?.minimizer as any[]) || []),
+          ...((config.optimization?.minimizer as never[]) || []),
           {
-            apply: (compiler: any) => {
-              compiler.hooks.processAssets.tap(
+            apply: (compiler: unknown) => {
+              const typedCompiler = compiler as {
+                hooks: {
+                  processAssets: {
+                    tap: (
+                      options: { name: string },
+                      callback: (assets: Record<string, string>) => void
+                    ) => void;
+                  };
+                };
+              };
+              typedCompiler.hooks.processAssets.tap(
                 { name: 'remove-console' },
-                (assets: any) => {
+                (assets) => {
                   for (const name in assets) {
                     if (name.endsWith('.js')) {
                       // Remove debug console logs but keep error logs for production debugging

@@ -76,7 +76,7 @@ export function PricingSection() {
           </ul>
           <Link href="/auth/register">
             <Button variant="primary" size="lg" fullWidth>
-              Pro'ya Geç
+              Pro&apos;ya Geç
             </Button>
           </Link>
         </div>
@@ -110,7 +110,7 @@ export function PricingSection() {
           </ul>
           <Link href="/auth/register">
             <Button variant="primary" size="lg" fullWidth>
-              Premium'a Geç
+              Premium&apos;a Geç
             </Button>
           </Link>
         </div>

@@ -94,7 +94,7 @@ export async function checkEmailAvailability(email: string): Promise<{
 /**
  * Debounce helper for email check
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {

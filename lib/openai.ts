@@ -124,13 +124,14 @@ async function withRetry<T>(
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await fn();
-    } catch (error: any) {
+    } catch (error) {
       if (attempt === maxRetries - 1) {
         throw error;
       }
 
       // Check if error is retryable
-      if (error?.code === 'rate_limit_exceeded' || error?.status === 429) {
+      const err = error as { code?: string; status?: number };
+      if (err?.code === 'rate_limit_exceeded' || err?.status === 429) {
         const delay = baseDelay * Math.pow(2, attempt);
         console.log(`Rate limited. Retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -145,7 +146,7 @@ async function withRetry<T>(
 }
 
 // Validate question response
-function validateQuestionResponse(data: any): {
+function validateQuestionResponse(data: Record<string, unknown>): {
   valid: boolean;
   error?: string;
 } {
@@ -252,31 +253,33 @@ export async function generateQuestion(params: {
         total: inputTokens + outputTokens,
       },
     };
-  } catch (error: any) {
+  } catch (error) {
+    const err = error as { code?: string; status?: number; message?: string };
+
     // Handle specific error types
-    if (error?.code === 'rate_limit_exceeded' || error?.status === 429) {
+    if (err?.code === 'rate_limit_exceeded' || err?.status === 429) {
       throw new RateLimitError('OpenAI rate limit exceeded. Please try again later.');
     }
 
-    if (error?.code === 'insufficient_quota') {
+    if (err?.code === 'insufficient_quota') {
       throw new OpenAIError('OpenAI quota exceeded. Please check your billing.', 'insufficient_quota');
     }
 
-    if (error?.code === 'invalid_api_key') {
+    if (err?.code === 'invalid_api_key') {
       throw new OpenAIError('Invalid OpenAI API key.', 'invalid_api_key');
     }
 
     // Log error for debugging
     console.error('Error generating question:', {
-      error: error?.message,
-      code: error?.code,
-      status: error?.status,
+      error: err?.message,
+      code: err?.code,
+      status: err?.status,
       params,
     });
 
     throw new OpenAIError(
-      `Failed to generate question: ${error?.message || 'Unknown error'}`,
-      error?.code
+      `Failed to generate question: ${err?.message || 'Unknown error'}`,
+      err?.code
     );
   }
 }

@@ -33,7 +33,7 @@ export async function testBackendEmailCheck() {
       console.log('📊 Kayıtlı kullanıcı sayısı:', users?.length || 0);
 
       // Email'in listede olup olmadığını kontrol et
-      const emailExists = users?.some((user: any) =>
+      const emailExists = users?.some((user) =>
         user.email === testEmail ||
         user.user_metadata?.email === testEmail
       );
@@ -53,7 +53,7 @@ export async function testBackendEmailCheck() {
       console.log('📊 Auth kullanıcı sayısı:', authUsers?.length || 0);
 
       // Email'in auth listesinde olup olmadığını kontrol et
-      const emailInAuth = authUsers?.some((user: any) =>
+      const emailInAuth = authUsers?.some((user) =>
         user.email === testEmail
       );
       console.log('🔍 Email auth listesinde var mı?', emailInAuth);

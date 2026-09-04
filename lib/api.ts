@@ -103,7 +103,7 @@ export const getUserProfile = async () => {
   return data;
 };
 
-export const updateUserProfile = async (updates: any) => {
+export const updateUserProfile = async (updates: Record<string, unknown>) => {
   const response = await authFetch(`${API_BASE}/api/users/profile`, {
     method: 'PUT',
     body: JSON.stringify(updates),
