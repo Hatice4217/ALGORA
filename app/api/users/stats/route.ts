@@ -1,18 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbHelpers } from '../../../../lib/supabase';
+import { supabase, dbHelpers } from '../../../../lib/supabase';
 import { calculateAccuracy } from '../../../../lib/utils';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user from session (this will need auth implementation)
-    const userId = request.headers.get('x-user-id');
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Veritabanı bağlantısı kurulamadı' },
+        { status: 500 }
+      );
+    }
 
-    if (!userId) {
+    // Authorization header'dan Bearer token'ı al
+    const authHeader = request.headers.get('authorization');
+
+    if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
         { error: 'Oturum bulunamadı' },
         { status: 401 }
       );
     }
+
+    const token = authHeader.substring('Bearer '.length);
+
+    // Token'ı Supabase ile doğrula - kullanıcı kimliği istemciden alınmaz,
+    // doğrulanmış token'dan çıkarılır (spoofing engellenir)
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Oturum geçersiz veya süresi dolmuş' },
+        { status: 401 }
+      );
+    }
+
+    const userId = user.id;
 
     // Get user's answers from database
     const { data: answers, error: answersError } = await dbHelpers.getUserStats(userId);

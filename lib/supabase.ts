@@ -1,13 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type Session } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+// Değişken varlığı bilgisi - key/url değerleri LOG'LANMAZ (güvenlik)
 console.log('🔧 Supabase Environment Check:', {
   hasUrl: !!supabaseUrl,
-  hasKey: !!supabaseAnonKey,
-  urlPrefix: supabaseUrl?.substring(0, 30) + '...',
-  keyPrefix: supabaseAnonKey?.substring(0, 20) + '...'
+  hasKey: !!supabaseAnonKey
 });
 
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -219,7 +218,7 @@ export const authHelpers = {
     return { user, error };
   },
 
-  onAuthStateChange: (callback: (event: string, session: any) => void) => {
+  onAuthStateChange: (callback: (event: string, session: Session | null) => void) => {
     if (!supabase) {
       return () => {}; // Return empty unsubscribe function
     }

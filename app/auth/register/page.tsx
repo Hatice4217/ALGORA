@@ -50,8 +50,13 @@ export default function RegisterPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const sanitized = sanitizeInput(value);
-    setFormData((prev) => ({ ...prev, [name]: sanitized }));
+
+    // Name field için hafif işlem, diğerleri için sanitize
+    const processed = name === 'name'
+      ? value.replace(/[<>]/g, '').slice(0, 100) // Sadece XSS karakterlerini temizle
+      : sanitizeInput(value);
+
+    setFormData((prev) => ({ ...prev, [name]: processed }));
 
     // Clear error when user starts typing
     if (errors[name as keyof typeof errors]) {
@@ -59,9 +64,9 @@ export default function RegisterPage() {
     }
 
     // Update password strength in real-time
-    if (name === 'password' && sanitized) {
-      setPasswordStrength(checkPasswordStrength(sanitized));
-    } else if (name === 'password' && !sanitized) {
+    if (name === 'password' && processed) {
+      setPasswordStrength(checkPasswordStrength(processed));
+    } else if (name === 'password' && !processed) {
       setPasswordStrength(null);
     }
   };
@@ -305,7 +310,7 @@ export default function RegisterPage() {
         {/* Register Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-5">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            Algora'ya Hoş Geldin 🎉
+            Algora&apos;ya Hoş Geldin 🎉
           </h1>
           <p className="text-gray-600 mb-4 text-sm">
             Ücretsiz hesabını oluştur ve sınav hazırlığına başla
@@ -466,7 +471,7 @@ export default function RegisterPage() {
               <Link href="/legal/privacy" className="text-purple-600 hover:text-purple-700">
                 Gizlilik Politikası
               </Link>{' '}
-              'nı kabul etmiş olursunuz.
+              &apos;nı kabul etmiş olursunuz.
             </div>
 
             <Button

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Backend Duplicate Test</title>
+</head>
+<body>
+    <h1>🔍 SUPABASE BACKEND UNIQUE EMAIL TEST</h1>
+    <p>Bu test Supabase'in gerçekten duplicate email engelleyip engellemediğini gösterir</p>
+
+    <h3>Test Email: sarlakhatice2@gmail.com (Zaten kayıtlı olmalı)</h3>
+
+    <button onclick="runTest()">🧪 TESTİ ÇALIŞTIR</button>
+
+    <div id="results" style="margin-top: 20px; white-space: pre-wrap; font-family: monospace; background: #f0f0f0; padding: 10px;"></div>
+
+    <script type="module">
+        async function runTest() {
+            const results = document.getElementById('results');
+            results.textContent = 'Test çalışıyor...';
+
+            const testEmail = 'sarlakhatice2@gmail.com';
+            let output = '';
+
+            const log = (msg) => {
+                output += msg + '\n';
+                results.textContent = output;
+                console.log(msg);
+            };
+
+            try {
+                const supabaseUrl = 'https://nfdjxwmhvalwokzyyvre.supabase.co';
+                const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mZGp4d21odmFsd29renl5dnJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjI5Njk2NzYsImV4cCI6MjAzODU0MzY3Nn0.Zx9QOwxqWIN7rqKUmSScU6N4JJPLn5SWKy9MQUe6SOQ';
+
+                // CDN'den Supabase import et
+                const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+                const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+                log('\n📋 TEST 1: Login kontrolü (email var mı?)...');
+
+                const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+                    email: testEmail,
+                    password: 'wrong-password-12345'
+                });
+
+                log('🔍 Login error: ' + (loginError?.message || 'none'));
+                log('🔍 Login data: ' + (loginData?.user ? 'User found!' : 'No user'));
+
+                if (loginError?.message?.includes('Invalid login credentials')) {
+                    log('✅ EMAIL KAYITLI (şifre yanlış ama email var)');
+                } else if (loginData?.user) {
+                    log('✅ EMAIL KAYITLI VE LOGIN BAŞARILI');
+                } else {
+                    log('⚠️ EMAIL KAYITLI DEĞİL (beklenmedik!)');
+                }
+
+                log('\n📋 TEST 2: Duplicate kayıt denemesi...');
+
+                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                    email: testEmail,
+                    password: 'Test123456!',
+                    options: { data: { name: 'Duplicate Test' } }
+                });
+
+                log('🔍 SignUp error: ' + (signUpError?.message || 'none'));
+                log('🔍 SignUp data.user: ' + (signUpData?.user ? 'YES!' : 'NO'));
+
+                if (signUpData?.user) {
+                    log('📊 User ID: ' + signUpData.user.id);
+                    log('📊 User email: ' + signUpData.user.email);
+                    log('📊 Identities: ' + JSON.stringify(signUpData.user.identities));
+                    log('📊 Identities length: ' + (signUpData.user.identities?.length || 0));
+
+                    if (!signUpData.user.identities || signUpData.user.identities.length === 0) {
+                        log('\n🚨 EMAIL ENUMERATION PROTECTION!');
+                        log('❌ User object var ama identities BOŞ');
+                        log('✅ Bu email zaten kayıtlı - BACKEND ENGELLEDİ!');
+                        log('\n🏁 SONUÇ: Backend duplicate engelliyor ✅');
+                    } else {
+                        log('\n⚠️ User object VE dolu identities var');
+                        log('❌ BU SORUN! Yeni kullanıcı oluşturulmuş olabilir!');
+                        log('\n🏁 SONUÇ: Backend duplicate ENGELLEMEDİ ❌');
+                    }
+                } else if (signUpError) {
+                    log('\n✅ Hata döndü: ' + signUpError.message);
+                    log('🏁 SONUÇ: Backend hata ile engelledi ✅');
+                }
+
+            } catch (error) {
+                log('\n❌ Test hatası: ' + error.message);
+            }
+        }
+
+        window.runTest = runTest;
+    </script>
+</body>
+</html>

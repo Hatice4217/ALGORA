@@ -48,7 +48,7 @@ describe('User Statistics API Tests', () => {
 
       console.log('📡 API Health Status:', healthCheck.status);
     } catch (error) {
-      console.log('⚠️  API Health check failed:', error');
+      console.log('⚠️  API Health check failed:', error);
     }
   });
 

@@ -93,10 +93,13 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     // Gemini REST API endpoint - lite versiyon (daha hızlı)
     const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 
-    const response = await fetch(`${apiUrl}?key=${apiKey}`, {
+    // API key URL query param yerine header ile gönderilir
+    // (key, loglarda/proxy kayıtlarında URL içinde görünmez)
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
       },
       body: JSON.stringify({
         contents: [{
@@ -152,7 +155,7 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     try {
       // Doğrudan JSON dene
       parsedQuestion = JSON.parse(aiResponse);
-    } catch (parseError) {
+    } catch {
       console.error('JSON parse hatası, alternatif yöntemler deneniyor...');
 
       // Markdown code block içindeki JSON'ı bulmaya çalış

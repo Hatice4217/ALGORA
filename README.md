@@ -52,7 +52,7 @@ algora/
 │   │   ├── supabase.ts          # Supabase client
 │   │   ├── openai.ts            # OpenAI client
 │   │   ├── utils.ts             # Helper functions
-│   │   └── validations.ts       # Zod schemas
+│   │   └── validation.ts        # Zod schemas + validators
 │   └── types/                   # TypeScript definitions
 │       ├── user.ts
 │       ├── question.ts

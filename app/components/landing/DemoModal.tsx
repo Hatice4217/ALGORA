@@ -107,19 +107,6 @@ export function DemoModal({ isOpen, onClose }: DemoModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
       <div className="space-y-6">
-        {/* Progress Bar */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-purple-600 transition-all duration-500 ease-out"
-              style={{ width: `${((currentStep + 1) / demoSteps.length) * 100}%` }}
-            />
-          </div>
-          <span className="text-sm font-medium text-gray-600">
-            {currentStep + 1}/{demoSteps.length}
-          </span>
-        </div>
-
         {/* Content */}
         <div className={`
           transition-all duration-300
