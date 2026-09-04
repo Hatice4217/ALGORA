@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { supabase } from '../../../../lib/supabase';
 
 // Yapay zekaya gönderilecek katı sistem promptu
 const SYSTEM_PROMPT = `Sen Türkiye'deki üniversite sınavlarına (TYT, AYT) hazırlık yapan öğrenciler için soru üreten bir yapay zeka asistanısın.
@@ -56,6 +57,25 @@ const difficultyMap: Record<string, string> = {
 
 export async function POST(request: Request) {
   try {
+    // 0. AUTH KONTROLÜ - oturum açmamış kullanıcılar soru üretemez
+    // (Gemini API kotanının kötüye kullanımını engeller)
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Veritabanı bağlantısı kurulamadı' },
+        { status: 500 }
+      );
+    }
+
+    const token = request.headers.get('Authorization')?.replace('Bearer ', '') || '';
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     // 1. İstekten gelen JSON verisini al
     const { subject, topic, difficulty, exam_type } = await request.json();
 
