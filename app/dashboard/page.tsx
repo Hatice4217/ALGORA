@@ -13,6 +13,10 @@ import { WorkRecords } from '../../components/dashboard/WorkRecords';
 import { AnalysisPanel } from '../../components/dashboard/AnalysisPanel';
 import { QuestionPractice } from '../../components/dashboard/QuestionPractice';
 import { SettingsPanel } from '../../components/dashboard/SettingsPanel';
+import { PackagePanel, UpgradeModal } from '../../components/dashboard/PackagePanel';
+import { authFetch } from '../../lib/api';
+
+import type { SubscriptionSummary, PaidPlanId } from '../../types/subscription';
 
 import type { Question, StudyRecord, Statistics, NewRecord, WeeklyStats } from '../../types/question';
 
@@ -61,7 +65,7 @@ const DIFFICULTIES = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'overview' | 'practiceRoom' | 'analysis' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'practiceRoom' | 'analysis' | 'package' | 'settings'>('overview');
   const [statistics, setStatistics] = useState<DashboardStatistics>({
     toplamSoru: 0,
     dogruCevap: 0,
@@ -81,6 +85,9 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState<string | null>(null); // null = not loaded yet
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // Loading state for auth check
+  const [subscriptionSummary, setSubscriptionSummary] = useState<SubscriptionSummary | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradePlan, setUpgradePlan] = useState<PaidPlanId>('pro');
 
   // Initialize userName from localStorage immediately (prevents flash)
   useEffect(() => {
@@ -94,6 +101,33 @@ export default function DashboardPage() {
 
   // Load study records from database
   const [studyRecords, setStudyRecords] = useState<StudyRecord[]>([]); // Empty state - no mock data
+
+  // Pricing sayfası yönlendirmesi: /dashboard?tab=package&upgrade=pro|premium
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'package') {
+      setActiveTab('package');
+    }
+    const upgradeParam = params.get('upgrade');
+    if (upgradeParam === 'pro' || upgradeParam === 'premium') {
+      setUpgradePlan(upgradeParam);
+      setShowUpgradeModal(true);
+    }
+  }, []);
+
+  // Paket özeti (abonelik + kredi hareketleri + bekleyen talep)
+  const fetchSubscription = async () => {
+    try {
+      const response = await authFetch('/api/subscription');
+      const result = await response.json().catch(() => ({}));
+      if (response.ok && result.data?.subscription) {
+        setSubscriptionSummary(result.data);
+      }
+    } catch (error) {
+      console.log('Paket bilgisi alınamadı:', error);
+    }
+  };
 
   const [newRecord, setNewRecord] = useState<NewRecord>({
     ders: '',
@@ -192,6 +226,9 @@ export default function DashboardPage() {
             console.log('Subject-based performance not found, using empty:', subjectError);
             // Continue with empty values if subject breakdown not found
           }
+
+          // Paket bilgisi
+          fetchSubscription();
         } // Close if (user) block
       } catch (error) {
         console.error('Could not fetch data:', error);
@@ -207,7 +244,7 @@ export default function DashboardPage() {
     setSelectedAnswer(null);
 
     try {
-      const response = await fetch('/api/questions/generate', {
+      const response = await authFetch('/api/questions/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -220,6 +257,14 @@ export default function DashboardPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Sunucu hatası' }));
+
+        // Kota bitti: ikna edici yükseltme modalı
+        if (response.status === 402 && errorData.code === 'CREDIT_EXHAUSTED') {
+          setUpgradePlan('pro');
+          setShowUpgradeModal(true);
+          return;
+        }
+
         console.error('API Error:', errorData.error);
         alert(`Soru üretilemedi: ${errorData.error || 'Bilinmeyen hata'}`);
         return;
@@ -228,6 +273,20 @@ export default function DashboardPage() {
       const data = await response.json();
       if (data.success) {
         setCurrentQuestion(data.data);
+        // Kredi sayacını güncelle
+        if (typeof data.data.credits_remaining === 'number') {
+          setSubscriptionSummary((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  subscription: {
+                    ...prev.subscription,
+                    credits_remaining: data.data.credits_remaining,
+                  },
+                }
+              : prev
+          );
+        }
       } else {
         console.error('API Error:', data.error);
         alert(`Soru üretilemedi: ${data.error || 'Bilinmeyen hata'}`);
@@ -359,6 +418,7 @@ export default function DashboardPage() {
     { id: 'overview' as const, label: 'Genel Bakış' },
     { id: 'practiceRoom' as const, label: 'Soru Laboratuvarı' },
     { id: 'analysis' as const, label: 'Analizler' },
+    { id: 'package' as const, label: 'Paketim' },
     { id: 'settings' as const, label: 'Ayarlar' },
   ];
 
@@ -399,8 +459,20 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {/* Masaüstü Çıkış Butonu */}
-            <div className="hidden md:block">
+            {/* Masaüstü: Kredi sayacı + Çıkış Butonu */}
+            <div className="hidden md:flex items-center gap-3">
+              {subscriptionSummary?.subscription && (
+                <button
+                  onClick={() => setActiveTab('package')}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-sm font-semibold transition-colors"
+                  title="Paketim sekmesine git"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.343a1 1 0 00-1.414 0l-.707.707a1 1 0 001.414 1.414l.707-.707a1 1 0 000-1.414zM10 7a3 3 0 100 6 3 3 0 000-6zM3 9a1 1 0 100 2h1a1 1 0 100-2H3zM17 9a1 1 0 110 2h-1a1 1 0 110-2h1z" />
+                  </svg>
+                  {subscriptionSummary.subscription.credits_remaining} / {subscriptionSummary.subscription.credits_limit}
+                </button>
+              )}
               <Button variant="outline" size="md">
                 Çıkış Yap
               </Button>
@@ -441,7 +513,7 @@ export default function DashboardPage() {
         onClose={() => setIsMobileMenuOpen(false)}
       />
 
-      <main className="w-full px-4 md:px-6 lg:px-8 py-8 flex-1 overflow-hidden">
+      <main className="w-full px-4 md:px-6 lg:px-8 py-8 flex-1 overflow-y-auto overflow-x-hidden">
         {/* Genel Bakış Sekmesi */}
         {activeTab === 'overview' && (
           <div className="space-y-4 h-full flex flex-col">
@@ -496,9 +568,29 @@ export default function DashboardPage() {
         {/* Analizler Sekmesi */}
         {activeTab === 'analysis' && <AnalysisPanel istatistikler={statistics} />}
 
+        {/* Paketim Sekmesi */}
+        {activeTab === 'package' && (
+          <PackagePanel
+            summary={subscriptionSummary}
+            onUpgrade={(plan) => {
+              setUpgradePlan(plan);
+              setShowUpgradeModal(true);
+            }}
+          />
+        )}
+
         {/* Ayarlar Sekmesi */}
         {activeTab === 'settings' && <SettingsPanel />}
       </main>
+
+      {/* Yükseltme Modalı (kota bitişi veya Paketim'den açılır) */}
+      {showUpgradeModal && (
+        <UpgradeModal
+          plan={upgradePlan}
+          onClose={() => setShowUpgradeModal(false)}
+          onClaimed={fetchSubscription}
+        />
+      )}
     </div>
   );
 }

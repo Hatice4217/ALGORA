@@ -103,6 +103,10 @@ export default function OnboardingPage() {
         study_hours_per_day: formData.study_hours,
       });
 
+      // Abonelik satırı DB trigger'ı (on_auth_user_created) ile zaten oluştu; burada yalnızca okunur.
+      // Seed istemciden yapılmaz — subscriptions'a authenticated INSERT politikası yoktur.
+      await dbHelpers.getSubscription(user.id);
+
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (error) {

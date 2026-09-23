@@ -6,6 +6,14 @@
 -- This script creates all necessary tables, views, and RLS policies
 -- Run this in Supabase SQL Editor after creating your project
 
+-- ⚠️ ÖNEMLİ: Bu dosya YENİ (boş) bir Supabase projesi için başlangıç şemasıdır.
+-- Canlı/mevcut veritabanına TEKRAR çalıştırma:
+--   - Tablo/policy zaten varsa 42710 (already exists) hatası alırsın
+--   - View seçenekleri CREATE OR REPLACE ile değişmez — canlı DB'deki
+--     view düzeltmeleri için database/security_fixes_views.sql dosyasını kullan
+-- Idempotentlik: politikalar DROP IF EXISTS + CREATE deseniyle yazılmıştır,
+-- ancak bu dosyanın amacı canlı DB bakımı değil, fresh kurulumdur.
+
 -- ===================================
 -- TABLES
 -- ===================================
@@ -73,7 +81,10 @@ CREATE TABLE IF NOT EXISTS study_sessions (
 
 -- User Stats View
 -- Aggregated user statistics
-CREATE OR REPLACE VIEW user_stats AS
+-- security_invoker = true: view, çağıran kullanıcının yetkileriyle çalışır.
+-- OLMADAN: view sahibi (postgres) yetkileriyle çalışır → RLS bypass → anon
+-- kullanıcı TÜM kullanıcıların istatistiklerini görebilirdi (veri sızıntısı).
+CREATE OR REPLACE VIEW user_stats WITH (security_invoker = true) AS
 SELECT
   up.user_id,
   up.exam_type,
@@ -95,7 +106,8 @@ GROUP BY up.user_id, up.exam_type, up.target_score, up.subjects, up.current_stre
 
 -- Subject Breakdown View
 -- User performance by subject
-CREATE OR REPLACE VIEW subject_breakdown AS
+-- security_invoker = true (gerekçe yukarıda, user_stats yorumunda)
+CREATE OR REPLACE VIEW subject_breakdown WITH (security_invoker = true) AS
 SELECT
   a.user_id,
   q.subject,
@@ -138,53 +150,65 @@ ALTER TABLE study_sessions ENABLE ROW LEVEL SECURITY;
 -- ===================================
 
 -- User Profiles Policies
+DROP POLICY IF EXISTS "Users can view own profile" ON user_profiles;
 CREATE POLICY "Users can view own profile"
   ON user_profiles FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON user_profiles;
 CREATE POLICY "Users can insert own profile"
   ON user_profiles FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON user_profiles;
 CREATE POLICY "Users can update own profile"
   ON user_profiles FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- Questions Policies
+DROP POLICY IF EXISTS "Anyone can view questions" ON questions;
 CREATE POLICY "Anyone can view questions"
   ON questions FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can insert questions" ON questions;
 CREATE POLICY "Authenticated users can insert questions"
   ON questions FOR INSERT
   WITH CHECK (auth.uid() = created_by);
 
+DROP POLICY IF EXISTS "Question creators can update own questions" ON questions;
 CREATE POLICY "Question creators can update own questions"
   ON questions FOR UPDATE
   USING (auth.uid() = created_by);
 
 -- Answers Policies
+DROP POLICY IF EXISTS "Users can view own answers" ON answers;
 CREATE POLICY "Users can view own answers"
   ON answers FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own answers" ON answers;
 CREATE POLICY "Users can insert own answers"
   ON answers FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own answers" ON answers;
 CREATE POLICY "Users can update own answers"
   ON answers FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- Study Sessions Policies
+DROP POLICY IF EXISTS "Users can view own sessions" ON study_sessions;
 CREATE POLICY "Users can view own sessions"
   ON study_sessions FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own sessions" ON study_sessions;
 CREATE POLICY "Users can insert own sessions"
   ON study_sessions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own sessions" ON study_sessions;
 CREATE POLICY "Users can update own sessions"
   ON study_sessions FOR UPDATE
   USING (auth.uid() = user_id);

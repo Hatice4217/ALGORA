@@ -58,9 +58,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        {/* Resource hints for critical path optimization - no duplicates */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Note: next/font self-hosts Google fonts, so no preconnect needed for fonts.googleapis.com/gstatic.com */}
 
         {/* Critical CSS inline - prevents render blocking, optimized size */}
         <style dangerouslySetInnerHTML={{

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../../../../lib/supabase';
+import { PLAN_LIMITS } from '../../../../lib/subscription-config';
 
 // Yapay zekaya gönderilecek katı sistem promptu
 const SYSTEM_PROMPT = `Sen Türkiye'deki üniversite sınavlarına (TYT, AYT) hazırlık yapan öğrenciler için soru üreten bir yapay zeka asistanısın.
@@ -56,6 +58,11 @@ const difficultyMap: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
+  // Kredi düşüldükten sonra oluşabilecek hatalarda iade için — catch bloğu erişebilir
+  let creditDeducted: number | null = null;
+  let adminClientRef: SupabaseClient | null = null;
+  let userId: string | null = null;
+
   try {
     // 0. AUTH KONTROLÜ - oturum açmamış kullanıcılar soru üretemez
     // (Gemini API kotanının kötüye kullanımını engeller)
@@ -73,6 +80,75 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // 0.5 KOTA ZORLAMASI — abonelik durumu (service-role: kredi yazımları kullanıcıya kapalı)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('generate: SUPABASE_SERVICE_ROLE_KEY tanımlı değil');
+      return NextResponse.json({ error: 'Sunucu yapılandırması eksik' }, { status: 500 });
+    }
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    adminClientRef = adminClient;
+    userId = user.id;
+
+    // Lazy rollover: dönem bitmişse yeni dönem aç (kredi plan limitine resetlenir)
+    const { error: rolloverError } = await adminClient.rpc('rollover_subscription', {
+      p_user_id: user.id,
+    });
+    if (rolloverError) {
+      console.error('generate: rollover hatası:', rolloverError.message);
+    }
+
+    let subscription = (
+      await adminClient
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle()
+    ).data;
+
+    if (!subscription) {
+      // Beklenmedik boşluk (backfill/onboarding atlanmış) — free seed ile devam
+      const now = new Date();
+      const periodEnd = new Date(now);
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+      const { data: seeded, error: seedError } = await adminClient
+        .from('subscriptions')
+        .upsert({
+          user_id: user.id,
+          plan: 'free',
+          status: 'active',
+          credits_remaining: PLAN_LIMITS.free,
+          credits_limit: PLAN_LIMITS.free,
+          period_start: now.toISOString(),
+          period_end: periodEnd.toISOString(),
+        })
+        .select()
+        .single();
+      if (seedError) {
+        console.error('generate: subscription seed hatası:', seedError.message);
+        return NextResponse.json({ error: 'Abonelik bilgisi alınamadı' }, { status: 500 });
+      }
+      subscription = seeded;
+    }
+
+    if (subscription.credits_remaining <= 0) {
+      return NextResponse.json(
+        {
+          error: 'Aylık soru üretim krediniz tükendi. Paketinizi yükselterek devam edebilirsiniz.',
+          code: 'CREDIT_EXHAUSTED',
+          data: {
+            plan: subscription.plan,
+            credits_remaining: subscription.credits_remaining,
+            period_end: subscription.period_end,
+          },
+        },
+        { status: 402 }
       );
     }
 
@@ -110,6 +186,43 @@ Lütfen ${subject} dersinde, ${topic || 'genel'} konusu için ${difficultyText} 
 
 Yanıtı KESİNLİKLE JSON formatında ver.`;
 
+    // KOTA: Gemini çağrısından ÖNCE atomik kredi düş (yarış penceresi kapanır).
+    // Fonksiyon null döndürürse kredi yoktur — Gemini HİÇ çağrılmadan 402 döner.
+    const { data: deducted, error: deductError } = await adminClient.rpc('deduct_credit', {
+      p_user_id: user.id,
+    });
+    if (deductError) {
+      console.error('generate: deduct_credit hatası:', deductError.message);
+      return NextResponse.json({ error: 'Kredi işlemi başarısız oldu' }, { status: 500 });
+    }
+    if (deducted === null) {
+      return NextResponse.json(
+        {
+          error: 'Aylık soru üretim krediniz tükendi. Paketinizi yükselterek devam edebilirsiniz.',
+          code: 'CREDIT_EXHAUSTED',
+          data: {
+            plan: subscription.plan,
+            credits_remaining: 0,
+            period_end: subscription.period_end,
+          },
+        },
+        { status: 402 }
+      );
+    }
+    creditDeducted = deducted as number;
+
+    // Gemini başarısız olursa düşülen krediyi iade et (+1, reason 'refund')
+    const refundCredit = async () => {
+      if (creditDeducted === null) return;
+      creditDeducted = null;
+      const { error: refundError } = await adminClient.rpc('refund_credit', {
+        p_user_id: user.id,
+      });
+      if (refundError) {
+        console.error('generate: refund_credit hatası:', refundError.message);
+      }
+    };
+
     // Gemini REST API endpoint - lite versiyon (daha hızlı)
     const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 
@@ -134,6 +247,7 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     });
 
     if (!response.ok) {
+      await refundCredit();
       const errorData = await response.json().catch(() => ({}));
       console.error('Gemini API Error:', errorData);
 
@@ -224,10 +338,23 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
       throw new Error('Yapay zekadan geçersiz soru formatı alındı');
     }
 
-    // 10. Başarılı cevabı gönder
-    return NextResponse.json({ success: true, data: questionData });
+    // 10. Başarılı cevabı gönder (credits_remaining: kredi sayacı güncellemesi için)
+    return NextResponse.json({
+      success: true,
+      data: { ...questionData, credits_remaining: creditDeducted },
+    });
 
   } catch (error: unknown) {
+    // Gemini/parse hatası: düşülen krediyi iade et (best effort)
+    if (creditDeducted !== null && adminClientRef && userId) {
+      creditDeducted = null;
+      try {
+        await adminClientRef.rpc('refund_credit', { p_user_id: userId });
+      } catch (refundErr) {
+        console.error('generate: catch içinde refund hatası:', refundErr);
+      }
+    }
+
     // Hata yönetimi
     console.error('❌ Gemini AI Question Generation Error:', error);
     console.error('Error message:', (error as Error)?.message);

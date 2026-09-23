@@ -1516,3 +1516,196 @@ npm run build
 **Sonraki Adım:** User testing ve mobile menu implementation
 **Hukuki Güçlendirme:** %100 KORUMA ALTINDA
 
+---
+
+## 22 Eylül 2026 - Salı (Performans Doğrulaması, Hesap Yönetimi Güçlendirme ve Paket/Abonelik Sistemi Planlaması)
+
+### Faz: PHASE 1 - Web MVP (Performance + Account Management + Monetization Planning)
+
+### Oturum Akışı:
+20:13 Proje çalıştırma → 20:18 Lighthouse analizi → 20:39 Ayarlar UI düzeltmeleri → 20:52 Hesap silme akışı → 21:10 Google OAuth branding → 22:03 Paket/abonelik planlaması (Plan Mode)
+
+### Bugün Yapılanlar:
+
+#### 1️⃣ ✅ **PROJE ÇALIŞTIRMA VE PERFORMANS DOĞRULAMASI**
+- README okundu, `npm run dev` ile sunucu ayağa kaldırıldı (localhost:3000 → HTTP 200)
+- **Dev modunda Lighthouse:** Performans 100 · Erişilebilirlik 100 · En İyi Uygulamalar 100 · **SEO 91**
+- SEO 91'in sebebi görünen "robots.txt timed out" uyarısıydı; elle testte robots.txt HTTP 200 (40ms) — uyarı dev sunucusunun derlemeyle meşgul olduğu andaki geçici durummus
+- `app/layout.tsx` optimizasyonu: fontlar zaten self-host olduğu için gereksiz `fonts.googleapis.com` preconnect linkleri kaldırıldı
+- **Production build doğrulaması:** `npm run build` (21 route, robots.txt statik prerender) → `npm start`
+- **Production Lighthouse (CLI):** Performans 99-100 · SEO 100 — **tüm kategoriler yeşil**
+- JS bundle: toplam ~680 KiB (gzip ~200 KiB), dev modundaki 622 KiB'ye göre büyük iyileşme
+
+#### 2️⃣ ✅ **AYARLAR / HESAP YÖNETİMİ UI DÜZELTMELERİ**
+- **Sorun:** "Hesap yönetiminde yazılar kesiliyor, tam sığmıyor"
+- **Kök neden:** `app/dashboard/page.tsx:444` — `<main>`'de `overflow-hidden` vardı ama Hesap Yönetimi panelinde iç scroll alanı yoktu (diğer sekmeler `h-full + flex-1 min-h-0` zinciriyle scroll kuruyordu)
+- **Çözüm:** Panel container'a `overflow-y-auto overflow-x-hidden` eklendi
+- **İki kartlı düzen:** Kullanıcı önerisiyle `components/dashboard/SettingsPanel.tsx` yeniden düzenlendi — sol kart **Şifre Değiştir** (3 input + buton), sağ kart **Hesap İşlemleri** (aşağı kaydırma yerine yan yana)
+
+#### 3️⃣ ✅ **GÜVENLİ HESAP SİLME AKIŞI (Kritik Güvenlik İyileştirmesi)**
+- **Kritik bulgu:** İstemci tarafı `supabase.auth` silme işlemi (`lib/supabase.ts:659`) tablolardaki verileri silmiyordu — kullanıcı tekrar kayıt olunca eski verileri duruyordu
+- **Yeni dosya:** `app/api/users/delete-account/route.ts` — service-role client (`SUPABASE_SERVICE_ROLE_KEY`) ile silme:
+  - Temizlenen tablolar: `answers`, `study_sessions`, `subject_breakdown`, `user_stats`, `user_profiles` + auth kaydı
+  - `questions` tablosu global içerik olduğu için bilinçli olarak atlandı
+- `lib/supabase.ts` → istemci `deleteAccount` artık API route'a yönlendiriyor
+- **Onay modalı:** `window.confirm/prompt` yerine şık Modal — kırmızı uyarı, "iade yapılmayacak" + "paket süresi bitmese bile hesapla birlikte paket kaybedilir" uyarı metinleri, şifre doğrulama + "SİLMEYİ ONAYLIYORUM" onay kutusu
+- `.env.local`'e `SUPABASE_SERVICE_ROLE_KEY` eklendi, sunucu restart edildi
+- **Test sonuçları:** boş şifre → 400 · yanlış şifre → 401 · kullanıcının gerçek uçtan uca silme testi ✅ başarılı (ana sayfaya yönlendirme dahil)
+
+#### 4️⃣ ✅ **GOOGLE OAUTH BRANDING SORUNU**
+- **Silinen e-posta ile tekrar giriş:** Kullanıcı sildiği e-posta ile Google girişinde dashboard'a yönlenildiğini bildirdi → incelemede bunun hata değil OAuth'un normal davranışı olduğu netleşti (aynı e-posta ile yeni hesap açma hakkı — endüstri standardı)
+- **Google onay ekranında supabase.co görünmesi:** Uzun debugging sonucu — Google Cloud Console Branding kayıtlıydı, "Save hata veriyor" mesajı aslında mevcut durumun zaten kayıtlı olduğunu gösteriyordu
+- **Sonuç:** Kullanıcının canlı testinde onay ekranı **"Google, ALGORA uygulamasında oturum açmanıza nasıl yardımcı olur?"** göstermeye başladı ✅
+- Kalan: izin kaldırma dialogundaki "Geliştirici Bilgileri" satırında supabase.co — Google'ın propagation cache'i (kullanıcı "neyse" ile kapattı)
+- Durum: Publishing status "Testing", test kullanıcısı ekli
+
+#### 5️⃣ 📋 **PAKET/ABONELİK SİSTEMİ PLANLAMASI (Plan Mode)**
+- **Tespit:** Pricing sayfasındaki 3 paket (Başlangıç ücretsiz / Pro ₺199 / Premium ₺499) tamamen görsel; veritabanında abonelik veya kredi tablosu yok
+- **Alınan kararlar (kullanıcı onaylı):**
+  - **Ödeme:** Şimdilik manuel — havale/EFT → talep → admin onay (mimari Iyzico/PayTR'e hazır; `payment_claims`'e `provider`/`provider_ref` kolonları şimdiden konur)
+  - **Kotalar:** Free 10/ay · Pro 1000/ay · Premium 5000/ay ("sınırsız" adil kullanım)
+  - **Kota bitince:** 402 hatası + ikna edici yükseltme modalı + kredi sayacı (sadece hata mesajı değil)
+  - **UI:** Dashboard'a yeni **"Paketim" sekmesi** (Ayarlar içine kart değil)
+- **Mimari:** 3 yeni RLS'li tablo (`subscriptions`, `credit_transactions`, `payment_claims`) · onay/kredi işlemleri service-role ile API route'ta · **race-safe** atomik `deduct_credit` SQL fonksiyonu · aylık reset **lazy rollover** (cron yok, okumada period kontrolü) · admin API'lerinde `x-admin-key` vs `ADMIN_SECRET_KEY` (yanlışsa 404)
+- **Plan dosyası:** `docs/SUBSCRIPTION_SYSTEM_PLAN.md` olarak kalıcı kaydedildi — 8 uygulama adımı + 10 maddelik E2E doğrulama listesi
+- **Revizyon 2 (aynı akşam, plan kod incelemesi):** 7 boşluk/risk tespit edildi ve plana işlendi:
+  1. `payment_claims` "tek pending" kuralı check-then-insert'e mahkumdu (yarışa açık) → **DB seviyesinde partial unique index** `(user_id) WHERE status='pending'`; unique ihlali (23505) → 409
+  2. `deduct_credit` null dönerse ne olacağı belirsizdi → plana açıkça yazıldı: **Gemini hiç çağrılmadan 402** döndür (paralel istek son krediyi almış olabilir)
+  3. Approve'da period sıfırlanması belirsizdi → karar: **onay anında yeni 1 aylık dönem** (`period_start=now()`, `period_end=now()+1 ay`, krediler plan limitine reset) — onay, ödemenin teyidi olduğu için faturalama döngüsü oradan başlar
+  4. `cancelled` status enum'da durup hiçbir route tarafından set edilmiyordu → **MVP dışı** notu düştü (enum'da kalır, migration önlenir; downgrade/iptal sonraki faz)
+  5. Gemini iadesi ile admin müdahalesi aynı `admin_adjust` reason'ını paylaşıyordu → ayrı **`reason='refund'`** değeri eklendi
+  6. Admin key düz string karşılaştırması timing attack'e açıktı → **sha256 + `crypto.timingSafeEqual`** deseni plana eklendi
+  7. Mevcut kullanıcılar için subscription satırı yalnızca lazy oluşuyordu (admin listelerinde eksik görünür) → SQL'e **idempotent backfill** eklendi (`auth.users`'tan free seed, `ON CONFLICT DO NOTHING`) + lazy fallback korunuyor
+- **Durum:** Plan onaylandı, **uygulamaya henüz başlanmadı** (kullanıcı talebiyle ertelendi)
+
+### Karşılaşılan Hatalar ve Çözümleri:
+
+| # | Hata | Çözüm |
+|---|------|-------|
+| 1 | Port 3000 çakışması (EADDRINUSE) — dev sunucu kapanınca child node process'leri artakalıyordu | `netstat -ano \| grep ":3000"` ile PID bul → `taskkill //PID <pid> //F` (oturum boyunca tekrarlayan desen) |
+| 2 | Lighthouse EPERM — Windows'ta Chrome temp profil klasörü kilitleniyordu | Sabit `--user-data-dir` (`.lh-tmp/`) kullanıldı; rapor oluştu (692 KB) |
+| 3 | TypeScript hatası — delete-account route'unda `user.email` tipi `string \| undefined` | Açık null kontrolleri eklendi |
+| 4 | SettingsPanel metin kesilmesi | `overflow-hidden` kök düzen → iç scroll eklendi |
+| 5 | Service key "kayboldu" — kullanıcı anahtarı dosyaya değil mesaja yazmıştı | Anahtar mesajdan `.env.local`'e eklendi |
+| 6 | Google Branding Save hatası | Çözülemedi ama asıl amaç (uygulama adının görünmesi) çalışıyordu; kalan sorun propagation cache |
+
+### Files Modified/Created:
+
+**Yeni Dosyalar (2):**
+- `app/api/users/delete-account/route.ts` - Service-role ile güvenli hesap silme API'si
+- `docs/SUBSCRIPTION_SYSTEM_PLAN.md` - Paket/abonelik sistemi uygulama planı (kalıcı)
+
+**Modified Dosyalar (4):**
+- `app/layout.tsx` - Gereksiz Google Fonts preconnect linkleri kaldırıldı
+- `app/dashboard/page.tsx` - Main container'a overflow-y-auto (metin kesilme fix'i)
+- `components/dashboard/SettingsPanel.tsx` - İki kartlı Hesap Yönetimi + hesap silme onay modalı
+- `lib/supabase.ts` - deleteAccount API route'a yönlendirildi
+
+**Config:**
+- `.env.local` - `SUPABASE_SERVICE_ROLE_KEY` eklendi
+
+### Tamamlanan Tasklar:
+1. ✅ Proje lokalde çalıştırıldı ve production build doğrulandı
+2. ✅ Lighthouse tüm kategorilerde 99-100 (production)
+3. ✅ Ayarlar metin kesilmesi düzeltildi + iki kartlı düzen
+4. ✅ Güvenli hesap silme akışı (service-role + onay modalı) — uçtan uca test edildi
+5. ✅ Google OAuth branding çalışır hale geldi
+6. ✅ Paket/abonelik sistemi planı hazırlandı ve onaylandı
+
+### Sonraki Adımlar (Paket/Abonelik Uygulaması — Sıradaki Oturum):
+1. `database/subscriptions.sql` → Supabase SQL Editor'de çalıştır (3 tablo + RLS + deduct_credit)
+2. `types/subscription.ts` + `lib/subscription-config.ts` (PLAN_LIMITS + PAYMENT_INFO — IBAN placeholder doldurulacak)
+3. `lib/supabase.ts` dbHelpers (getOrCreateSubscription, getSubscriptionSummary, createPaymentClaim)
+4. API route'ları: `GET /api/subscription`, `POST /api/subscription/claim`, `/api/subscription/admin/*` + `ADMIN_SECRET_KEY` env
+5. Kota zorlaması: `app/api/questions/generate/route.ts` (402 + CREDIT_EXHAUSTED, Gemini öncesi kredi düş, hata olursa iade)
+6. Dashboard: "Paketim" sekmesi + kredi sayacı pill + upgrade modal + `components/dashboard/PackagePanel.tsx`
+7. PricingSection CTA'ları → `/dashboard?tab=package`, onboarding'de subscription seed, delete-account'a 3 yeni tablo
+
+---
+
+**Session Bitişi:** 22 Eylül 2026
+**Durum:** Performans doğrulandı (99-100), hesap yönetimi güvenli hale getirildi, abonelik sistemi planı onaylandı (uygulama bekliyor)
+**Plan Dosyası:** `docs/SUBSCRIPTION_SYSTEM_PLAN.md`
+**Sonraki Adım:** Paket/abonelik sistemi uygulaması (planın 8 adımı sırayla)
+**Performans:** Production Lighthouse 99-100 / TÜM KATEGORİLER YEŞİL
+
+
+## 23 Eylül 2026 - Çarşamba (Paket/Abonelik Sistemi Uygulandı)
+
+### 📦 Yapılan İşler
+Planın 8 adımı eksiksiz uygulandı (dün onaylanan revize 2 planı):
+
+**Yeni Dosyalar (9):**
+- `database/subscriptions.sql` - 3 tablo (subscriptions, credit_transactions, payment_claims) + partial unique index + RLS + SQL fonksiyonları + auth.users backfill (idempotent)
+- `types/subscription.ts` - PlanId, PLANS, Subscription, CreditTransaction, PaymentClaim, SubscriptionSummary
+- `lib/subscription-config.ts` - PLAN_LIMITS (free 10/pro 1000/premium 5000) + PAYMENT_INFO (IBAN PLACEHOLDER)
+- `lib/admin-auth.ts` - timing-safe admin key doğrulama (sha256 + timingSafeEqual)
+- `app/api/subscription/route.ts` - GET özet (rollover RPC + dbHelpers)
+- `app/api/subscription/claim/route.ts` - POST talep (409 PENDING_EXISTS)
+- `app/api/subscription/admin/claims/route.ts` - GET liste (e-posta enrichment)
+- `app/api/subscription/admin/review/route.ts` - POST approve (yeni 1 aylık dönem + plan_change tx) / reject
+- `app/admin/page.tsx` - key girişli claim yönetim paneli
+- `components/dashboard/PackagePanel.tsx` - Paketim sekmesi + UpgradeModal (3 adımlı: IBAN → form → talep)
+
+**Modified (6):**
+- `lib/supabase.ts` - getOrCreateSubscription / getSubscriptionSummary / createPaymentClaim dbHelpers
+- `app/api/questions/generate/route.ts` - KOTA ZORLAMASI: rollover + 402 CREDIT_EXHAUSTED + Gemini ÖNCE atomik deduct_credit (null → Gemini hiç çağrılmaz) + hata iadesi refund_credit + yanıtta credits_remaining
+- `app/dashboard/page.tsx` - 'Paketim' sekmesi, kredi pill'i, 402 → upgrade modal, ?tab=package&upgrade= param desteği, generateQuestion authFetch'e geçirildi (token eksikti!)
+- `app/components/landing/PricingSection.tsx` - oturum varsa CTA → /dashboard?tab=package&upgrade=...
+- `app/onboarding/page.tsx` - profil sonrası subscription seed
+- `app/api/users/delete-account/route.ts` - userTables'a 3 yeni tablo
+- `.env.local` - ADMIN_SECRET_KEY eklendi (rastgele üretildi)
+
+### 🔒 Güvenlik Kararları (plandan sapmalar - gerekçeli)
+1. subscriptions tablosunda kullanıcı için **UPDATE politikası YOK** (yetki yükseltmeyi önler: plan='premium', credits=5000 yazılamaz) → lazy rollover `rollover_subscription` SQL fonksiyonu olarak service-role RPC ile yapıldı (GET /api/subscription ve generate route)
+2. deduct_credit / refund_credit / rollover_subscription fonksiyonlarına **REVOKE EXECUTE FROM PUBLIC + GRANT service_role** (anon kullanıcı başka user_id ile kredi resetleyemesin)
+3. credit_transactions kullanıcılara salt-okunur (INSERT politikası yok — sahte hareket engellenir)
+4. Dashboard generateQuestion fetch'i Authorization header'ı göndermiyordu → authFetch'e geçirildi (401 alacaktı)
+
+### ✅ Doğrulama
+- `npm run build` → başarılı (27 route; 5 yeni route listede)
+- Duman testleri: / 200 · subscription+claim token'sız 401 · admin yanlış key 404 · doğru key ile auth geçer (tablolar yokken 500 — beklenen) · /admin 200
+
+### 📋 Sıradaki Adımlar (kullanıcı yapacak)
+1. `database/subscriptions.sql` içeriğini Supabase SQL Editor'de çalıştır
+2. `lib/subscription-config.ts` → PAYMENT_INFO: gerçek banka/IBAN bilgilerini doldur
+3. E2E test listesi (plan dokümanındaki 10 madde): soru üret → kredi 9'a düşsün; admin onay → Pro/1000 kredi vb.
+
+### ⚠️ Tespit Edilen Risk (kapsam dışı, sonraki oturum)
+- `app/api/admin/clear-users/route.ts` (DEV ONLY) korumasız TÜM KULLANICILARI silebiliyor — production'da devre dışı bırakılmalı veya admin key ile korunmalı
+
+---
+
+**Session Bitişi:** 23 Eylül 2026
+**Durum:** Paket/abonelik sistemi kod olarak TAMAMLANDI — canlıya almak için SQL çalıştırma + IBAN doldurma bekliyor
+**Plan Dosyası:** `docs/SUBSCRIPTION_SYSTEM_PLAN.md`
+**Sonraki Adım:** Supabase SQL Editor'de subscriptions.sql çalıştır + E2E test listesi
+### 🔍 Ek (aynı gün): Güvenlik/Kararlılık Denetimi — Ön Hazırlık
+- 5 paralel salt-okunur agent ile tam denetim yapıldı (API güvenlik, RLS/istemci, kararlılık, test kapsamı, config/deploy)
+- Sonuç: **3 KRİTİK** açık (korumasız clear-users, subscriptions self-insert premium, view RLS bypass) + env/deploy boşlukları + 11 kararlılık bulgusu
+- Birleşik rapor + fazlı düzeltme/test planı → `docs/SECURITY_AUDIT_TEST_PLAN.md`
+- Kod değişikliği YAPILMADI — Faz 0 düzeltmeleri (0.1 clear-users, 0.2 seed trigger, 0.3 security_invoker view'lar) bir sonraki oturumun başlangıç noktası
+
+### 💪 Ek (aynı gün): Güçlü Yönler Analizi — denge raporu
+- Aynı metodolojiyle 5 paralel salt-okunur agent: güvenlik, mimari/veri bütünlüğü, kod kalitesi, UX, performans
+- 50+ doğrulanmış güçlü yön (dosya:satır kanıtlı) → `docs/SECURITY_AUDIT_TEST_PLAN.md` Bölüm 7 olarak eklendi
+- Öne çıkanlar: timing-safe admin key, atomik deduct + refund guard zinciri, PUBLIC EXECUTE revoke'u, 0 gerçek `any` (strict TS), Lighthouse 93/100/100/100, görünür UI'da İngilizce sızması 0
+- Ana sonuç: sistem kötü tasarlanmamış — açıklar çoğunlukla yeni güçlerin eski koda uygulanmamış olmasından; Faz 0 "tutarlılaştırma" işi
+
+### 🔧 Ek (aynı gün): Faz 0.1 + 0.2 + 0.3 — Üç KRİTİK Açık Kapatıldı
+- **0.1 BULGU-1:** `app/api/admin/clear-users/` tamamen silindi (route + boş klasörler). Koda hiç referans yoktu, zaten fonksiyonel olarak bozuktu (anon key admin API'de çalışmaz). curl: 404 ✅
+- **0.2 RLS-BULGU-1 (self-premium):** `database/subscriptions.sql` — authenticated INSERT politikası kaldırıldı (WITH CHECK yalnızca user_id kısıtlıyordu; plan/credits serbestti). Seed `on_auth_user_created` trigger'ına taşındı: `handle_new_user_subscription` SECURITY DEFINER + idempotent + PostgREST /rpc/ yüzü kapalı (REVOKE/GRANT supabase_auth_admin). Kod: `getOrCreateSubscription` → salt-okunur `getSubscription` (insert dalı + PLAN_LIMITS importu kaldırıldı), onboarding çağrısı güncellendi; generate route'taki service-role upsert fallback kaldı (güvenli)
+- **Bonus bulgu (doğrulama agent'ı):** subscriptions tablosunda ÇİFT PRIMARY KEY (`id` + `user_id`) — Postgres ilk çalıştırmada reddedecekti. Düzeltildi: `user_id` tek PK, `id` UNIQUE
+- **0.3 RLS-BULGU-2 (view sızıntısı):** `user_stats` + `subject_breakdown` artık `WITH (security_invoker = true)`. `schema.sql` güncellendi; canlı DB için **`database/security_fixes_views.sql`** migrasyonu yazıldı (DROP+CREATE — OR REPLACE reloptions değiştiremiyor; GRANT + doğrulama sorgusu dahil)
+- Süreç: her faz ayrı doğrulama agent'ıyla kontrol edildi (0.1: 4/4, 0.2: 6/6, 0.3: 5/5 GEÇTİ) → build (bayat `.next` tipi temizlendi) → smoke test 5/5 (404/401'ler doğru)
+- **Kullanıcıya kalan SQL adımları:** ① `subscriptions.sql` ② `security_fixes_views.sql` — Supabase SQL Editor'de sırayla çalıştır
+
+### 🚀 Ek (aynı gün): SQL'ler CANLI VERİTABANINA UYGULANDI + ACL Açığı Yakalandı
+- Kullanıcı SQL Editor'de hatalarla boğuşunca (42710 zaten-uygulama + boş sorgu hatası) bağlantıyı ben kurdum: Session Pooler (IPv4, `aws-0-eu-central-1.pooler.supabase.com:6543`) — direct bağlantı IPv6-only olduğundan bu ağdan imkansızdı (Windows DNS + IPv6 çıkışı yok)
+- `subscriptions.sql` ✅ çalıştı: 3 tablo, **7/7 kullanıcıya free seed (backfill kusursuz)**
+- `security_fixes_views.sql` ✅ çalıştı: iki view da canlıda `security_invoker=true` (canlıdan doğrulandı)
+- **🔥 CANLI DOĞRULAMA GERÇEK AÇIK YAKALADI:** REVOKE ... FROM PUBLIC yeterli DEĞİLMİŞ — Supabase'in ALTER DEFAULT PRIVILEGES'i fonksiyon oluştuğu anda anon/authenticated'a DOĞRUDAN EXECUTE veriyordu (ACL: `anon=X, authenticated=X` duruyordu). Statik incelemede görünmezdi; `has_function_privilege` sorgusu yakaladı
+- Düzeltme: üç kredi fonksiyonundan PUBLIC+anon+authenticated alındı → final durum: `anon=false, authenticated=false, service_role=true` ✅ — `subscriptions.sql` kalıcı olarak da güncellendi (yorumlu)
+- Schema.sql'e "canlı DB'ye tekrar çalıştırma" uyarı başlığı + 12 politika idempotent hale getirildi (DROP IF EXISTS + CREATE)
+- Geçici dosyalar silindi (bağlantı script'i + doğrulama SQL'i), `pg` paketi prune'landı
+- ⚠️ **KULLANICIYA: DB şifresi sohbete yazıldı → Supabase'de Database → Reset database password YAPILMALI**

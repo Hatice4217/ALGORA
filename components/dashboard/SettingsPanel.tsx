@@ -5,6 +5,7 @@ import { Button } from '../../app/components/ui/Button';
 import { Input } from '../../app/components/ui/Input';
 import { Select } from '../../app/components/ui/Select';
 import { Toggle } from '../../app/components/ui/Toggle';
+import { Modal } from '../../app/components/ui/Modal';
 import { Toast, useToast } from '../../app/components/ui/Toast';
 import { authHelpers, dbHelpers } from '../../lib/supabase';
 import {
@@ -91,6 +92,12 @@ export function SettingsPanel() {
 
   // Loading states per section
   const [savingSection, setSavingSection] = useState<string | null>(null);
+
+  // Delete account modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load user data on mount
   useEffect(() => {
@@ -268,14 +275,21 @@ export function SettingsPanel() {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    const confirmed = window.confirm(
-      'Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'
-    );
-    if (!confirmed) return;
+  const handleDeleteAccount = () => {
+    setShowDeleteModal(true);
+  };
 
-    const password = prompt('Lütfen şifrenizi girin:');
-    if (!password) return;
+  const handleCloseDeleteModal = () => {
+    if (isDeleting) return;
+    setShowDeleteModal(false);
+    setDeletePassword('');
+    setDeleteConfirmed(false);
+  };
+
+  const handleConfirmDeleteAccount = async () => {
+    if (!deletePassword || !deleteConfirmed) return;
+
+    setIsDeleting(true);
 
     try {
       const { user } = await authHelpers.getCurrentUser();
@@ -284,24 +298,27 @@ export function SettingsPanel() {
         return;
       }
 
-      const result = await dbHelpers.deleteAccount(user.id, password);
+      const result = await dbHelpers.deleteAccount(user.id, deletePassword);
       if (result.error) {
         showToast(result.error, 'error');
         return;
       }
 
-      showToast('Hesabınız silindi', 'success');
+      setShowDeleteModal(false);
+      showToast('Hesabınız kalıcı olarak silindi', 'success');
       window.location.href = '/';
     } catch (error) {
       console.error('Delete account error:', error);
       showToast('Hesap silinirken bir hata oluştu', 'error');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   // If a section is active, show its form
   if (activeSection) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         {/* Back Button */}
         <Button
           variant="outline"
@@ -314,7 +331,7 @@ export function SettingsPanel() {
 
         {/* Section Form */}
         {activeSection === 'profile' && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 max-w-2xl mx-auto">
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
@@ -364,7 +381,7 @@ export function SettingsPanel() {
         )}
 
         {activeSection === 'exam' && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 max-w-2xl mx-auto">
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-xl">
@@ -442,7 +459,7 @@ export function SettingsPanel() {
         )}
 
         {activeSection === 'notifications' && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 max-w-2xl mx-auto">
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-xl">
@@ -501,7 +518,8 @@ export function SettingsPanel() {
         )}
 
         {activeSection === 'account' && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div>
+            {/* Header */}
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl">
@@ -512,84 +530,154 @@ export function SettingsPanel() {
               <p className="text-gray-600">Şifrenizi değiştirin veya hesabınızı yönetin</p>
             </div>
 
-            <div className="space-y-6">
-              {/* Password Change */}
+            {/* İki kart yan yana */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Şifre Değiştir Kartı */}
+              <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                <h3 className="text-sm font-medium text-gray-900 mb-4">Şifre Değiştir</h3>
+
+                <div className="space-y-4">
+                  <Input
+                    label="Mevcut Şifre"
+                    type="password"
+                    value={formData.current_password}
+                    onChange={(e) => handleInputChange('current_password', e.target.value)}
+                    onBlur={() => handleSectionBlur('account')}
+                    error={errors.current_password}
+                    placeholder="••••••••"
+                  />
+
+                  <Input
+                    label="Yeni Şifre"
+                    type="password"
+                    value={formData.new_password}
+                    onChange={(e) => handleInputChange('new_password', e.target.value)}
+                    onBlur={() => handleSectionBlur('account')}
+                    error={errors.new_password}
+                    placeholder="En az 8 karakter"
+                  />
+
+                  <Input
+                    label="Yeni Şifre (Tekrar)"
+                    type="password"
+                    value={formData.confirm_password}
+                    onChange={(e) => handleInputChange('confirm_password', e.target.value)}
+                    onBlur={() => handleSectionBlur('account')}
+                    error={errors.confirm_password}
+                    placeholder="••••••••"
+                  />
+
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    fullWidth
+                    onClick={() => handleSaveSection('account')}
+                    isLoading={savingSection === 'account'}
+                    disabled={!formData.current_password || !formData.new_password || !formData.confirm_password}
+                  >
+                    Şifreyi Değiştir
+                  </Button>
+                </div>
+              </div>
+
+              {/* Hesap İşlemleri Kartı */}
+              <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                <h3 className="text-sm font-medium text-gray-900 mb-4">Hesap İşlemleri</h3>
+
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Hesabınızdan güvenli bir şekilde çıkış yapın veya hesabınızı kalıcı olarak silin.
+                  </p>
+
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    onClick={handleSignOut}
+                  >
+                    Çıkış Yap
+                  </Button>
+
+                  <Button
+                    variant="danger"
+                    fullWidth
+                    onClick={handleDeleteAccount}
+                  >
+                    Hesabı Sil
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Hesap Silme Onay Modalı */}
+            <Modal
+              isOpen={showDeleteModal}
+              onClose={handleCloseDeleteModal}
+              title="Hesabınızı Silmek İstiyor Musunuz?"
+              size="sm"
+            >
               <div className="space-y-4">
-                <h3 className="text-sm font-medium text-gray-900">Şifre Değiştir</h3>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
+                  <p className="text-sm font-semibold text-red-800">
+                    ⚠️ Bu işlem geri alınamaz:
+                  </p>
+                  <ul className="text-sm text-red-700 space-y-1.5 list-disc list-inside">
+                    <li>
+                      Tüm verileriniz (profil, istatistikler, çalışma geçmişi){' '}
+                      <strong>kalıcı olarak silinir</strong>.
+                    </li>
+                    <li>
+                      Paketlerimize yaptığınız ödemeler için{' '}
+                      <strong>geri ödeme (iade) yapılmaz</strong>.
+                    </li>
+                    <li>
+                      Paket süreniz henüz dolmamış olsa bile hesabınız silinir; yeniden
+                      yararlanmak isterseniz paketi <strong>tekrar satın almanız gerekir</strong>.
+                    </li>
+                  </ul>
+                </div>
 
                 <Input
-                  label="Mevcut Şifre"
+                  label="Onaylamak için şifrenizi girin"
                   type="password"
-                  value={formData.current_password}
-                  onChange={(e) => handleInputChange('current_password', e.target.value)}
-                  onBlur={() => handleSectionBlur('account')}
-                  error={errors.current_password}
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
                   placeholder="••••••••"
                 />
 
-                <Input
-                  label="Yeni Şifre"
-                  type="password"
-                  value={formData.new_password}
-                  onChange={(e) => handleInputChange('new_password', e.target.value)}
-                  onBlur={() => handleSectionBlur('account')}
-                  error={errors.new_password}
-                  placeholder="En az 8 karakter"
-                />
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={deleteConfirmed}
+                    onChange={(e) => setDeleteConfirmed(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-red-600 flex-shrink-0"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Yukarıdaki uyarıları okudum ve anladım. Hesabımın{' '}
+                    <strong>kalıcı olarak</strong> silinmesini onaylıyorum.
+                  </span>
+                </label>
 
-                <Input
-                  label="Yeni Şifre (Tekrar)"
-                  type="password"
-                  value={formData.confirm_password}
-                  onChange={(e) => handleInputChange('confirm_password', e.target.value)}
-                  onBlur={() => handleSectionBlur('account')}
-                  error={errors.confirm_password}
-                  placeholder="••••••••"
-                />
-
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => handleSaveSection('account')}
-                  isLoading={savingSection === 'account'}
-                  disabled={!formData.current_password || !formData.new_password || !formData.confirm_password}
-                >
-                  Şifreyi Değiştir
-                </Button>
+                <div className="flex gap-3 pt-1">
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    onClick={handleCloseDeleteModal}
+                    disabled={isDeleting}
+                  >
+                    Vazgeç
+                  </Button>
+                  <Button
+                    variant="danger"
+                    fullWidth
+                    onClick={handleConfirmDeleteAccount}
+                    isLoading={isDeleting}
+                    disabled={!deletePassword || !deleteConfirmed}
+                  >
+                    Hesabımı Sil
+                  </Button>
+                </div>
               </div>
-
-              <hr className="border-gray-200" />
-
-              {/* Account Actions */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-gray-900">Hesap İşlemleri</h3>
-
-                <Button
-                  variant="outline"
-                  onClick={handleSignOut}
-                >
-                  Çıkış Yap
-                </Button>
-
-                <Button
-                  variant="danger"
-                  onClick={handleDeleteAccount}
-                  className="ml-3"
-                >
-                  Hesabı Sil
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <Button
-                variant="outline"
-                onClick={handleCancelSection}
-                disabled={savingSection === 'account'}
-              >
-                Kapat
-              </Button>
-            </div>
+            </Modal>
           </div>
         )}
 

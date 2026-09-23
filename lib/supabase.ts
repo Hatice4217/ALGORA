@@ -630,41 +630,29 @@ export const dbHelpers = {
     }
 
     try {
-      // Verify password first
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !user.email) {
-        return { data: null, error: 'Kullanıcı bulunamadı' };
+      // Oturum token'ını al (API route kimlik doğrulaması için kullanır)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        return { data: null, error: 'Oturum bulunamadı, lütfen tekrar giriş yapın' };
       }
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password,
+      // Sunucu tarafı silme: şifre doğrulama + tüm tablolar + auth kaydı
+      const response = await fetch('/api/users/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ password }),
       });
 
-      if (signInError) {
-        return { data: null, error: 'Şifre hatalı' };
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        return { data: null, error: result.error || 'Hesap silinirken bir hata oluştu' };
       }
 
-      // Delete user data from user_profiles
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .delete()
-        .eq('user_id', userId);
-
-      if (profileError) {
-        console.log('Profile delete warning (may not exist):', profileError.message);
-      }
-
-      // Delete the auth user
-      const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
-
-      if (deleteError) {
-        // Fallback: sign out the user
-        await supabase.auth.signOut();
-        return { data: null, error: 'Kullanıcı silinemedi, oturum kapatıldı' };
-      }
-
-      // Sign out after deletion
+      // Başarılı: yerel oturumu kapat
       await supabase.auth.signOut();
 
       return { data: { success: true }, error: null };
@@ -672,5 +660,138 @@ export const dbHelpers = {
       console.error('deleteAccount error:', error);
       return { data: null, error: 'Hesap silinirken bir hata oluştu' };
     }
+  },
+
+  // ===== Subscription / Paket Helpers =====
+
+  // Aboneliği SALT-OKUNUR getirir. Seed istemciden YAPILMAZ:
+  // - Yeni kullanıcılar DB'deki on_auth_user_created trigger'ı ile free satır alır
+  //   (database/subscriptions.sql)
+  // - Trigger'dan önce kaydolmuş kullanıcılar subscriptions.sql içindeki backfill ile
+  // - Beklenmedik boşlukta service-role fallback app/api/questions/generate içinde
+  // Gerekçe: authenticated INSERT politikası YOK — aksi halde kullanıcı kendi
+  // plan/credits değerlerini yazıp kendine premium atayabilirdi (yetki yükseltme).
+  // NOT: Dönem yenileme (lazy rollover) bir YAZMA işlemi olduğu için kullanıcı tarafından
+  // değil, service-role ile API route'larında `rollover_subscription` RPC'si ile yapılır
+  // (subscriptions tablosunda bilinçli olarak UPDATE politikası yoktur).
+  getSubscription: async (userId: string) => {
+    return withConnectionCheck(
+      async () => {
+        try {
+          const { data, error } = await supabase!
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (error) {
+            console.log('getSubscription hatası:', error.message);
+            return { data: null, error: error.message };
+          }
+
+          return { data, error: null };
+        } catch (error) {
+          console.log('getSubscription istisnası:', error);
+          return { data: null, error: 'Abonelik bilgisi alınamadı' };
+        }
+      },
+      { data: null, error: 'Supabase bağlantısı yok' },
+      'getSubscription'
+    );
+  },
+
+  // Paketim sekmesi verisi: abonelik + son 20 kredi hareketi + bekleyen talep
+  getSubscriptionSummary: async (userId: string) => {
+    return withConnectionCheck(
+      async () => {
+        try {
+          const [subResult, txResult, claimResult] = await Promise.all([
+            supabase!.from('subscriptions').select('*').eq('user_id', userId).maybeSingle(),
+            supabase!
+              .from('credit_transactions')
+              .select('*')
+              .eq('user_id', userId)
+              .order('created_at', { ascending: false })
+              .limit(20),
+            supabase!
+              .from('payment_claims')
+              .select('*')
+              .eq('user_id', userId)
+              .eq('status', 'pending')
+              .maybeSingle(),
+          ]);
+
+          if (subResult.error) {
+            return { data: null, error: subResult.error.message };
+          }
+
+          return {
+            data: {
+              subscription: subResult.data,
+              transactions: txResult.error ? [] : txResult.data,
+              pending_claim: claimResult.error ? null : claimResult.data,
+            },
+            error: null,
+          };
+        } catch (error) {
+          console.log('getSubscriptionSummary istisnası:', error);
+          return { data: null, error: 'Paket bilgisi alınamadı' };
+        }
+      },
+      { data: null, error: 'Supabase bağlantısı yok' },
+      'getSubscriptionSummary'
+    );
+  },
+
+  // Manuel ödeme talebi oluşturur. Tek pending kuralı: buradaki select kontrolü yalnızca
+  // dostane hata mesajı içindir; asıl garanti DB'deki partial unique index'tir
+  // (eşzamanlı isteklerde 23505 yakalanıp PENDING_EXISTS'e çevrilir).
+  createPaymentClaim: async (
+    userId: string,
+    claim: { plan: 'pro' | 'premium'; sender_name?: string; reference_note?: string }
+  ) => {
+    const pendingMessage = 'Zaten onay bekleyen bir talebiniz var. Lütfen yanıtlanmasını bekleyin.';
+    return withConnectionCheck(
+      async () => {
+        try {
+          const { data: pending } = await supabase!
+            .from('payment_claims')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('status', 'pending')
+            .maybeSingle();
+
+          if (pending) {
+            return { data: null, error: { code: 'PENDING_EXISTS', message: pendingMessage } };
+          }
+
+          const { data, error } = await supabase!
+            .from('payment_claims')
+            .insert({
+              user_id: userId,
+              plan: claim.plan,
+              sender_name: claim.sender_name?.trim() || null,
+              reference_note: claim.reference_note?.trim() || null,
+              provider: 'manual',
+              status: 'pending',
+            })
+            .select()
+            .single();
+
+          if (error) {
+            if (error.code === '23505') {
+              return { data: null, error: { code: 'PENDING_EXISTS', message: pendingMessage } };
+            }
+            return { data: null, error: { code: error.code, message: error.message } };
+          }
+          return { data, error: null };
+        } catch (error) {
+          console.log('createPaymentClaim istisnası:', error);
+          return { data: null, error: { code: 'UNKNOWN', message: 'Talep oluşturulamadı' } };
+        }
+      },
+      { data: null, error: { code: 'NO_CONNECTION', message: 'Supabase bağlantısı yok' } },
+      'createPaymentClaim'
+    );
   },
 };

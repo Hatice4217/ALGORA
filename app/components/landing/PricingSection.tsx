@@ -1,9 +1,21 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { Button } from '@/app/components/ui/Button';
+import { authHelpers } from '@/lib/supabase';
 
 export function PricingSection() {
+  // Oturum varsa Pro/Premium CTA doğrudan Paketim'deki yükseltme akışına götürür
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    authHelpers.getCurrentUser().then(({ user }) => setIsLoggedIn(!!user));
+  }, []);
+
+  const paidCtaHref = (plan: 'pro' | 'premium') =>
+    isLoggedIn ? `/dashboard?tab=package&upgrade=${plan}` : '/auth/register';
+
   return (
     <section id="pricing" className="w-full px-4 md:px-6 lg:px-8 py-20">
       <h2 className="text-4xl font-bold text-center text-gray-900 mb-4">
@@ -74,7 +86,7 @@ export function PricingSection() {
               </li>
             ))}
           </ul>
-          <Link href="/auth/register">
+          <Link href={paidCtaHref('pro')}>
             <Button variant="primary" size="lg" fullWidth>
               Pro&apos;ya Geç
             </Button>
@@ -108,7 +120,7 @@ export function PricingSection() {
               </li>
             ))}
           </ul>
-          <Link href="/auth/register">
+          <Link href={paidCtaHref('premium')}>
             <Button variant="primary" size="lg" fullWidth>
               Premium&apos;a Geç
             </Button>
