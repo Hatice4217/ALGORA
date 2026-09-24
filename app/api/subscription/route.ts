@@ -41,8 +41,14 @@ export async function GET(request: NextRequest) {
       console.error('subscription: rollover hatası:', rolloverError.message);
     }
 
-    // 3) Özet verisi
-    const { data, error } = await dbHelpers.getSubscriptionSummary(user.id);
+    // 3) Özet verisi — kullanıcının token'ıyla KİMLİKLİ client üzerinden.
+    //    Global `supabase` sunucuda oturumsuz olduğundan RLS satırları gizler;
+    //    RLS'i kullanıcının kendisiyle değerlendirmek için token header'da taşınır.
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data, error } = await dbHelpers.getSubscriptionSummary(user.id, userClient);
     if (error || !data?.subscription) {
       return NextResponse.json(
         { error: error || 'Abonelik bulunamadı' },

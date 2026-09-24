@@ -114,9 +114,10 @@ export async function POST(request: Request) {
 
     if (!subscription) {
       // Beklenmedik boşluk (backfill/onboarding atlanmış) — free seed ile devam
+      // free dönemi GÜNLÜKTÜR (PLAN_LIMITS.free = 10 soru/gün)
       const now = new Date();
       const periodEnd = new Date(now);
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
+      periodEnd.setDate(periodEnd.getDate() + 1);
       const { data: seeded, error: seedError } = await adminClient
         .from('subscriptions')
         .upsert({
@@ -140,7 +141,7 @@ export async function POST(request: Request) {
     if (subscription.credits_remaining <= 0) {
       return NextResponse.json(
         {
-          error: 'Aylık soru üretim krediniz tükendi. Paketinizi yükselterek devam edebilirsiniz.',
+          error: 'Soru üretim krediniz tükendi. Paketinizi yükselterek devam edebilirsiniz.',
           code: 'CREDIT_EXHAUSTED',
           data: {
             plan: subscription.plan,
@@ -153,7 +154,7 @@ export async function POST(request: Request) {
     }
 
     // 1. İstekten gelen JSON verisini al
-    const { subject, topic, difficulty, exam_type } = await request.json();
+    const { subject, topic, difficulty, exam_type, previous_question } = await request.json();
 
     // 2. Gerekli parametreleri kontrol et
     if (!subject || !difficulty) {
@@ -177,9 +178,20 @@ export async function POST(request: Request) {
     const difficultyText = difficultyMap[difficulty] || difficulty;
 
     // 5. Gemini REST API ile direkt call
+    // Tekrar önleme: aynı istek parametreleriyle Gemini hep aynı/benzer soru üretebiliyor.
+    // Önceki soru metni + rastgele seed + yüksek sıcaklık ile her seferinde yeni bir soru zorlanır.
+    const previousQuestionText =
+      typeof previous_question === 'string' && previous_question.trim().length > 0
+        ? previous_question.trim()
+        : null;
+
+    const antiRepeatBlock = previousQuestionText
+      ? `\n\nÇOK ÖNEMLİ — TEKRAR YASAĞI: Bu oturumda öğrenciye az önce şu soru soruldu:\n"${previousQuestionText}"\nBu soruyla aynı veya benzer bir soru KESİNLİKLE üretme. Farklı sayılar, farklı bağlam/kurgu ve mümkünse farklı bir alt konu kullanarak tamamen YENİ bir soru üret.`
+      : `\n\nÇEŞİTLİLİK: Yaygın bilinen örnek soruları değil, özgün bir soru üret. Sayı değerlerini ve kurguyu çeşitlendir.`;
+
     const prompt = `${SYSTEM_PROMPT}
 
-Lütfen ${subject} dersinde, ${topic || 'genel'} konusu için ${difficultyText} (${exam_type || 'TYT'}) seviyesinde bir çoktan seçmeli soru üret.
+Lütfen ${subject} dersinde, ${topic || 'genel'} konusu için ${difficultyText} (${exam_type || 'TYT'}) seviyesinde bir çoktan seçmeli soru üret.${antiRepeatBlock}
 
 ÖNEMLİ: Matematiksel ifadeleri DÜZ METİN olarak yaz, $, \\, LaTeX kodları KULLANMA.
 Örnek: "x kare 2 artı x" yerine "x² + 2x", "karekök 16" yerine "4", "x küçük eşit 5" yerine "x <= 5" gibi.
@@ -198,7 +210,7 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     if (deducted === null) {
       return NextResponse.json(
         {
-          error: 'Aylık soru üretim krediniz tükendi. Paketinizi yükselterek devam edebilirsiniz.',
+          error: 'Soru üretim krediniz tükendi. Paketinizi yükselterek devam edebilirsiniz.',
           code: 'CREDIT_EXHAUSTED',
           data: {
             plan: subscription.plan,
@@ -240,8 +252,12 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
           parts: [{ text: prompt }]
         }],
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1000
+          temperature: 1.0,
+          seed: Math.floor(Math.random() * 2147483647),
+          maxOutputTokens: 2000,
+          // 2.5 ailesi varsayılan olarak "düşünüyor" ve token bütçesini yiyip
+          // boş/kesik JSON döndürüyor (aralıklı 500'lerin kaynağı). Kapatıyoruz.
+          thinkingConfig: { thinkingBudget: 0 },
         }
       })
     });
@@ -275,11 +291,13 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     console.log('Gemini API Response:', JSON.stringify(data, null, 2));
 
     // 6. API yanıtını al
-    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const candidate = data.candidates?.[0];
+    const aiResponse = candidate?.content?.parts?.[0]?.text;
 
     if (!aiResponse) {
-      console.error('Gemini Response:', data);
-      throw new Error('Gemini boş yanıt döndürdü');
+      // Teşhis için finishReason + token kullanımı (MAX_TOKENS = bütçe yetersiz)
+      console.error('Gemini yanıtı boş — finishReason:', candidate?.finishReason, 'usage:', JSON.stringify(data.usageMetadata ?? {}));
+      throw new Error(`Gemini boş yanıt döndürdü (finishReason: ${candidate?.finishReason ?? 'yok'})`);
     }
 
     console.log('AI Response Text:', aiResponse);
@@ -325,10 +343,10 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
 
     // 8. Yanıt formatını kontrol et ve standart forma çevir
     const questionData = {
-      id: `gemini_${Date.now()}`, // Benzersiz ID
+      id: `gemini_${Date.now()}`, // Aşağıda DB insert başarılıysa gerçek UUID ile değiştirilir
       question: cleanMathText(parsedQuestion.soruMetni || parsedQuestion.question || 'Soru metni bulunamadı'),
       choices: (parsedQuestion.secenekler || parsedQuestion.choices || []).map((choice: string) => cleanMathText(choice)),
-      correctAnswer: parsedQuestion.dogruCevapIndex ?? parsedQuestion.correctAnswer ?? 0,
+      correctAnswer: Math.min(3, Math.max(0, parsedQuestion.dogruCevapIndex ?? parsedQuestion.correctAnswer ?? 0)),
       explanation: cleanMathText(parsedQuestion.aciklama || parsedQuestion.explanation || 'Açıklama bulunamadı')
     };
 
@@ -337,6 +355,38 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
       console.error('Geçersiz soru formatı:', questionData);
       throw new Error('Yapay zekadan geçersiz soru formatı alındı');
     }
+
+    // 9.5 Üretilen soruyu questions tablosuna kaydet.
+    // answers.question_id sütunu questions(id)'e FK — soru kaydedilmeden cevap kaydedilemez,
+    // istatistik view'ları da questions ile JOIN yapar.
+    const difficultyToDb: Record<string, string> = {
+      'baslangic': 'beginner',
+      'orta': 'intermediate',
+      'ileri': 'advanced',
+    };
+    let questionId = crypto.randomUUID(); // insert başarısızsa yedek (cevap kaydı bu durumda düşer)
+    const { data: insertedQuestion, error: insertError } = await adminClient
+      .from('questions')
+      .insert({
+        subject,
+        topic: topic || 'Genel',
+        difficulty: difficultyToDb[difficulty] || difficulty,
+        exam_type: exam_type || 'TYT',
+        question_text: questionData.question,
+        choices: questionData.choices,
+        correct_answer: questionData.correctAnswer,
+        explanation: questionData.explanation,
+        created_by: user.id,
+      })
+      .select('id')
+      .single();
+    if (insertError) {
+      // Kredi harcandı, soruyu kullanıcıya vermeye devam et; sadece logla
+      console.error('generate: questions insert hatası:', insertError.message);
+    } else {
+      questionId = insertedQuestion.id;
+    }
+    questionData.id = questionId;
 
     // 10. Başarılı cevabı gönder (credits_remaining: kredi sayacı güncellemesi için)
     return NextResponse.json({

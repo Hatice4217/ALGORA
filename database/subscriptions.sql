@@ -188,7 +188,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- rollover_subscription(p_user_id)
--- Lazy rollover: period_end geçmişse yeni dönem açar (period +1 ay, kredi plan limitine reset).
+-- Lazy rollover: period_end geçmişse yeni dönem açar, kredi plan limitine reset.
+-- DÖNEM UZUNLUĞU plana göre: free = 1 GÜN (günlük 10 soru), pro/premium = 1 AY.
 -- Dönem henüz bitmemişse satırı olduğu gibi döndürür (no-op). Yarış koruması:
 -- UPDATE ... WHERE period_end < NOW() — paralel çağrılarda yalnızca biri resetler.
 -- Çağrım: YALNIZCA service-role (GET /api/subscription ve generate route) — kullanıcı
@@ -198,6 +199,7 @@ RETURNS subscriptions AS $$
 DECLARE
   v_row subscriptions;
   v_limit integer;
+  v_period interval;
 BEGIN
   SELECT * INTO v_row FROM subscriptions WHERE user_id = p_user_id;
   IF NOT FOUND THEN
@@ -215,11 +217,18 @@ BEGIN
     ELSE 10
   END;
 
+  -- Dönem uzunluğu: free günlük, ücretli paketler aylık (ödeme dönemiyle uyumlu)
+  v_period := CASE v_row.plan
+    WHEN 'pro' THEN INTERVAL '1 month'
+    WHEN 'premium' THEN INTERVAL '1 month'
+    ELSE INTERVAL '1 day'
+  END;
+
   UPDATE subscriptions
   SET credits_remaining = v_limit,
       credits_limit = v_limit,
       period_start = NOW(),
-      period_end = NOW() + INTERVAL '1 month'
+      period_end = NOW() + v_period
   WHERE user_id = p_user_id
     AND period_end < NOW()
   RETURNING * INTO v_row;
@@ -278,7 +287,7 @@ BEGIN
     10,                              -- PLAN_LIMITS.free (lib/subscription-config.ts ile senkron)
     10,                              -- PLAN_LIMITS.free
     NOW(),
-    NOW() + INTERVAL '1 month'
+    NOW() + INTERVAL '1 day'         -- free dönemi GÜNLÜK (günlük 10 soru)
   )
   ON CONFLICT (user_id) DO NOTHING;  -- idempotent
   RETURN NEW;
@@ -314,7 +323,7 @@ SELECT
   10,                              -- PLAN_LIMITS.free
   10,                              -- PLAN_LIMITS.free
   NOW(),
-  NOW() + INTERVAL '1 month'
+  NOW() + INTERVAL '1 day'         -- free dönemi GÜNLÜK
 FROM auth.users
 ON CONFLICT (user_id) DO NOTHING;
 

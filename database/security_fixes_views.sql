@@ -35,7 +35,7 @@ DROP VIEW IF EXISTS subject_breakdown;
 
 CREATE VIEW user_stats WITH (security_invoker = true) AS
 SELECT
-  up.user_id,
+  a.user_id,
   up.exam_type,
   up.target_score,
   up.subjects,
@@ -49,9 +49,9 @@ SELECT
   up.current_streak,
   up.total_study_time,
   up.exam_date
-FROM user_profiles up
-LEFT JOIN answers a ON up.user_id = a.user_id
-GROUP BY up.user_id, up.exam_type, up.target_score, up.subjects, up.current_streak, up.total_study_time, up.exam_date;
+FROM answers a
+LEFT JOIN user_profiles up ON up.user_id = a.user_id
+GROUP BY a.user_id, up.exam_type, up.target_score, up.subjects, up.current_streak, up.total_study_time, up.exam_date;
 
 CREATE VIEW subject_breakdown WITH (security_invoker = true) AS
 SELECT

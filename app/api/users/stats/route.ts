@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { supabase, dbHelpers } from '../../../../lib/supabase';
 import { calculateAccuracy } from '../../../../lib/utils';
 
@@ -36,8 +37,18 @@ export async function GET(request: NextRequest) {
 
     const userId = user.id;
 
-    // Get user's answers from database
-    const { data: answers, error: answersError } = await dbHelpers.getUserStats(userId);
+    // Get user's answers from database — kullanıcının token'ıyla kimlikli client
+    // (global client sunucuda anon çalışır, RLS satırları gizlerdi)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json({ error: 'Sunucu yapılandırması eksik' }, { status: 500 });
+    }
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: answers, error: answersError } = await dbHelpers.getUserStats(userId, userClient);
 
     if (answersError) {
       console.error('Error fetching user stats:', answersError);

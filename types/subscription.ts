@@ -33,7 +33,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     price: 0,
     description: 'Sistemi keşfetmek ve yapay zekanın gücünü test etmek isteyenler için.',
     features: [
-      'Aylık sınırlı AI soru çözüm kredisi',
+      'Günlük 10 AI soru kredisi — her gün yenilenir',
       'Temel seviye ilerleme takibi',
       'Platform arayüzüne tam erişim',
     ],

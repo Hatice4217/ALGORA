@@ -6,11 +6,12 @@ import { PLANS } from '@/types/subscription';
 import type { SubscriptionSummary, PaidPlanId, CreditTransaction } from '@/types/subscription';
 import { PAYMENT_INFO } from '@/lib/subscription-config';
 import { authFetch } from '@/lib/api';
+import { QuotaCountdown } from './QuotaCountdown';
 
-// Kredi hareketi sebep etiketleri
+// Kredi hareketi sebep etiketleri (monthly_reset: free'de günlük, ücretlilerde aylık dönem yenilemesi)
 const REASON_LABELS: Record<CreditTransaction['reason'], string> = {
   generation: 'Soru üretimi',
-  monthly_reset: 'Aylık yenileme',
+  monthly_reset: 'Kredi yenileme',
   plan_change: 'Paket değişimi',
   admin_adjust: 'Yönetici düzeltmesi',
   refund: 'Hata iadesi',
@@ -79,9 +80,20 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
             ></div>
           </div>
           {subscription.credits_remaining <= 0 && (
-            <p className="text-sm text-red-600 mt-2">
-              Krediniz tükendi — aylık yenilenmeyi bekleyebilir veya paket yükseltebilirsiniz.
-            </p>
+            <div className="mt-2 text-sm text-red-600">
+              <p>
+                {subscription.plan === 'free'
+                  ? 'Günlük hakkınız doldu — yenilenmesine kalan: '
+                  : 'Krediniz tükendi — yenilenmesine kalan: '}
+                <QuotaCountdown
+                  periodEnd={subscription.period_end}
+                  className="font-bold text-red-700"
+                />
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                veya paket yükselterek hemen devam edebilirsiniz.
+              </p>
+            </div>
           )}
         </div>
       </div>

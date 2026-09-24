@@ -1,4 +1,4 @@
-import { createClient, type Session } from '@supabase/supabase-js';
+import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -482,11 +482,12 @@ export const dbHelpers = {
     );
   },
 
-  getUserStats: async (userId: string) => {
+  getUserStats: async (userId: string, client?: SupabaseClient) => {
+    const db = client || supabase!;
     return withConnectionCheck(
       async () => {
         try {
-          const { data, error } = await supabase!
+          const { data, error } = await db
             .from('user_stats')
             .select('*')
             .eq('user_id', userId)
@@ -701,19 +702,23 @@ export const dbHelpers = {
   },
 
   // Paketim sekmesi verisi: abonelik + son 20 kredi hareketi + bekleyen talep
-  getSubscriptionSummary: async (userId: string) => {
+  // client parametresi: API route'lar KULLANICININ token'ıyla oluşturduğu kimlikli
+  // client'ı geçmeli. Global `supabase` sunucu tarafında oturumsuz (anon) çalıştığından
+  // RLS `auth.uid() = user_id` politikaları tüm satırları gizler → hep boş döner.
+  getSubscriptionSummary: async (userId: string, client?: SupabaseClient) => {
+    const db = client || supabase!;
     return withConnectionCheck(
       async () => {
         try {
           const [subResult, txResult, claimResult] = await Promise.all([
-            supabase!.from('subscriptions').select('*').eq('user_id', userId).maybeSingle(),
-            supabase!
+            db.from('subscriptions').select('*').eq('user_id', userId).maybeSingle(),
+            db
               .from('credit_transactions')
               .select('*')
               .eq('user_id', userId)
               .order('created_at', { ascending: false })
               .limit(20),
-            supabase!
+            db
               .from('payment_claims')
               .select('*')
               .eq('user_id', userId)
@@ -748,13 +753,15 @@ export const dbHelpers = {
   // (eşzamanlı isteklerde 23505 yakalanıp PENDING_EXISTS'e çevrilir).
   createPaymentClaim: async (
     userId: string,
-    claim: { plan: 'pro' | 'premium'; sender_name?: string; reference_note?: string }
+    claim: { plan: 'pro' | 'premium'; sender_name?: string; reference_note?: string },
+    client?: SupabaseClient
   ) => {
+    const db = client || supabase!;
     const pendingMessage = 'Zaten onay bekleyen bir talebiniz var. Lütfen yanıtlanmasını bekleyin.';
     return withConnectionCheck(
       async () => {
         try {
-          const { data: pending } = await supabase!
+          const { data: pending } = await db
             .from('payment_claims')
             .select('id')
             .eq('user_id', userId)
@@ -765,7 +772,7 @@ export const dbHelpers = {
             return { data: null, error: { code: 'PENDING_EXISTS', message: pendingMessage } };
           }
 
-          const { data, error } = await supabase!
+          const { data, error } = await db
             .from('payment_claims')
             .insert({
               user_id: userId,

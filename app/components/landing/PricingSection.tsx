@@ -39,7 +39,7 @@ export function PricingSection() {
           </div>
           <ul className="space-y-4 mb-8">
             {[
-              'Aylık sınırlı AI soru çözüm kredisi',
+              'Günlük 10 AI soru kredisi — her gün yenilenir',
               'Temel seviye ilerleme takibi',
               'Platform arayüzüne tam erişim'
             ].map((feature, index) => (

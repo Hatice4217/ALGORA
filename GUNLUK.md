@@ -1709,3 +1709,45 @@ Planın 8 adımı eksiksiz uygulandı (dün onaylanan revize 2 planı):
 - Schema.sql'e "canlı DB'ye tekrar çalıştırma" uyarı başlığı + 12 politika idempotent hale getirildi (DROP IF EXISTS + CREATE)
 - Geçici dosyalar silindi (bağlantı script'i + doğrulama SQL'i), `pg` paketi prune'landı
 - ⚠️ **KULLANICIYA: DB şifresi sohbete yazıldı → Supabase'de Database → Reset database password YAPILMALI**
+
+## 24 Eylül 2026 - Çarşamba
+
+### 🐛 Sıradaki Soru + saveAnswer + subscription 404 — Üç Hata, Tek Kök Grubu
+- **Belirti 1 (kullanıcı):** "Sıradaki Soru" deyince YENİ soru gelmiyordu — prompt her istekte birebir aynıydı (ders + "Genel" konu + zorluk sabit), Gemini aynı soruyu geri getiriyordu
+- **Düzeltme 1:** client artık `previous_question` gönderiyor; route bunu prompt'a "TEKRAR YASAĞI" bloğu olarak ekliyor + `generationConfig`'e rastgele `seed` + temperature 0.7→1.0
+- **Belirti 2 (konsol):** `saveAnswer: invalid input syntax for type uuid: "gemini_..."` — üretilen sorular hiç `questions` tablosuna yazılmıyordu; `answers.question_id` UUID + FK olduğu için her cevap kaydı 400 döndü, istatistikler de boş kaldı
+- **Düzeltme 2:** route artık üretilen soruyu service-role ile `questions`'a insert ediyor (difficulty map: baslangic→beginner vb., correctAnswer 0-3 clamp) ve GERÇEK UUID döndürüyor; insert başarısızsa kredi yanımasın diye soru yine dönüyor (rastgele UUID fallback, loglanıyor)
+- **Belirti 3 (konsol):** `/api/subscription` 404 — kod ve build'de route VARDI; çalışan `next start` süreci ESKİ build manifest'iyle açılmıştı (Next prod sunucusu manifest'i başlangıçta önbellekler). Restart ile çözüldü
+- Döngü: build ✅ → 3000 kill+start ✅ → ana sayfa 200 ✅ → `/api/subscription` 401 (doğru) ✅ → generate tokensuz 401 (doğru) ✅
+- **Kullanıcı testi bekliyor:** soru üret → cevapla → "Sıradaki Soru" → farklı soru gelmeli; Supabase `answers` tablosuna satır düşmeli; konsolda uuid hatası kalmamalı
+- Not: konsoldaki "issued in the future / clock skew" uyarısı cihaz saatinin geride kalmasından — Windows saat senkronu açılmalı
+
+### Session Bitişi
+- Bitiş: kod tamam, sunucu güncel build ile çalışıyor
+- Sıradaki adım: kullanıcı E2E testi + DB şifresi resetleme (önceki günün hatırlatması hâlâ geçerli)
+- **Test sonucu (kullanıcı):** "Sıradaki Soru" artık FARKLI soru getiriyor ✅ — tekrar önleme (previous_question + seed + temp 1.0) çalışıyor
+- **Bug 2 (kullanıcı: "kredi barı gözükmüyor"):** `/api/subscription` hep 404 dönüyordu — route sunucu tarafında global `supabase` client'ını kullanıyordu; o client sunucuda OTURUMSUZ (anon) çalıştığı için RLS `auth.uid() = user_id` tüm satırları gizliyordu. Düzeltme: API route'lar kullanıcının Bearer token'ıyla kimlikli client oluşturup dbHelpers'a geçiyor (`getSubscriptionSummary`, `createPaymentClaim`, `getUserStats`'a opsiyonel client parametresi eklendi). Aynı hata claim (RLS INSERT reddi) ve users/stats route'larındaydı — üçü birden kapatıldı. Build ✅ → restart ✅ → 200/401'ler doğru
+- **Genel kural (yeni):** sunucu tarafında asla global browser client'ıyla kullanıcı verisi sorgulanmaz; ya kullanıcının token'lı client'ı ya da service-role
+
+### 🔄 Free Paket Aylıktan GÜNLÜK Kotaya Geçti + Kota Bilgilendirme Ekranı
+- **Ürün kararı (kullanıcı):** 10 soru/ay ilk günde biter, 29 gün kilitli kalmak kullanıcı kaybettirirdi → free artık **günlük 10 soru, her gün yenilenir** (Duolingo-tipi alışkanlık modeli). Pro 1000/ay, Premium 5000/ay — ödeme dönemiyle uyumlu, değişmedi
+- **Kota bitişi akışı yeniden tasarlandı (kullanıcı isteği):** 402'de artık doğrudan ödeme modalı AÇILMIYOR. Yeni `QuotaExhaustedModal`: "Günlük hakkınız doldu" + yenilenme tarihi (Gemini tarzı) + "Yarın devam edeceğim" seçeneği; Pro butonu yalnızca kullanıcı isterse ödeme akışını (UpgradeModal) açar
+- **Kod tarafı:** lazy rollover mimarisi sayesinde değişiklik küçük kaldı — `rollover_subscription` free için dönem = 1 gün (plana göre CASE), seed fonksiyonu + generate route fallback seed'i de 1 güne çekildi. Metinler plan-duyarlı hale getirildi (PackagePanel tükenme uyarısı, kredi hareketi etiketi "Kredi yenileme", pricing + types'ta "Günlük 10 AI soru kredisi")
+- **Yeni migrasyon: `database/daily_free_quota.sql`** — iki fonksiyonun güncel hali + izin teyidi (default-privileges tuzağına karşı) + mevcut free kullanıcıları günlük döneme taşıyıp taze 10 kredi veriyor (kotası bitmiş kullanıcı anında kurtulur)
+- Build ✅ → restart ✅ → 200/401 doğru
+- **⚠️ KULLANICI YAPACAK:** `daily_free_quota.sql`'i Supabase SQL Editor'de çalıştırmalı — çalıştırılana dek canlıda free kullanıcılar hâlâ aylık dönemde
+- **Ekleme (kullanıcı isteği): canlı geri sayım** — yeni `QuotaCountdown` bileşeni (saniyelik tik, SSR-güvenli: ilk render "—"). Kota bitiş modalında büyük mor sayaç + Paketim'de kredi 0'ken kırmızı sayaç ("yenilenmesine kalan: 07:23:45"). Sayaç 0'a ulaşınca "yenilenmeye hazır" yazar (lazy rollover: bir sonraki istekte reset)
+- **Bug 3 (kullanıcı: aralıklı generate 500):** soru üretimi bazen 500 verip birkaç denemede bir çalışıyordu. Teşhis: `gemini-flash-lite-latest` (2.5 ailesi) varsayılan "thinking" modu 1000'lik token bütçesini yiyip boş/kesik JSON döndürüyor. Düzeltme: `thinkingConfig: { thinkingBudget: 0 }` + `maxOutputTokens` 1000→2000 + boş yanıtta finishReason/usage logu. Sunucu artık `server.log`'a yazıyor (eski `> /dev/null` başlatmada loglar kayboluyordu — teşhis imkansızdı). Cevap kaydı artık başarılı ("Answer saved successfully" konsolda ✅)
+- **Bug 4 (kullanıcı: istatistikler yenileyince sıfırlanıyor):** dört ayrı uyumsuzluk bir arada: ① `user_stats` view'ı `user_profiles`'tan başlıyordu — profil satırı olmayan kullanıcı (onboarding atlayan/Google OAuth) view'da HİÇ satır alamıyordu; cevaplar DB'de olsa bile → view `answers`'tan başlayacak şekilde yeniden yazıldı (LEFT JOIN user_profiles) ② dashboard `stats.total_questions` okuyordu, view `total_questions_answered` döndürüyor ③ `stats.average_time` ≠ `average_time_per_question` ④ subject_breakdown map'i `ders/toplam/dogru` bekliyordu, view `subject/total_questions/correct_answers` döndürüyor → hepsi düzeltildi. schema.sql + security_fixes_views.sql güncellendi
+- **Kullanıcı yapacak:** güncellenmiş `security_fixes_views.sql`'i Supabase SQL Editor'de tekrar çalıştırmak (DROP+CREATE, idempotent) + `daily_free_quota.sql` hâlâ bekliyor
+- **Test sonucu (kullanıcı):** SQL'ler çalıştırıldı (security_fixes_views + daily_free_quota) → istatistikler yenileyince artık DURUYOR ✅. Bugünün tamamlananları: sıradaki soru farklı geliyor ✅ cevaplar DB'ye kaydediliyor ✅ kredi barı görünüyor ✅ kota bitiş ekranı (yenileme tarihi + geri sayım + isteğe bağlı Pro) ✅ free günlük 10 soru ✅ aralıklı Gemini 500'leri giderildi ✅ istatistikler kalıcı ✅
+
+### 🚀 Canlıya Geçiş: Deploy Zinciri Düzeltildi (Vercel Git Entegrasyonu)
+- **Belirti (kullanıcı):** localhost:3000 "bağlanmayı reddetti" — Google girişi localhost'tan başladığı için callback oraya döndü, local sunucu kapalıydı. Kod `window.location.origin` kullandığı için deploy ile ilgisi yoktu; kullanıcı kararı: **local'i bırakıp canlıya odaklan** (domain alımı yaklaşıyor)
+- **Canlı sağlık taraması:** site 200 ✅ / Supabase, `algora-sigma.vercel.app/auth/callback`'i redirect olarak kabul ediyor (authorize 302 → Google) ✅ / canlı bundle'da proje ref'i gömülü (env'li derlenmiş) ✅ / **AMA** `/api/subscription` 404 → canlı build abonelik commit'inden (d98f094) ESKİ
+- **Kök neden:** GitHub Actions `deploy-vercel` job'ı 6 denemenin HEPSİNDE düşmüş (test-and-build geçiyor, "Deploy to Vercel" adımı çöküyor → `VERCEL_TOKEN/ORG_ID/PROJECT_ID` secret'ları repoda yok). main güncel olduğu hâlde canlı hiç güncellenmemiş
+- **Karar (kullanıcı):** kesin çözüm = **Vercel Git entegrasyonu** (GH Actions deploy'u terk edildi; token/secret yönetimi yok, push = deploy)
+- **Yapılan temizlik:** `vercel.json`'daki legacy `@secret` env bloğu silindi (env'ler artık Vercel dashboard'dan), `auto-deploy.yml` deploy job'ı + gereksiz artifact upload'ı silindi (tsc/lint/build CI olarak kaldı, isim "ALGORA CI"), `.gitignore`'a `server.log` + `test-gemini.tmp.js`
+- **Commit:** birikmiş TÜM değişiklikler (günlük kota sistemi, QuotaCountdown/QuotaExhaustedModal, generate route, istatistik view düzeltmeleri + deploy zinciri) tek commit'te push'landı → bundan sonra canlıya çıkışın tek yolu push
+- **Kullanıcı yapacak (Vercel Dashboard):** ① Project → Settings → Git → `Hatice4217/ALGORA` bağla ② Settings → Environment Variables'a Production+Preview için env'leri ekle (eksisleriyle birlikte `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_SECRET_KEY`, `BREVO_API_KEY` şart — yoksa abonelik/admin canlıda çalışmaz) ③ bağlayınca son commit'i deploy et ④ `/api/subscription` 404 değilse canlı güncel demektir
+- **Domain geldiğinde:** Vercel'e domain ekle → Supabase Redirect URLs'e `https://<domain>/auth/callback` → `NEXT_PUBLIC_APP_URL` güncelle → push

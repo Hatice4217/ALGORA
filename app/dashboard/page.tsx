@@ -14,6 +14,7 @@ import { AnalysisPanel } from '../../components/dashboard/AnalysisPanel';
 import { QuestionPractice } from '../../components/dashboard/QuestionPractice';
 import { SettingsPanel } from '../../components/dashboard/SettingsPanel';
 import { PackagePanel, UpgradeModal } from '../../components/dashboard/PackagePanel';
+import { QuotaExhaustedModal } from '../../components/dashboard/QuotaExhaustedModal';
 import { authFetch } from '../../lib/api';
 
 import type { SubscriptionSummary, PaidPlanId } from '../../types/subscription';
@@ -88,6 +89,9 @@ export default function DashboardPage() {
   const [subscriptionSummary, setSubscriptionSummary] = useState<SubscriptionSummary | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradePlan, setUpgradePlan] = useState<PaidPlanId>('pro');
+  // Kota bitişinde önce bilgilendirme ekranı (yenileme tarihi) gösterilir;
+  // ödeme akışı yalnızca kullanıcı yükseltmeyi seçerse açılır
+  const [quotaExhausted, setQuotaExhausted] = useState<{ periodEnd: string | null } | null>(null);
 
   // Initialize userName from localStorage immediately (prevents flash)
   useEffect(() => {
@@ -185,12 +189,12 @@ export default function DashboardPage() {
             if (!statsData.error && statsData.data) {
               const stats = statsData.data;
               setStatistics({
-                toplamSoru: stats.total_questions || 0,
+                toplamSoru: stats.total_questions_answered || 0,
                 dogruCevap: stats.correct_answers || 0,
-                basariOrani: stats.total_questions > 0
-                  ? Math.round((stats.correct_answers / stats.total_questions) * 100)
+                basariOrani: stats.total_questions_answered > 0
+                  ? Math.round((stats.correct_answers / stats.total_questions_answered) * 100)
                   : 0,
-                ortalamaSüre: stats.average_time || 0,
+                ortalamaSüre: Math.round(stats.average_time_per_question || 0),
                 dersler: [],
                 haftalıkIlerleme: [],
                 gelisimGerekenler: [],
@@ -208,12 +212,13 @@ export default function DashboardPage() {
           try {
             const subjectData = await dbHelpers.getSubjectBreakdown(user.id);
             if (subjectData.data && subjectData.data.length > 0) {
-              const subjectBreakdown = subjectData.data.map((subject: { ders: string; toplam: number; dogru: number }) => ({
-                ders: subject.ders,
-                toplam: subject.toplam || 0,
-                dogru: subject.dogru || 0,
-                basari: subject.toplam > 0
-                  ? Math.round((subject.dogru / subject.toplam) * 100)
+              // subject_breakdown view sütunları: subject, total_questions, correct_answers
+              const subjectBreakdown = subjectData.data.map((subject: { subject: string; total_questions: number; correct_answers: number }) => ({
+                ders: subject.subject,
+                toplam: subject.total_questions || 0,
+                dogru: subject.correct_answers || 0,
+                basari: subject.total_questions > 0
+                  ? Math.round((subject.correct_answers / subject.total_questions) * 100)
                   : 0,
               }));
 
@@ -252,16 +257,17 @@ export default function DashboardPage() {
           topic: 'Genel',
           difficulty: selectedDifficulty,
           exam_type: 'TYT',
+          // Sıradaki sorunun öncekinden farklı olması için mevcut soru metnini gönder
+          previous_question: currentQuestion?.question ?? null,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Sunucu hatası' }));
 
-        // Kota bitti: ikna edici yükseltme modalı
+        // Kota bitti: önce yenileme tarihi bilgilendirmesi (ödeme akışı kullanıcı isterse)
         if (response.status === 402 && errorData.code === 'CREDIT_EXHAUSTED') {
-          setUpgradePlan('pro');
-          setShowUpgradeModal(true);
+          setQuotaExhausted({ periodEnd: errorData.data?.period_end ?? null });
           return;
         }
 
@@ -589,6 +595,19 @@ export default function DashboardPage() {
           plan={upgradePlan}
           onClose={() => setShowUpgradeModal(false)}
           onClaimed={fetchSubscription}
+        />
+      )}
+
+      {/* Kota bitişi bilgilendirmesi (yenileme tarihi + isteğe bağlı yükseltme) */}
+      {quotaExhausted && (
+        <QuotaExhaustedModal
+          periodEnd={quotaExhausted.periodEnd}
+          onClose={() => setQuotaExhausted(null)}
+          onUpgrade={() => {
+            setQuotaExhausted(null);
+            setUpgradePlan('pro');
+            setShowUpgradeModal(true);
+          }}
         />
       )}
     </div>

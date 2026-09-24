@@ -38,11 +38,21 @@ export async function POST(request: NextRequest) {
     const reference_note =
       typeof body?.reference_note === 'string' ? body.reference_note.trim().slice(0, 500) : undefined;
 
-    const { data, error } = await dbHelpers.createPaymentClaim(user.id, {
-      plan: plan as 'pro' | 'premium',
-      sender_name,
-      reference_note,
+    // Kullanıcının token'ıyla kimlikli client — sunucudaki global client anon
+    // çalıştığından RLS INSERT'i reddederdi
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { autoRefreshToken: false, persistSession: false },
     });
+    const { data, error } = await dbHelpers.createPaymentClaim(
+      user.id,
+      {
+        plan: plan as 'pro' | 'premium',
+        sender_name,
+        reference_note,
+      },
+      userClient
+    );
 
     if (error) {
       const status = error.code === 'PENDING_EXISTS' ? 409 : 500;

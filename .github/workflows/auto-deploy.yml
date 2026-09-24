@@ -1,7 +1,7 @@
 # GitHub Actions Workflow for ALGORA
-# Otomatik deploy sistemi - Her push'ta otomatik build ve deploy
+# CI kontrolü - tsc + lint + build (deploy Vercel Git entegrasyonu ile yapılır)
 
-name: ALGORA Auto Deploy
+name: ALGORA CI
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
     branches: [main]
 
 jobs:
-  # Test ve Build Job
+  # CI: tip kontrolu + lint + build dogrulamasi
   test-and-build:
     runs-on: ubuntu-latest
 
@@ -40,28 +40,3 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           NEXT_PUBLIC_APP_URL: https://algora-sigma.vercel.app
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-output
-          path: .next
-          retention-days: 7
-
-  # Vercel Deploy Job (Alternatif)
-  deploy-vercel:
-    runs-on: ubuntu-latest
-    needs: test-and-build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
