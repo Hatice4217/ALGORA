@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://algora.com';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://algora-sigma.vercel.app';
   const currentDate = new Date();
 
   return [
