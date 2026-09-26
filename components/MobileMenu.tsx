@@ -1,17 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
-import { Button } from '@/app/components/ui/Button';
+import { usePathname } from 'next/navigation';
 
 interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
+  // Verilirse landing navigasyonu yerine bu içerik render edilir (alt bilgi korunur)
+  children?: React.ReactNode;
 }
 
-export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
-  const router = useRouter();
+export function MobileMenu({ isOpen, onClose, children }: MobileMenuProps) {
   const pathname = usePathname();
 
   // Body scroll lock when menu is open - CSS-based approach eliminates forced reflow
@@ -80,6 +80,10 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 
         {/* Menu Content */}
         <div className="flex flex-col h-full overflow-y-auto">
+          {children ? (
+            children
+          ) : (
+          <>
           {/* Navigation Links */}
           <nav className="flex-1 px-6 py-8">
             <ul className="space-y-2">
@@ -146,6 +150,8 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
               </li>
             </ul>
           </nav>
+          </>
+          )}
 
           {/* Footer Info */}
           <div className="px-6 py-6 border-t border-gray-200 bg-gray-50">

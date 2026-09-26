@@ -528,11 +528,43 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Mobil Menü */}
+      {/* Mobil Menü — dashboard içerikli (landing menüsü değil) */}
       <MobileMenu
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
-      />
+      >
+        <nav className="flex-1 px-6 py-8">
+          <ul className="space-y-2">
+            {subscriptionSummary?.subscription && (
+              <li>
+                <button
+                  onClick={() => {
+                    setActiveTab('package');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all font-medium"
+                >
+                  <span>Kredilerim</span>
+                  <span className="text-purple-700 font-semibold">
+                    {subscriptionSummary.subscription.credits_remaining} / {subscriptionSummary.subscription.credits_limit}
+                  </span>
+                </button>
+              </li>
+            )}
+            <li>
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-all font-medium"
+              >
+                Çıkış Yap
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </MobileMenu>
 
       <main className="w-full px-4 md:px-6 lg:px-8 py-8 flex-1 overflow-y-auto overflow-x-hidden">
         {/* Genel Bakış Sekmesi */}
