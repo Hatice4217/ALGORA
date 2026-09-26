@@ -23,10 +23,13 @@ KURALLAR:
 - JSON formatından KESİNLİKLE çıkmamalısın
 - Yanıtı SADECE JSON olarak ver, markdown kullanma, code block kullanma
 - JSON dışında hiçbir açıklama veya metin ekleme
+- TÜRKÇE YAZIM KURALLARI (ÇOK ÖNEMLİ): Tüm metinleri kusursuz Türkçe yaz; ç, ğ, ı, İ, ö, ş, ü karakterlerini eksiksiz kullan
+- Türkçe karaktersiz ASCII yazım YASAK: "degeri" değil "değeri", "kactir" değil "kaçtır", "Gercel" değil "Gerçel", "kumesinde" değil "kümesinde", "esit" değil "eşit"
+- Matematik terminolojisi doğru olsun: "Gerçel sayılar kümesinde tanımlı f(x)", "yerel maksimum değeri", "yerel minimum değeri", "kaçtır?"
 - MATEMATİKSEL SEMBOLLER İÇİN: $, \\, LaTeX KODLARI KULLANMA
-- x² yerine x^2, √ yerine "karekök" veya "kok" yaz
+- Üsleri ^ ile yaz (x^2, x^3), √ yerine "karekök" yaz
 - Tüm matematiksel ifadeleri DÜZ METİN olarak yaz
-- ≤ yerine "kucuk esit" veya "<=", ≥ yerine "buyuk esit" veya ">=" yaz
+- ≤ yerine "küçük eşit" veya "<=", ≥ yerine "büyük eşit" veya ">=" yaz
 - fraction, \\frac gibi LaTeX komutları KULLANMA`;
 
 // Matematiksel sembolleri düzeltme fonksiyonu
