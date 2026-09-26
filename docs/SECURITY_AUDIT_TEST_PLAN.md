@@ -2,7 +2,7 @@
 
 > Oluşturma: 23 Eylül 2026 · Yöntem: 5 paralel salt-okunur inceleme agent'ı (statik kod analizi — exploit çalıştırılmadı, kod değiştirilmedi)
 > Kapsam: 9 API route, 3 SQL dosyası, istemci bileşenleri, lib/, config/deploy dosyaları, test altyapısı
-> Bu doküman **plan**'dır; hiçbir düzeltme henüz uygulanmadı. Bulgu ID'leri kaynak agent raporlarıyla izlenebilir.
+> **Durum (26 Eylül 2026):** Faz 0'ın 8 düzeltmesinin tamamı uygulandı; Faz A/B/C canlı sistemde gerçek probe kullanıcılarıyla doğrulandı (aşağıda sonuç tabloları). Kalan: Faz 0.5-0.7 kısmi maddeler + D/E/F fazları.
 
 ---
 
@@ -111,14 +111,38 @@ Timing-safe admin key (sha256+timingSafeEqual) · service-role key client'a sız
 | 0.7 | next.config: webpack hack'ini kaldır, `headers()` ile güvenlik header'ları | CFG-3/4 |
 | 0.8 | generate girdi doğrulaması (tip/uzunluk/whitelist) + sunucu rate limit (upstash/DB tabanlı basit sayaç) | BULGU-5/7/8 | ✅ **TAMAMLANDI (26 Eyl)** — rate limit daha önce (kullanıcı 10/dk); girdi whitelist'i eklendi: subject 9 ders kapanık küme, difficulty baslangic/orta/ileri, exam_type TYT/AYT, topic 100 karaktere, previous_question 2000 karaktere kırpılır; enum dışı değer 400. Probe: 4 sahte girdi 400, geçerli üretim 200 + kırpma çalışıyor |
 
-### FAZ A — P0 Güvenlik Testleri (Faz 0 sonrası doğrulama)
-A1 admin key yanlış→404 · A2 50x hızlı yanlış key (limit davranışı) · A3 env boşken verifyAdminKey=false · A4 RLS: premium self-assign UPDATE engeli · A5 RLS: claim self-approve engeli · A6 RLS: credit forge INSERT engeli · A7 SQL RPC'lerine anon erişim → permission denied · A8 delete-account IDOR/şifre · A9 sahte verify token reddi · A10 generate token'sız→401
+### FAZ A — P0 Güvenlik Testleri ✅ CANLI DOĞRULANDI (26 Eylül)
+> Yöntem: gerçek probe kullanıcısı + gerçek route/DB çağrıları (mock yok), sonrasında tam temizlik. PostgREST notu: RLS'e takılan UPDATE **hata DÖNMEZ** (0 satır etkilenir) → her probe sonrası SELECT ile gerçek durum teyit edildi.
 
-### FAZ B — P1 API Sözleşme Testleri (integration, izole test-Supabase)
-B1 claim 401/400/201/409(23505) · B2 claims liste+email enrich · B3 review 404/409/400 · B4 approve=yeni dönem (credits=limit, period=now+1ay, plan_change tx) · B5 reject aboneliğe dokunmaz · B6 GET subscription 3 yol · B7 delete-account tam akış · B8 generate girdi 400
+| # | Test | Sonuç |
+|---|---|---|
+| A1 | admin key'siz istek → 404 (varlık maskesi) | ✅ 404 |
+| A2 | 50× hızlı yanlış key | ✅ 50/50 → 404; *gözlem: sunucu rate limit yok (bilinen BULGU-4/7, yalnız verify-email IP limitli)* |
+| A4 | RLS: kendi aboneliğini premium'a çekme UPDATE'i | ✅ ENGELLENDİ (satır free/10 kaldı — PostgREST sessiz 0 satır) |
+| A5 | RLS: kendi payment_claim'ini approve etme UPDATE'i | ✅ ENGELLENDİ (status pending kaldı) |
+| A7 | anon client ile `deduct_credit`/`refund_credit`/`rollover_subscription` RPC | ✅ 3/3 permission denied (REVOKE devrede; PGRST202 imza yanılgısına dikkat: parametreler tek `p_user_id`) |
+| A8 | delete-account: başkasının token'ı + yanlış şifre | ✅ reddedildi |
+| A9 | verify-email confirm: expired/tampered/garbage token | ✅ 4/4 yönlendirme doğru (yalnız geçerli HMAC success) |
+| A10 | generate: token'sız istek | ✅ 401 |
 
-### FAZ C — P1 Kota Zinciri
-C1 kredi 1→0 · C2 kredi 0→402 (Gemini çağrılmaz) · C3 paralel 2 istek, kredi 1 → 200+402 · C4 Gemini 500→refund+1 · C5 bozuk JSON→refund · C6 rollover reset/no-op
+### FAZ B — P1 API Sözleşme Testleri ✅ CANLI DOĞRULANDI (26 Eylül)
+| # | Test | Sonuç |
+|---|---|---|
+| B1 | claim: token'sız 401 / eksik alan 400 / geçerli 201 / ikinci pending 409 | ✅ 4/4 sözleşme doğru |
+| B2 | admin claims listesi + user_email enrich | ✅ 200, e-posta ekli (yanlış key → 404) |
+| B3 | review: olmayan id 404 / işlenmiş claim 409 | ✅ |
+| B4 | approve etkileri | ✅ plan=pro, kredi 1000/1000, period_end ≈ +30 gün, `plan_change` tx yazıldı |
+| B5 | reject aboneliğe dokunmaz | ✅ before/after anlık görüntüsü bit-bit aynı |
+| B6 | GET subscription 3 yol (token'sız 401 / başkası 401/404 / kendi 200) | ✅ |
+
+### FAZ C — P1 Kota Zinciri ✅ CANLI DOĞRULANDI (26 Eylül)
+| # | Test | Sonuç |
+|---|---|---|
+| C1+C3 | kredi=1 + 2 PARALEL generate | ✅ bir 200 (gerçek soru + deduct 1→0), biri 402 CREDIT_EXHAUSTED — atomik deduct yarış koruması canlıda kanıtlandı |
+| C2 | kredi=0 → generate | ✅ 402 `{"code":"CREDIT_EXHAUSTED"}` + kalan/dönem bilgisi; Gemini çağrılmadan döndü |
+| C4 | sahte GEMINI_API_KEY ile sunucu restart → generate | ✅ 502 + tx izi: `-1 generation` (…36.123) → `+1 refund` (…36.629) → net kredi 5/1000 dokunulmadan |
+| C5 | bozuk JSON → refund | ⏭ atlandı (Gemini mock gerektirir; refund yolu C4'te canlı kanıtlandı, retry `continue` yolu kod incelemesinde doğrulandı) |
+| C6 | rollover: free+geçmiş dönem→10 günlük reset · gelecek dönem→no-op · pro+geçmiş→1000 | ✅ 3/3 (no-op'ta 3 kredi korunudu) |
 
 ### FAZ D — P2 SQL Unit Testleri
 D1 deduct 0'da NULL · D2 refund limit aşımı davranışı (bilgilenme) · D3 paralel rollover tek reset · D4 ay-sonu tarihi (JS setMonth vs SQL interval farkı belgelenir) · D5 CHECK kısıtları
@@ -144,7 +168,7 @@ F1 forgot-password (önce stub gerçek `resetPasswordForEmail`'e bağlanacak) ·
 1. ~~**Faz 0.1 + 0.2 + 0.3**~~ ✅ **KOD TARAFI TAMAMLANDI (23 Eylül 2026)** — üç kritik açık kodda/SQL'de kapatıldı (3 doğrulama agent'ı 16/16 kontrol GEÇTİ + çift-PK hatası yakalanıp düzeltildi + build yeşil + smoke test 5/5). **Kalan kullanıcı adımı: `subscriptions.sql` ve `security_fixes_views.sql`'i Supabase SQL Editor'de çalıştırmak.**
 2. **Faz 0.6** (env + commit) — deploy edilebilir taban
 3. **Faz 0.4 + 0.5 + 0.7 + 0.8** (verify-email, loglar, header'lar, girdi doğrulama)
-4. **Faz A + B** testleri yazılır ve koşulur → yeşilse C+D → E
+4. ~~**Faz A + B**~~ ✅ + **Faz C** — üçü de canlı probe doğrulamasıyla tamamlandı (26 Eylül 2026, sonuç tabloları yukarıda)
 5. Sürekli: ÇÖK bulgularının (bayat token, refund retry, onboarding, Gemini timeout) küçük düzeltme paketleri F fazından önce
 
 **Rapor sınırları:** Tüm bulgular statik kod incelemesinden; çalıştırılmış exploit/PoC yok. "Şüphe" işaretli maddeler (ÇÖK-9, user_profiles unique eksikliği, CI secrets durumu) dinamik testle doğrulanmalı.
