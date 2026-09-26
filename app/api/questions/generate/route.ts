@@ -61,6 +61,24 @@ const difficultyMap: Record<string, string> = {
   'ileri': 'İleri'
 };
 
+// Sunucu tarafı girdi whitelist'i — UI'ın üretebileceği değerlerle sınırlıdır.
+// Enum alanlar kapanık küme; serbest metin alanları (topic, previous_question)
+// uzunluk sınırına zorlanır, aksi halde doğrudan prompt'a girebilir.
+const VALID_SUBJECTS: readonly string[] = [
+  'Matematik',
+  'Türkçe',
+  'Fizik',
+  'Kimya',
+  'Biyoloji',
+  'Tarih',
+  'Coğrafya',
+  'Felsefe',
+  'Din Kültürü',
+];
+const VALID_EXAM_TYPES: readonly string[] = ['TYT', 'AYT'];
+const TOPIC_MAX_LENGTH = 100;
+const PREVIOUS_QUESTION_MAX_LENGTH = 2000;
+
 export async function POST(request: Request) {
   // Kredi düşüldükten sonra oluşabilecek hatalarda iade için — catch bloğu erişebilir
   let creditDeducted: number | null = null;
@@ -178,6 +196,33 @@ export async function POST(request: Request) {
       );
     }
 
+    // 2.5 Girdi doğrulaması (Faz 0.8): tip + whitelist + uzunluk sınırları
+    if (
+      typeof subject !== 'string' ||
+      typeof difficulty !== 'string' ||
+      !VALID_SUBJECTS.includes(subject) ||
+      !(difficulty in difficultyMap)
+    ) {
+      return NextResponse.json(
+        { error: 'Geçersiz ders veya zorluk seviyesi.' },
+        { status: 400 }
+      );
+    }
+    if (
+      exam_type !== undefined &&
+      (typeof exam_type !== 'string' || !VALID_EXAM_TYPES.includes(exam_type))
+    ) {
+      return NextResponse.json(
+        { error: 'Geçersiz sınav türü. TYT veya AYT olmalıdır.' },
+        { status: 400 }
+      );
+    }
+    const safeTopic = typeof topic === 'string' ? topic.trim().slice(0, TOPIC_MAX_LENGTH) : '';
+    const safePreviousQuestion =
+      typeof previous_question === 'string'
+        ? previous_question.trim().slice(0, PREVIOUS_QUESTION_MAX_LENGTH)
+        : '';
+
     // 3. Gemini API anahtarı kontrolü
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -194,10 +239,7 @@ export async function POST(request: Request) {
     // 5. Gemini REST API ile direkt call
     // Tekrar önleme: aynı istek parametreleriyle Gemini hep aynı/benzer soru üretebiliyor.
     // Önceki soru metni + rastgele seed + yüksek sıcaklık ile her seferinde yeni bir soru zorlanır.
-    const previousQuestionText =
-      typeof previous_question === 'string' && previous_question.trim().length > 0
-        ? previous_question.trim()
-        : null;
+    const previousQuestionText = safePreviousQuestion || null;
 
     const antiRepeatBlock = previousQuestionText
       ? `\n\nÇOK ÖNEMLİ — TEKRAR YASAĞI: Bu oturumda öğrenciye az önce şu soru soruldu:\n"${previousQuestionText}"\nBu soruyla aynı veya benzer bir soru KESİNLİKLE üretme. Farklı sayılar, farklı bağlam/kurgu ve mümkünse farklı bir alt konu kullanarak tamamen YENİ bir soru üret.`
@@ -205,7 +247,7 @@ export async function POST(request: Request) {
 
     const prompt = `${SYSTEM_PROMPT}
 
-Lütfen ${subject} dersinde, ${topic || 'genel'} konusu için ${difficultyText} (${exam_type || 'TYT'}) seviyesinde bir çoktan seçmeli soru üret.${antiRepeatBlock}
+Lütfen ${subject} dersinde, ${safeTopic || 'genel'} konusu için ${difficultyText} (${exam_type || 'TYT'}) seviyesinde bir çoktan seçmeli soru üret.${antiRepeatBlock}
 
 ÖNEMLİ: Matematiksel ifadeleri DÜZ METİN olarak yaz, $, \\, LaTeX kodları KULLANMA.
 Örnek: "x kare 2 artı x" yerine "x² + 2x", "karekök 16" yerine "4", "x küçük eşit 5" yerine "x <= 5" gibi.
@@ -426,7 +468,7 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
       .from('questions')
       .insert({
         subject,
-        topic: topic || 'Genel',
+        topic: safeTopic || 'Genel',
         difficulty: difficultyToDb[difficulty] || difficulty,
         exam_type: exam_type || 'TYT',
         question_text: questionData.question,

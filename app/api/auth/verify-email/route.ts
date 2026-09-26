@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { createEmailVerificationToken } from '@/lib/email-token';
 
 interface VerifyEmailRequest {
   email: string;
@@ -46,8 +47,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate verification token (simple email token)
-    const verificationToken = Buffer.from(email).toString('base64');
+    // HMAC imzalı + 24 saatlik token (imzasız base64 token kaldırıldı — sahtesi üretilemez)
+    const verificationToken = createEmailVerificationToken(email);
+    if (!verificationToken) {
+      console.error('verify-email: ADMIN_SECRET_KEY tanımlı değil');
+      return NextResponse.json(
+        { error: 'Sunucu yapılandırması eksik. Yönetici ile iletişime geçin.' },
+        { status: 500 }
+      );
+    }
 
     // Create verification URL
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Logo } from '@/app/components/ui/Logo';
@@ -8,44 +8,31 @@ import { Logo } from '@/app/components/ui/Logo';
 function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('');
 
+  // Sonuç confirm endpoint'inin yönlendirmesinden okunur:
+  // /auth/verify-email?status=success|expired|invalid|error&email=...
+  const status = searchParams.get('status');
+  const email = searchParams.get('email');
+
+  // Onay başarılıysa login sayfasına yönlendir
   useEffect(() => {
-    const verifyEmail = async () => {
-      const token = searchParams.get('token');
+    if (status === 'success') {
+      const timer = setTimeout(() => {
+        router.push(`/auth/login?email=${encodeURIComponent(email || '')}&verified=true`);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [status, email, router]);
 
-      if (!token) {
-        setStatus('error');
-        setMessage('Geçersiz onay linki. Lütfen tekrar giriş yapmayı deneyin.');
-        return;
-      }
-
-      try {
-        // Decode token (simple email token)
-        const email = atob(token);
-
-        // For demo purposes, we'll redirect to login with success message
-        // In production, you would make an API call to verify the email
-        setTimeout(() => {
-          setStatus('success');
-          setMessage('E-posta adresiniz başarıyla onaylandı! Şimdi giriş yapabilirsiniz.');
-
-          // Redirect to login after 3 seconds
-          setTimeout(() => {
-            router.push(`/auth/login?email=${encodeURIComponent(email)}&verified=true`);
-          }, 3000);
-        }, 1500);
-
-      } catch (error) {
-        console.error('Verify email error:', error);
-        setStatus('error');
-        setMessage('Onay işleminde bir hata oluştu. Lütfen tekrar deneyin.');
-      }
-    };
-
-    verifyEmail();
-  }, [searchParams, router]);
+  const isSuccess = status === 'success';
+  const message =
+    status === 'success'
+      ? 'E-posta adresiniz başarıyla onaylandı! Şimdi giriş yapabilirsiniz.'
+      : status === 'expired'
+      ? 'Onay linkinizin süresi dolmuş (24 saat). Lütfen yeni bir onay maili talep edin.'
+      : status === 'invalid'
+      ? 'Geçersiz onay linki. Link bozulmuş olabilir veya bu adrese ait bir hesap bulunamadı.'
+      : 'Onay işleminde bir hata oluştu. Lütfen tekrar deneyin.';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex flex-col">
@@ -60,23 +47,7 @@ function VerifyEmailContent() {
 
           {/* Verification Card */}
           <div className="bg-white rounded-2xl shadow-2xl p-8">
-            {status === 'loading' && (
-              <div className="text-center space-y-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full animate-pulse">
-                  <svg className="w-8 h-8 text-purple-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-bold text-gray-900">
-                  E-posta Onaylanıyor...
-                </h2>
-                <p className="text-gray-600">
-                  Lütfen bekleyin, e-posta adresiniz kontrol ediliyor.
-                </p>
-              </div>
-            )}
-
-            {status === 'success' && (
+            {isSuccess && (
               <div className="text-center space-y-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full">
                   <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,7 +66,7 @@ function VerifyEmailContent() {
               </div>
             )}
 
-            {status === 'error' && (
+            {!isSuccess && (
               <div className="text-center space-y-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full">
                   <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
