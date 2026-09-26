@@ -4,6 +4,5 @@
   "outputDirectory": ".next",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "ignoreCommand": "npm run lint"
+  "framework": "nextjs"
 }
