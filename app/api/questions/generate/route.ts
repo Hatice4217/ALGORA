@@ -266,9 +266,10 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
           temperature: 1.0,
           seed: Math.floor(Math.random() * 2147483647),
           maxOutputTokens: 2000,
-          // 2.5 ailesi varsayılan olarak "düşünüyor" ve token bütçesini yiyip
-          // boş/kesik JSON döndürüyor (aralıklı 500'lerin kaynağı). Kapatıyoruz.
-          thinkingConfig: { thinkingBudget: 0 },
+          // NOT (26 Eylül): thinkingConfig.thinkingBudget:0 KALDIRILDI —
+          // gemini-flash-lite-latest artık 3.x ailesine işaret ediyor ve o aile
+          // bu parametreyi INVALID_ARGUMENT ile reddediyor (canlıda 502 sebebiydi).
+          // 3.x ailesinde thinking zaten 0 token harcıyor (probe ile ölçüldü).
         }
       })
     });
