@@ -28,7 +28,7 @@ export default function ResetPasswordPage() {
   }>({ type: null, text: '' });
 
   // Kurtarma linki Supabase tarafından oturum kurar (detectSessionInUrl);
-  // client init yarışına karşı kısa süre session'ı yoklarız
+  // PKCE kodu kaçırılırsa açıkça çeviririz, sonra kısa süre session'ı yoklarız
   useEffect(() => {
     let attempts = 0;
     const checkSession = async () => {
@@ -45,7 +45,24 @@ export default function ResetPasswordPage() {
         setSessionChecked(true);
       }
     };
-    checkSession();
+
+    const init = async () => {
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get('code');
+        if (code) {
+          // Kod tek kullanımlıktır; exchange sonucundan bağımsız olarak
+          // oturum durumunu polling ile teyit ederiz
+          await dbHelpers.exchangeRecoveryCode(code);
+          // URL'i temizle: yenilemede "kod kullanıldı" hatası olmasın
+          url.searchParams.delete('code');
+          window.history.replaceState({}, '', url.pathname + url.search);
+        }
+      }
+      checkSession();
+    };
+
+    init();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

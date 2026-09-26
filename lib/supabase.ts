@@ -667,6 +667,26 @@ export const dbHelpers = {
     }
   },
 
+  // PKCE kurtarma kodunu oturuma çevir (detectSessionInUrl kaçırırsa yedek);
+  // kod zaten tüketilmişse hata döner ama oturum kurulmuş olabilir — çağıran taraf
+  // sonucu getCurrentUser ile teyit etmeli
+  exchangeRecoveryCode: async (code: string) => {
+    if (!supabase) {
+      return { data: null, error: 'Supabase not initialized' };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) {
+        return { data: null, error: error.message };
+      }
+      return { data, error: null };
+    } catch (error) {
+      console.error('exchangeRecoveryCode error:', error);
+      return { data: null, error: 'Oturum kurulamadı' };
+    }
+  },
+
   deleteAccount: async (userId: string, password: string) => {
     if (!supabase) {
       return { data: null, error: 'Supabase not initialized' };
