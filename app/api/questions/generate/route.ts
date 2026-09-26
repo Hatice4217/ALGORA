@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../../../../lib/supabase';
 import { PLAN_LIMITS } from '../../../../lib/subscription-config';
+import { rateLimit } from '../../../../lib/rate-limit';
 
 // Yapay zekaya gönderilecek katı sistem promptu
 const SYSTEM_PROMPT = `Sen Türkiye'deki üniversite sınavlarına (TYT, AYT) hazırlık yapan öğrenciler için soru üreten bir yapay zeka asistanısın.
@@ -80,6 +81,16 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // 0.1 BURST LİMİTİ — kullanıcı başına anlık istismarı sınırlar
+    // (kredi sistemi günlük maliyeti zaten sınırlar; bu anlık fırtınayı keser)
+    const burst = rateLimit(`generate:${user.id}`, 10, 60_000);
+    if (!burst.ok) {
+      return NextResponse.json(
+        { error: 'Çok fazla istek gönderildi. Lütfen bir dakika sonra tekrar deneyin.' },
+        { status: 429, headers: { 'Retry-After': String(burst.retryAfterSec) } }
       );
     }
 

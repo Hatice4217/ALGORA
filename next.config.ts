@@ -12,6 +12,39 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   generateEtags: true,
   productionBrowserSourceMaps: false, // Disable source maps in production for smaller bundle size
+  // Güvenlik header'ları (HSTS Vercel tarafından zaten ekleniyor)
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              // Next.js inline bootstrap script'leri ve style'ları için unsafe-inline şart
+              "script-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              // Google profil fotoğrafları + Supabase storage
+              "img-src 'self' data: https://lh3.googleusercontent.com https://*.supabase.co",
+              // next/font fontları self-host'lar; data: ikonlar için
+              "font-src 'self' data:",
+              // Supabase REST + auth (+ realtime için wss)
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+            ].join('; '),
+          },
+        ],
+      },
+    ];
+  },
   // Image optimization
   images: {
     formats: ['image/avif', 'image/webp'],

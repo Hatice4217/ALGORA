@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 interface VerifyEmailRequest {
   email: string;
@@ -7,6 +8,16 @@ interface VerifyEmailRequest {
 // POST /api/auth/verify-email - Send verification email
 export async function POST(request: NextRequest) {
   try {
+    // 0. IP bazlı limit — auth'suz Brevo relay kötüye kullanımını erken keser
+    // (body parse'tan ÖNCE: garbage istekler de sayılır)
+    const ipResult = rateLimit(`verify-ip:${getClientIp(request)}`, 5, 10 * 60_000);
+    if (!ipResult.ok) {
+      return NextResponse.json(
+        { error: 'Çok fazla istek gönderildi. Lütfen bir süre sonra tekrar deneyin.' },
+        { status: 429, headers: { 'Retry-After': String(ipResult.retryAfterSec) } }
+      );
+    }
+
     const body: VerifyEmailRequest = await request.json();
     const { email } = body;
 
@@ -23,6 +34,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Geçersiz e-posta formatı' },
         { status: 400 }
+      );
+    }
+
+    // 0.5 E-posta bazlı limit — tek adrese hedefli spam'i keser
+    const emailResult = rateLimit(`verify-email:${email.toLowerCase()}`, 3, 60 * 60_000);
+    if (!emailResult.ok) {
+      return NextResponse.json(
+        { error: 'Bu adrese kısa süre içinde çok fazla onay maili gönderildi. Lütfen daha sonra tekrar deneyin.' },
+        { status: 429, headers: { 'Retry-After': String(emailResult.retryAfterSec) } }
       );
     }
 
