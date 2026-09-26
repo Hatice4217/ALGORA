@@ -648,8 +648,9 @@ export function SettingsPanel() {
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                     <p className="text-sm text-blue-800">
                       Hesabın <strong>Google</strong> ile korunduğu için şifre girmen
-                      gerekmiyor. Güvenlik için hesabını silmeden hemen önce giriş yapmış
-                      olman yeterli. Sorun yaşarsan çıkış yapıp tekrar giriş yap ve tekrar dene.
+                      gerekmiyor. Güvenlik için hesabını silmeden önceki <strong>son 10 dakika
+                      içinde</strong> giriş yapmış olman gerekiyor. “Girişiniz çok eski” şeklinde
+                      bir uyarı alırsan çıkış yapıp tekrar giriş yap ve tekrar dene.
                     </p>
                   </div>
                 ) : (

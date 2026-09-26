@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       if (Date.now() - lastSignInMs > GOOGLE_REAUTH_WINDOW_MS) {
         return NextResponse.json(
           {
-            error: 'Güvenlik için hesap silme işleminin hemen öncesinde giriş yapmış olmalısın. Çıkış yapıp tekrar giriş yap, ardından tekrar dene.',
+            error: 'Güvenlik için hesabını silebilmen için son 10 dakika içinde giriş yapmış olman gerekiyor. Lütfen çıkış yapıp tekrar giriş yap ve ardından tekrar dene.',
             code: 'REAUTH_REQUIRED',
           },
           { status: 403 }
