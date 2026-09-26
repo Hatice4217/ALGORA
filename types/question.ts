@@ -57,6 +57,23 @@ export interface WeeklyStats {
   buGunToplam: string;
 }
 
+// Dashboard "Son Çözülenler" panel kaydı (answers JOIN questions, en yeniden eskiye)
+export interface RecentAnswer {
+  id: string;
+  answered_at: string;
+  selected_answer: number;
+  question: {
+    id: string;
+    subject: string;
+    topic: string;
+    difficulty: string; // beginner | intermediate | advanced
+    question_text: string;
+    choices: string[];
+    correct_answer: number;
+    explanation: string;
+  };
+}
+
 // Settings Types
 export interface UserProfile {
   id?: string;

@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { scrollToElementId } from '../lib/smooth-scroll';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -36,15 +37,9 @@ export function MobileMenu({ isOpen, onClose, children }: MobileMenuProps) {
 
   const handleLinkClick = (href: string) => {
     onClose();
-    // Smooth scroll to section if it's an anchor link - Optimized to prevent forced reflow
+    // Anchor link ise yumuşak kaydır (rAF animasyonu; menü kapanış geçişiyle çakışmasın diye bir kare beklenir)
     if (href.startsWith('#')) {
-      // Use requestAnimationFrame to batch DOM read and write operations
-      requestAnimationFrame(() => {
-        const element = document.querySelector(href);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
-        }
-      });
+      requestAnimationFrame(() => scrollToElementId(href.slice(1)));
     }
   };
 

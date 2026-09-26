@@ -19,7 +19,7 @@ import { authFetch } from '../../lib/api';
 
 import type { SubscriptionSummary, PaidPlanId } from '../../types/subscription';
 
-import type { Question, StudyRecord, Statistics, NewRecord, WeeklyStats } from '../../types/question';
+import type { Question, StudyRecord, Statistics, NewRecord, WeeklyStats, RecentAnswer } from '../../types/question';
 
 // Type definitions for dashboard
 interface SubjectStat {
@@ -93,6 +93,8 @@ export default function DashboardPage() {
   // ödeme akışı yalnızca kullanıcı yükseltmeyi seçerse açılır
   const [quotaExhausted, setQuotaExhausted] = useState<{ periodEnd: string | null } | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  // "Son Çözülenler" paneli (gerçek answers verisi; mock değil)
+  const [recentAnswers, setRecentAnswers] = useState<RecentAnswer[]>([]);
 
   // Initialize userName from localStorage immediately (prevents flash)
   useEffect(() => {
@@ -247,6 +249,16 @@ export default function DashboardPage() {
             // Continue with empty values if subject breakdown not found
           }
 
+          // Son çözülen sorular (dashboard sağ panel)
+          try {
+            const recentData = await dbHelpers.getRecentAnswers(user.id);
+            if (recentData.data) {
+              setRecentAnswers(recentData.data as unknown as RecentAnswer[]);
+            }
+          } catch (recentError) {
+            console.log('Son çözülenler alınamadı:', recentError);
+          }
+
           // Paket bilgisi
           fetchSubscription();
         } // Close if (user) block
@@ -257,6 +269,21 @@ export default function DashboardPage() {
 
     fetchData();
   }, []);
+
+  // "Son Çözülenler" kaydındaki soruyu cevaplarıyla birlikte tekrar görüntüle
+  const reviewRecentAnswer = (kayit: RecentAnswer) => {
+    setCurrentQuestion({
+      id: kayit.question.id,
+      question: kayit.question.question_text,
+      choices: kayit.question.choices,
+      correctAnswer: kayit.question.correct_answer,
+      explanation: kayit.question.explanation,
+      subject: kayit.question.subject,
+      topic: kayit.question.topic,
+    });
+    setSelectedAnswer(kayit.selected_answer);
+    setShowAnswer(true);
+  };
 
   const generateQuestion = async () => {
     setIsGeneratingQuestion(true);
@@ -349,6 +376,15 @@ export default function DashboardPage() {
           console.log('Could not save answer:', answerRecord.error);
         } else {
           console.log('Answer saved successfully');
+          // "Son Çözülenler" panelini tazele (yeni cevap listede anında görünsün)
+          try {
+            const recentData = await dbHelpers.getRecentAnswers(user.id);
+            if (recentData.data) {
+              setRecentAnswers(recentData.data as unknown as RecentAnswer[]);
+            }
+          } catch (recentError) {
+            console.log('Son çözülenler tazelenemedi:', recentError);
+          }
         }
       } catch (recordError) {
         console.log('Could not save answer, but updating statistics:', recordError);
@@ -610,6 +646,8 @@ export default function DashboardPage() {
             setSeciliZorluk={setSelectedDifficulty}
             soruUret={generateQuestion}
             cevapSec={selectAnswer}
+            sonCozulenler={recentAnswers}
+            kayitIncele={reviewRecentAnswer}
             modalKapat={() => {
               setCurrentQuestion(null);
               setShowAnswer(false);

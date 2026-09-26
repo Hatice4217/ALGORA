@@ -5,16 +5,14 @@ import Link from 'next/link';
 import { Logo } from '@/app/components/ui/Logo';
 import { Button } from '@/app/components/ui/Button';
 import { MobileMenu, HamburgerButton } from '@/components/MobileMenu';
+import { scrollToElementId } from '@/lib/smooth-scroll';
 
 export function LandingHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
     e.preventDefault();
-    const element = document.getElementById(targetId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    scrollToElementId(targetId);
   };
 
   return (

@@ -1,10 +1,14 @@
 import { getSubjectColor } from '../../lib/utils';
+import type { RecentAnswer } from '../../types/question';
 
 interface Question {
   question: string;
   choices: string[];
   correctAnswer: number;
   explanation: string;
+  // "Son Çözülenler" kaydından incelenirken dolar (rozet doğru ders/zorluğu göstersin)
+  subject?: string;
+  difficulty?: string;
 }
 
 interface Difficulty {
@@ -25,7 +29,30 @@ interface QuestionPracticeProps {
   setSeciliZorluk: (zorluk: string) => void;
   soruUret: () => void;
   cevapSec: (index: number) => void;
+  sonCozulenler: RecentAnswer[];
+  kayitIncele: (kayit: RecentAnswer) => void;
   modalKapat: () => void;
+}
+
+// DB difficulty değerleri → Türkçe etiketler
+const difficultyEtiketleri: Record<string, string> = {
+  beginner: 'Başlangıç',
+  intermediate: 'Orta',
+  advanced: 'İleri',
+};
+
+// "2 saat önce" biçiminde görece zaman etiketi
+function gecmisZamaniEtiketi(isoTarih: string): string {
+  const dakika = Math.floor((Date.now() - new Date(isoTarih).getTime()) / 60_000);
+  if (dakika < 1) return 'az önce';
+  if (dakika < 60) return `${dakika} dakika önce`;
+  const saat = Math.floor(dakika / 60);
+  if (saat < 24) return `${saat} saat önce`;
+  const gun = Math.floor(saat / 24);
+  if (gun < 7) return `${gun} gün önce`;
+  return new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short' }).format(
+    new Date(isoTarih)
+  );
 }
 
 export function QuestionPractice({
@@ -41,17 +68,10 @@ export function QuestionPractice({
   setSeciliZorluk,
   soruUret,
   cevapSec,
+  sonCozulenler,
+  kayitIncele,
   modalKapat,
 }: QuestionPracticeProps) {
-  // Mock veri - Son çözülen sorular
-  const sonCozulenler = [
-    { id: 1, ders: 'Matematik', konu: 'Türev', zorluk: 'Orta', tarih: '2 saat önce' },
-    { id: 2, ders: 'Tarih', konu: 'Kurtuluş Savaşı', zorluk: 'Zor', tarih: '5 saat önce' },
-    { id: 3, ders: 'Fizik', konu: 'Kuvvet ve Hareket', zorluk: 'Başlangıç', tarih: '1 gün önce' },
-    { id: 4, ders: 'Kimya', konu: 'Periyodik Sistem', zorluk: 'Orta', tarih: '2 gün önce' },
-    { id: 5, ders: 'Türkçe', konu: 'Paragraf Bilgisi', zorluk: 'İleri', tarih: '3 gün önce' },
-  ];
-
   // Ders ikonları
   const dersIkonlari: Record<string, string> = {
     'Matematik': '🧮',
@@ -171,33 +191,47 @@ export function QuestionPractice({
               <p className="text-xs text-slate-500 mb-4">Geçmiş çalışma kayıtların</p>
 
               <div className="space-y-3">
-                {sonCozulenler.map((kayit) => (
-                  <div
-                    key={kayit.id}
-                    className="group border border-slate-200 rounded-lg p-3 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${getSubjectColor(kayit.ders)} text-white`}>
-                            {kayit.ders}
-                          </span>
-                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
-                            {kayit.zorluk}
-                          </span>
-                        </div>
-                        <p className="text-sm font-medium text-slate-700 mb-1">{kayit.konu}</p>
-                        <p className="text-xs text-slate-500">{kayit.tarih}</p>
-                      </div>
-                      <button className="ml-2 p-1.5 rounded-lg hover:bg-purple-50 opacity-0 group-hover:opacity-100 transition-all">
-                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-                    </div>
+                {sonCozulenler.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center">
+                    <p className="text-sm text-slate-500">Henüz çözülmüş soru yok.</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Soru çözdükçe kayıtların burada birikir.
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  sonCozulenler.map((kayit) => (
+                    <div
+                      key={kayit.id}
+                      className="group border border-slate-200 rounded-lg p-3 hover:border-purple-300 hover:shadow-md transition-all"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getSubjectColor(kayit.question.subject)} text-white`}>
+                              {kayit.question.subject}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+                              {difficultyEtiketleri[kayit.question.difficulty] ?? kayit.question.difficulty}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium text-slate-700 mb-1">{kayit.question.topic}</p>
+                          <p className="text-xs text-slate-500">{gecmisZamaniEtiketi(kayit.answered_at)}</p>
+                        </div>
+                        <button
+                          onClick={() => kayitIncele(kayit)}
+                          className="ml-2 p-1.5 rounded-lg hover:bg-purple-50 opacity-0 group-hover:opacity-100 transition-all"
+                          aria-label="Soruyu tekrar görüntüle"
+                          title="Soruyu tekrar görüntüle"
+                        >
+                          <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -211,11 +245,12 @@ export function QuestionPractice({
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
               <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-lg text-sm font-medium ${getSubjectColor(seciliDers)} text-white`}>
-                  {seciliDers}
+                <span className={`px-3 py-1 rounded-lg text-sm font-medium ${getSubjectColor(mevcutSoru.subject || seciliDers)} text-white`}>
+                  {mevcutSoru.subject || seciliDers}
                 </span>
                 <span className="px-3 py-1 rounded-lg text-sm font-medium bg-slate-100 text-slate-600">
-                  {seciliZorluk === 'baslangic' ? 'Başlangıç' : seciliZorluk === 'orta' ? 'Orta' : 'İleri'}
+                  {difficultyEtiketleri[mevcutSoru.difficulty ?? ''] ??
+                    (seciliZorluk === 'baslangic' ? 'Başlangıç' : seciliZorluk === 'orta' ? 'Orta' : 'İleri')}
                 </span>
               </div>
               <button

@@ -481,6 +481,37 @@ export const dbHelpers = {
     );
   },
 
+  // Dashboard "Son Çözülenler" paneli: kullanıcının en son cevapladığı sorular
+  // (RLS "Users can view own answers" ile kendi satırlarını görür; questions herkese açık)
+  getRecentAnswers: async (userId: string, limit: number = 5, client?: SupabaseClient) => {
+    const db = client || supabase!;
+    return withConnectionCheck(
+      async () => {
+        try {
+          const { data, error } = await db
+            .from('answers')
+            .select(
+              'id, answered_at, selected_answer, question:questions(id, subject, topic, difficulty, question_text, choices, correct_answer, explanation)'
+            )
+            .eq('user_id', userId)
+            .order('answered_at', { ascending: false })
+            .limit(limit);
+
+          if (error) {
+            console.log('getRecentAnswers hatası:', error.message);
+            return { data: null, error: error.message };
+          }
+          return { data, error: null };
+        } catch (error) {
+          console.log('getRecentAnswers istisnası:', error);
+          return { data: null, error: 'Son çözülenler alınamadı' };
+        }
+      },
+      { data: null, error: 'Bağlantı yok' },
+      'getRecentAnswers'
+    );
+  },
+
   getUserStats: async (userId: string, client?: SupabaseClient) => {
     const db = client || supabase!;
     return withConnectionCheck(
