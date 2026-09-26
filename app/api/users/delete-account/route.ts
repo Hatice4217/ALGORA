@@ -18,10 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => null);
-    const password = body?.password;
-    if (!password || typeof password !== 'string') {
-      return NextResponse.json({ error: 'Şifre gereklidir' }, { status: 400 });
-    }
+    const password = typeof body?.password === 'string' ? body.password : '';
 
     // 1) Çağıranın kimliğini oturum token'ından doğrula
     const token = request.headers.get('Authorization')?.replace('Bearer ', '');
@@ -36,16 +33,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Oturum doğrulanamadı' }, { status: 401 });
     }
 
-    // 2) Şifreyi sunucu tarafında doğrula
-    const { error: signInError } = await anonClient.auth.signInWithPassword({
-      email: user.email,
-      password,
-    });
-    if (signInError) {
-      return NextResponse.json({ error: 'Şifre hatalı' }, { status: 401 });
+    // 2) Sağlayıcıya göre kimlik teyidi:
+    // - E-posta/şifre kullanıcısı: şifre sunucu tarafında doğrulanır (mevcut kalkan aynen kalır)
+    // - Google OAuth kullanıcısının şifresi YOKTUR; çıplak bypass yerine "son 10 dk içinde
+    //   giriş yapılmış olması" (re-auth penceresi) kontrol edilir
+    const isGoogleUser = user.app_metadata?.provider === 'google';
+    if (isGoogleUser) {
+      const GOOGLE_REAUTH_WINDOW_MS = 10 * 60_000;
+      const lastSignInMs = user.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0;
+      if (Date.now() - lastSignInMs > GOOGLE_REAUTH_WINDOW_MS) {
+        return NextResponse.json(
+          {
+            error: 'Güvenlik için hesap silme işleminin hemen öncesinde giriş yapmış olmalısın. Çıkış yapıp tekrar giriş yap, ardından tekrar dene.',
+            code: 'REAUTH_REQUIRED',
+          },
+          { status: 403 }
+        );
+      }
+    } else {
+      if (!password) {
+        return NextResponse.json({ error: 'Şifre gereklidir' }, { status: 400 });
+      }
+      const { error: signInError } = await anonClient.auth.signInWithPassword({
+        email: user.email,
+        password,
+      });
+      if (signInError) {
+        return NextResponse.json({ error: 'Şifre hatalı' }, { status: 401 });
+      }
     }
 
     // 3) Kullanıcı verilerini tüm tablolardan sil (questions global içeriktir, silinmez)
+    // Not: user_stats / subject_breakdown VIEW'dır — DELETE almaz, verileri zaten
+    // answers/study_sessions silinince boşalır; bu yüzden listede yoklar
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
@@ -53,8 +73,6 @@ export async function POST(request: NextRequest) {
     const userTables = [
       'answers',
       'study_sessions',
-      'subject_breakdown',
-      'user_stats',
       'user_profiles',
       'credit_transactions',
       'payment_claims',
@@ -73,6 +91,22 @@ export async function POST(request: NextRequest) {
         console.warn(`delete-account: ${userTables[i]} temizleme uyarısı:`, result.error.message);
       }
     });
+
+    // 3.5) questions satırlarını anonimleştir (deleteUser'dan HEMEN ÖNCE):
+    // created_by FK'sı cascade'siz olduğu için bu adım olmadan auth kaydı SİLİNEMEZ
+    // (canlıda doğrulandı: FK ihlali → "Hesap silinemedi"). Sorular global içerik
+    // havuzunda kalır, kullanıcıya bağlılığı kesilir → tam KVKK uyumlu anonimleşme.
+    const { error: anonError } = await adminClient
+      .from('questions')
+      .update({ created_by: null })
+      .eq('created_by', user.id);
+    if (anonError) {
+      console.error('delete-account: questions anonimleştirilemedi:', anonError.message);
+      return NextResponse.json(
+        { error: 'Hesap silinemedi. Lütfen tekrar deneyin.' },
+        { status: 500 }
+      );
+    }
 
     // 4) Auth kullanıcısını kalıcı olarak sil
     const { error: deleteUserError } = await adminClient.auth.admin.deleteUser(user.id);

@@ -96,6 +96,9 @@ export function SettingsPanel() {
   // Delete account modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
+  // Google ile giriş yapan kullanıcının şifresi yoktur; silme modalı şifre yerine
+  // "son 10 dk içinde giriş" bilgisi gösterir (backend aynı kontrolü yapar)
+  const [isGoogleUser, setIsGoogleUser] = useState(false);
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -277,6 +280,10 @@ export function SettingsPanel() {
 
   const handleDeleteAccount = () => {
     setShowDeleteModal(true);
+    // Giriş sağlayıcısını belirle (Google kullanıcıları şifre girmeden silme akışını görür)
+    authHelpers.getCurrentUser().then(({ user }) => {
+      setIsGoogleUser(user?.app_metadata?.provider === 'google');
+    });
   };
 
   const handleCloseDeleteModal = () => {
@@ -287,7 +294,7 @@ export function SettingsPanel() {
   };
 
   const handleConfirmDeleteAccount = async () => {
-    if (!deletePassword || !deleteConfirmed) return;
+    if (!deleteConfirmed || (!isGoogleUser && !deletePassword)) return;
 
     setIsDeleting(true);
 
@@ -298,7 +305,8 @@ export function SettingsPanel() {
         return;
       }
 
-      const result = await dbHelpers.deleteAccount(user.id, deletePassword);
+      // Google kullanıcıları şifresiz siler (backend "yakın oturum" kontrolü yapar)
+      const result = await dbHelpers.deleteAccount(user.id, isGoogleUser ? '' : deletePassword);
       if (result.error) {
         showToast(result.error, 'error');
         return;
@@ -636,13 +644,23 @@ export function SettingsPanel() {
                   </ul>
                 </div>
 
-                <Input
-                  label="Onaylamak için şifrenizi girin"
-                  type="password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  placeholder="••••••••"
-                />
+                {isGoogleUser ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <p className="text-sm text-blue-800">
+                      Hesabın <strong>Google</strong> ile korunduğu için şifre girmen
+                      gerekmiyor. Güvenlik için hesabını silmeden hemen önce giriş yapmış
+                      olman yeterli. Sorun yaşarsan çıkış yapıp tekrar giriş yap ve tekrar dene.
+                    </p>
+                  </div>
+                ) : (
+                  <Input
+                    label="Onaylamak için şifrenizi girin"
+                    type="password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                )}
 
                 <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
@@ -671,7 +689,7 @@ export function SettingsPanel() {
                     fullWidth
                     onClick={handleConfirmDeleteAccount}
                     isLoading={isDeleting}
-                    disabled={!deletePassword || !deleteConfirmed}
+                    disabled={(!isGoogleUser && !deletePassword) || !deleteConfirmed}
                   >
                     Hesabımı Sil
                   </Button>

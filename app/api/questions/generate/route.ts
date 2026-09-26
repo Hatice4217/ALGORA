@@ -252,110 +252,150 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     // Gemini REST API endpoint - lite versiyon (daha hızlı)
     const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 
-    // API key URL query param yerine header ile gönderilir
-    // (key, loglarda/proxy kayıtlarında URL içinde görünmez)
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{
-          role: 'user',
-          parts: [{ text: prompt }]
-        }],
-        generationConfig: {
-          temperature: 1.0,
-          seed: Math.floor(Math.random() * 2147483647),
-          maxOutputTokens: 2000,
-          // NOT (26 Eylül): thinkingConfig.thinkingBudget:0 KALDIRILDI —
-          // gemini-flash-lite-latest artık 3.x ailesine işaret ediyor ve o aile
-          // bu parametreyi INVALID_ARGUMENT ile reddediyor (canlıda 502 sebebiydi).
-          // 3.x ailesinde thinking zaten 0 token harcıyor (probe ile ölçüldü).
+    // Gemini'nin döndürebileceği (Türkçe/İngilizce) soru şeması
+    interface GeminiSoru {
+      soruMetni?: string;
+      secenekler?: string[];
+      dogruCevapIndex?: number;
+      aciklama?: string;
+      question?: string;
+      choices?: string[];
+      correctAnswer?: number;
+      explanation?: string;
+    }
+
+    // 5-6. Gemini çağrısı + JSON şema doğrulaması (rapor 5.1 adım 6b):
+    // şema dışı/bozuk üretim öğrenciye HİÇ gösterilmez; arka planda elenir, YENİ bir
+    // seed ile otomatik yeniden denenir. Öğrenciden tek kredi düşülür (ikinci çağrının
+    // maliyeti sisteme aittir); kredi iadesi yalnızca TÜM denemeler başarısız olursa
+    // catch bloğunda yapılır. HTTP seviyesindeki hatalar (401/403/429/5xx) yeniden
+    // denenmez — anında iade edilir.
+    const MAX_ATTEMPTS = 2; // 1 deneme + 1 otomatik yeniden deneme
+    let parsedQuestion: GeminiSoru | null = null;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      // API key URL query param yerine header ile gönderilir
+      // (key, loglarda/proxy kayıtlarında URL içinde görünmez)
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          contents: [{
+            role: 'user',
+            parts: [{ text: prompt }]
+          }],
+          generationConfig: {
+            temperature: 1.0,
+            // Her denemede farklı seed → aynı bozuk çıktının tekrarı engellenir
+            seed: Math.floor(Math.random() * 2147483647),
+            maxOutputTokens: 2000,
+            // NOT (26 Eylül): thinkingConfig.thinkingBudget:0 KALDIRILDI —
+            // gemini-flash-lite-latest artık 3.x ailesine işaret ediyor ve o aile
+            // bu parametreyi INVALID_ARGUMENT ile reddediyor (canlıda 502 sebebiydi).
+            // 3.x ailesinde thinking zaten 0 token harcıyor (probe ile ölçüldü).
+          }
+        })
+      });
+
+      if (!response.ok) {
+        await refundCredit();
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Gemini API Error:', errorData);
+
+        if (response.status === 401 || response.status === 403) {
+          return NextResponse.json(
+            { error: 'Gemini API anahtarı geçersiz. Lütfen .env.local dosyasını kontrol edin.' },
+            { status: 401 }
+          );
         }
-      })
-    });
 
-    if (!response.ok) {
-      await refundCredit();
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Gemini API Error:', errorData);
+        if (response.status === 429) {
+          return NextResponse.json(
+            { error: 'API kullanım limiti aşıldı. Lütfen birkaç dakika bekleyin.' },
+            { status: 429 }
+          );
+        }
 
-      if (response.status === 401 || response.status === 403) {
+        // Upstream hata detayı istemciye yansıtılmaz; sunucu loguna yeterli
+        console.error('generate: Gemini upstream hatası:', response.status, JSON.stringify(errorData).slice(0, 500));
         return NextResponse.json(
-          { error: 'Gemini API anahtarı geçersiz. Lütfen .env.local dosyasını kontrol edin.' },
-          { status: 401 }
+          { error: 'Soru üretimi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.' },
+          { status: 502 }
         );
       }
 
-      if (response.status === 429) {
-        return NextResponse.json(
-          { error: 'API kullanım limiti aşıldı. Lütfen birkaç dakika bekleyin.' },
-          { status: 429 }
+      const data = await response.json();
+      console.log('Gemini API Response:', JSON.stringify(data, null, 2));
+
+      // API yanıtını al
+      const candidate = data.candidates?.[0];
+      const aiResponse = candidate?.content?.parts?.[0]?.text;
+
+      if (!aiResponse) {
+        // Teşhis için finishReason + token kullanımı (MAX_TOKENS = bütçe yetersiz)
+        console.error(
+          `generate: Gemini yanıtı boş (deneme ${attempt}/${MAX_ATTEMPTS}) — finishReason:`,
+          candidate?.finishReason,
+          'usage:',
+          JSON.stringify(data.usageMetadata ?? {})
         );
+        continue; // boş yanıt → öğrenciye gösterilmeden elenir, yeniden denenir
       }
 
-      // Upstream hata detayı istemciye yansıtılmaz; sunucu loguna yeterli
-      console.error('generate: Gemini upstream hatası:', response.status, JSON.stringify(errorData).slice(0, 500));
-      return NextResponse.json(
-        { error: 'Soru üretimi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.' },
-        { status: 502 }
-      );
-    }
+      console.log('AI Response Text:', aiResponse);
 
-    const data = await response.json();
-    console.log('Gemini API Response:', JSON.stringify(data, null, 2));
+      // JSON parse - esnek extraction
+      try {
+        // Doğrudan JSON dene
+        parsedQuestion = JSON.parse(aiResponse);
+      } catch {
+        console.error('JSON parse hatası, alternatif yöntemler deneniyor...');
 
-    // 6. API yanıtını al
-    const candidate = data.candidates?.[0];
-    const aiResponse = candidate?.content?.parts?.[0]?.text;
-
-    if (!aiResponse) {
-      // Teşhis için finishReason + token kullanımı (MAX_TOKENS = bütçe yetersiz)
-      console.error('Gemini yanıtı boş — finishReason:', candidate?.finishReason, 'usage:', JSON.stringify(data.usageMetadata ?? {}));
-      throw new Error(`Gemini boş yanıt döndürdü (finishReason: ${candidate?.finishReason ?? 'yok'})`);
-    }
-
-    console.log('AI Response Text:', aiResponse);
-
-    // 7. JSON parse et - esnek extraction
-    let parsedQuestion;
-    try {
-      // Doğrudan JSON dene
-      parsedQuestion = JSON.parse(aiResponse);
-    } catch {
-      console.error('JSON parse hatası, alternatif yöntemler deneniyor...');
-
-      // Markdown code block içindeki JSON'ı bulmaya çalış
-      const jsonMatch = aiResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
-        try {
-          parsedQuestion = JSON.parse(jsonMatch[1]);
-          console.log('JSON markdown block içinden başarıyla çıkarıldı');
-        } catch (e) {
-          console.error('Markdown JSON parse hatası:', e);
-        }
-      }
-
-      // Hala yoksa, süslü parantez içindeki JSON'ı bul
-      if (!parsedQuestion) {
-        const braceMatch = aiResponse.match(/\{[\s\S]*\}/);
-        if (braceMatch) {
+        // Markdown code block içindeki JSON'ı bulmaya çalış
+        const jsonMatch = aiResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
           try {
-            parsedQuestion = JSON.parse(braceMatch[0]);
-            console.log('JSON süslü parantez içinden başarıyla çıkarıldı');
+            parsedQuestion = JSON.parse(jsonMatch[1]);
+            console.log('JSON markdown block içinden başarıyla çıkarıldı');
           } catch (e) {
-            console.error('Brace JSON parse hatası:', e);
+            console.error('Markdown JSON parse hatası:', e);
+          }
+        }
+
+        // Hala yoksa, süslü parantez içindeki JSON'ı bul
+        if (!parsedQuestion) {
+          const braceMatch = aiResponse.match(/\{[\s\S]*\}/);
+          if (braceMatch) {
+            try {
+              parsedQuestion = JSON.parse(braceMatch[0]);
+              console.log('JSON süslü parantez içinden başarıyla çıkarıldı');
+            } catch (e) {
+              console.error('Brace JSON parse hatası:', e);
+            }
           }
         }
       }
 
-      // Hala bulunamazsa hata fırlat
-      if (!parsedQuestion) {
-        console.error('Ham yanıt (ilk 300 karakter):', aiResponse.substring(0, 300));
-        throw new Error('Yapay zekadan geçersiz JSON yanıtı alındı');
+      // Şema kontrolü: soru metni + tam 4 seçenek yoksa bu üretim elenir
+      const secenekler = parsedQuestion?.secenekler || parsedQuestion?.choices || [];
+      const metinVar = Boolean(parsedQuestion?.soruMetni || parsedQuestion?.question);
+      if (!parsedQuestion || !metinVar || secenekler.length !== 4) {
+        console.error(
+          `generate: şema dışı üretim elendi (deneme ${attempt}/${MAX_ATTEMPTS}), ham yanıt (ilk 300 karakter):`,
+          aiResponse.substring(0, 300)
+        );
+        parsedQuestion = null;
+        continue; // rapor 5.1 adım 6b: 4. adıma dön, yeniden dene
       }
+      break; // geçerli üretim → döngüden çık
+    }
+
+    if (!parsedQuestion) {
+      // Tüm denemeler başarısız → kredi catch bloğunda iade edilir
+      throw new Error('Yapay zekadan geçerli JSON yanıtı alınamadı (tüm denemeler başarısız)');
     }
 
     // 8. Yanıt formatını kontrol et ve standart forma çevir
