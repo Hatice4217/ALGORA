@@ -257,3 +257,55 @@ F1 forgot-password (önce stub gerçek `resetPasswordForEmail`'e bağlanacak) ·
 **Genel desen:** Yeni yazılan kod (abonelik sistemi, admin-auth) yüksek standartta; açıkların çoğu (bkz. Bölüm 1-2) **yeni güçlerin eski koda uygulanmamış olmasından** kaynaklanıyor — clear-users'a verifyAdminKey eklenmemesi (KRİTİK-1), view'larda security_invoker eksikliği (KRİTİK-3), eski route'larda VALID_PLANS deseninin olmayışı (ORTA). Yani sistem kötü tasarlanmış değil; **tutarlılaştırılmaya ihtiyacı var.** Faz 0'daki 8 düzeltmenin tamamı bu "yeni standardı eskiye yayma" işidir.
 
 **Doğrulanamayanlar:** K-3 whitelist deseni yalnızca 1 route'da; U-9 erişilebilirlik kısmi (aria ~15 kullanım, focus trap yok); P-3'teki webpack bloğu Turbopack altında etkisiz (önceki denetimde doğrulandı — ölü kod).
+
+---
+
+# 8. Final Tarama — 5 Agent'lı Yeniden Denetim (26 Eylül 2026)
+
+> Yöntem: 5 paralel salt-okunur agent (API route'lar · abonelik/kredi · istemci+auth akışları · config/deploy/env · yeni güvenlik kodu), Faz 0 8/8 + Faz A/B/C doğrulamalarından sonra.
+> **Ana sonuç: KRİTİK bulgu 0.** Çok katmanlı savunma (atomik deduct, ACL üçlü-revoke, refund guard, timing-safe admin, HMAC token, IDOR=0, secret sızıntısı=0) kanıtlı yerinde. Bulanların büyük bölümü "yeni standartların eski koda uygulanmaması" ailesinden — Bölüm 7.6'daki desen aynen geçerli.
+
+## 8.1 ORTA bulgular (öncelikli düzeltme adayları)
+
+| # | Bulgu | Kanıt | Tür |
+|---|---|---|---|
+| F1 | `getClientIp` XFF **ilk** hop'u alıyor → IP rate limit header-spoof ile bypass; verify-email relay'de tek savunma e-posta limiti kalır | `lib/rate-limit.ts:45-51` | güvenlik |
+| F2 | `claim` route DB `error.message`'ını ham olarak istemciye döndürüyor (şema/RLS detayı sızabilir) | `app/api/subscription/claim/route.ts:57-63` | güvenlik |
+| F3 | Generate'de rollover RPC hatası loglanıp YUTULUYOR → dönemı dolmuş free kullanıcı haksız 402 alabilir | `generate/route.ts:135-137` | kullanıcı-kaybı |
+| F4 | Approve'da status güncellemesi `.eq('status','pending')` şartsız → paralel approve TOCTOU (çift plan_change tx) | `admin/review/route.ts:101-104` | bütünlük |
+| F5 | Logout modül-seviyesi `authToken`'ı temizlemiyor → aynı sekmede kullanıcı değişince bayat token | `lib/api.ts:7,33-37` (`logout()` hiç çağrılmıyor) | istemci |
+| F6 | Onboarding'de profil kayıt hatası sessiz yutuluyor + insert (upsert değil) → tekrar-onboarding'de döngü/hata görünmez (ÇÖK-6 aynen) | `onboarding/page.tsx:98-104`, `lib/supabase.ts:269-274` | UX |
+| F7 | ÇÖK-4 hâlâ açık: haftalık ilerleme `Math.random()` mock verisi (kullanıcı kuralı: canlıda mock yok) | `users/stats/route.ts:136-151` | veri dürüstlüğü |
+| F8 | Verify token tek kullanımlık değil (24s) + GET query string'de → log/geçmiş sızıntısında 24s doğrulama çalınması | `email-token.ts:6`, `confirm/route.ts:21` | güvenlik |
+| F9 | Confirm'da listUsers taraması 20×200=4000 kullanıcı tavanı → büyüyen DB'de meşru onay sessizce "invalid" | `confirm/route.ts:41-57` | ölçek |
+| F10 | CSP `script-src 'unsafe-inline'` → XSS'te ikinci savunma katmanı yok (nonce-CSP middleware ile çözülür) | `next.config.ts:30` | savunma-derinlik |
+| F11 | LGS kullanıcısı sessizce TYT sorusu alıyor (bildirim yok; ders listesi LGS içermiyor) | `dashboard/page.tsx:81-82,203-209` | UX |
+
+## 8.2 DÜŞÜK bulgular (hızlı temizlik paketi)
+
+- `difficulty` whitelist `'toString'` gibi prototype üyelerini geçiriyor (`in` yerine `Object.hasOwn`) — `generate/route.ts:204,237`
+- questions insert başarısızsa kredi yakılır + `questionId` rastgele UUID'ye düşer → cevap FK patlar — `generate/route.ts:466,482-484`
+- `subscription` GET hata metni passthrough — `subscription/route.ts:52-57`
+- claim oluşturmada rate limit yok (spam → admin liste şişer) — `claim/route.ts`
+- refund_credit'te `< credits_limit` üst sınırı yok + satır-yoksa yetim tx (ÇÖK-10 bileşenleri) — `subscriptions.sql:173-188`
+- `authFetch` 401'de gerçek yenileme/yönlendirme yok — `lib/api.ts:79-84`
+- `lib/backend-test.ts` token loglayan ölü test kodu — silinmeli
+- Log hijyeni: Gemini ham yanıtı + Brevo gövdesi + kullanıcı e-postası console'a — `generate/route.ts:373,390`, `verify-email/route.ts:201`, `lib/supabase.ts:131`
+- Callback success metni onboarding'e giden için yanıltıcı; `expired` durumunda CTA register'a gidiyor (resend daha doğru) — `callback/page.tsx:101`, `verify-email/page.tsx:69-95`
+- topic fallback 'genel' (prompt) vs 'Genel' (insert) tutarsız — `generate/route.ts:250,471`
+- approve dönem ucu JS `setMonth` vs SQL `INTERVAL '1 month'` (ay-sonu taşması) — `review/route.ts:67-68`
+- günlük reset tx'inde reason='monthly_reset' adlandırma — `daily_free_quota.sql:102-105`
+- callback setTimeout'lar clearTimeout'suz — `callback/page.tsx:27,45,52,56,61`
+
+## 8.3 Config/Deploy/env
+
+- `.env.example` bayat: **eksik 4** (SUPABASE_SERVICE_ROLE_KEY, ADMIN_SECRET_KEY, GEMINI_API_KEY, BREVO_API_KEY); **ölü 3** (OPENAI_API_KEY, NEXT_PUBLIC_GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+- Ölü bağımlılıklar: `resend`, `@google/generative-ai` (hiç import yok; Gemini raw fetch)
+- next.config.ts:60-118 webpack console-silme hack'i hâlâ duruyor (Turbopack yoksayar — ölü kod; ayrıca `optimizeCss` Turbopack uyumu gözden geçirilmeli)
+- CI secret isimleri (`SUPABASE_URL`/`SUPABASE_ANON_KEY`) repo secret'larıyla eşleşme doğrulanmalı (CI yeşil olduğu için büyük ihtimalle tamam)
+- Kök dizin test kalıntıları (BACKEND_TEST_SCRIPT.js, MANUAL_EMAIL_CHECK.js, 5× *_FIX/RESULTS.md) — hijyen
+- Sağlam: secret sızıntısı YOK (takip edilen dosyalarda canlı anahtar yok), .gitignore kapsamlı, vercel.json minimal + ignoreCommand yok, headers() yerinde, `openai` paketi gerçekten silinmiş
+
+## 8.4 Sonuç
+
+Faz 0 + A/B/C sonrası sistemde **kritik açık kalmadı**; kalanlar tutarlılaştırma (F1-F4, F7), ölçek/kalite (F9, düşük maddeler) ve savunma-derinlik yatırımları (F8, F10). Önerilen kapanış sırası: hızlı düzeltme paketi (F1-F7 + 8.2'deki tek-satırlıklar) → savunma hazırlık dosyası.
