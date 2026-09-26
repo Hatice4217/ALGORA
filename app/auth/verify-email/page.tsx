@@ -22,13 +22,8 @@ function VerifyEmailContent() {
       }
 
       try {
-        // Debug: Log the raw token
-        console.log('🔍 Raw token:', token);
-        console.log('🔍 Token length:', token.length);
-
         // Decode token (simple email token)
         const email = atob(token);
-        console.log('✅ Decoded email:', email);
 
         // For demo purposes, we'll redirect to login with success message
         // In production, you would make an API call to verify the email

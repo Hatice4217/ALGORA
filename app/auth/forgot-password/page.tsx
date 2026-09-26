@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Logo } from '../../components/ui/Logo';
 import { validateEmail, sanitizeInput } from '@/lib/security';
+import { dbHelpers } from '@/lib/supabase';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -72,9 +73,17 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      // Supabase password reset would go here
-      // For now, simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const { error } = await dbHelpers.resetPassword(formData.email);
+
+      if (error) {
+        setFormMessage({
+          type: 'error',
+          text: typeof error === 'string' && error
+            ? error
+            : 'Bir hata oluştu. Lütfen tekrar deneyin.'
+        });
+        return;
+      }
 
       // Show success message bar
       setFormMessage({
@@ -86,7 +95,7 @@ export default function ForgotPasswordPage() {
       setTimeout(() => {
         router.push('/auth/login');
       }, 3000);
-    } catch (error) {
+    } catch {
       // Show error message bar
       setFormMessage({
         type: 'error',

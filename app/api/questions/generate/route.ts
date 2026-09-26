@@ -281,9 +281,11 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
         );
       }
 
+      // Upstream hata detayı istemciye yansıtılmaz; sunucu loguna yeterli
+      console.error('generate: Gemini upstream hatası:', response.status, JSON.stringify(errorData).slice(0, 500));
       return NextResponse.json(
-        { error: 'Gemini API hatası: ' + (errorData.error?.message || 'Bilinmeyen hata') },
-        { status: response.status }
+        { error: 'Soru üretimi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.' },
+        { status: 502 }
       );
     }
 
@@ -410,12 +412,9 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     console.error('Error message:', (error as Error)?.message);
     console.error('Error stack:', (error as Error)?.stack);
 
-    // Genel hata
+    // Genel hata — internal detay istemciye sızdırılmaz (sunucu logunda)
     return NextResponse.json(
-      {
-        error: 'Yapay zeka ile soru üretilirken bir hata oluştu.',
-        details: (error as Error)?.message || 'Bilinmeyen hata'
-      },
+      { error: 'Yapay zeka ile soru üretilirken bir hata oluştu.' },
       { status: 500 }
     );
   }

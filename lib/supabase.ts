@@ -57,8 +57,6 @@ export const authHelpers = {
         return { data: null, error: { message: 'Supabase bağlantısı yok' } };
       }
 
-      console.log('🔄 SignUp başlatılıyor:', { email, name });
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -71,7 +69,8 @@ export const authHelpers = {
         },
       });
 
-      console.log('📊 SignUp sonucu:', { data, error });
+      // Token/session içermeyen güvenli log
+      console.log('📊 SignUp sonucu:', { userId: data.user?.id, hasSession: !!data.session });
 
       // Hata kontrolü
       if (error) {
@@ -622,6 +621,49 @@ export const dbHelpers = {
     } catch (error) {
       console.error('changePassword error:', error);
       return { data: null, error: 'Şifre değiştirilirken bir hata oluştu' };
+    }
+  },
+
+  resetPassword: async (email: string) => {
+    if (!supabase) {
+      return { data: null, error: 'Supabase not initialized' };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('resetPassword error:', error);
+      return { data: null, error: 'Şifre sıfırlama bağlantısı gönderilirken bir hata oluştu' };
+    }
+  },
+
+  // Kurtarma linkinden gelen oturumla çalışır; mevcut şifre sorulmaz
+  setNewPassword: async (newPassword: string) => {
+    if (!supabase) {
+      return { data: null, error: 'Supabase not initialized' };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        return { data: null, error: error.message };
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error('setNewPassword error:', error);
+      return { data: null, error: 'Şifre güncellenirken bir hata oluştu' };
     }
   },
 

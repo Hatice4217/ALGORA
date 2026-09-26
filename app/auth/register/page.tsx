@@ -145,8 +145,6 @@ export default function RegisterPage() {
         formData.name
       );
 
-      console.log('Kayıt sonucu:', { data, error });
-
       // 1. YÖNTEM: Supabase'den direkt hata mesajını kontrol et
       if (error) {
         console.error('Kayıt hatası:', error);

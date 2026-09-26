@@ -133,6 +133,18 @@ export default function DashboardPage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await authHelpers.signOut();
+    } catch {
+      // Oturum sunucuda zaten yoksa da çıkışa yönlendir
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('userName');
+    }
+    router.push('/auth/login');
+  };
+
   const [newRecord, setNewRecord] = useState<NewRecord>({
     ders: '',
     saat: '',
@@ -479,7 +491,7 @@ export default function DashboardPage() {
                   {subscriptionSummary.subscription.credits_remaining} / {subscriptionSummary.subscription.credits_limit}
                 </button>
               )}
-              <Button variant="outline" size="md">
+              <Button variant="outline" size="md" onClick={handleLogout}>
                 Çıkış Yap
               </Button>
             </div>
