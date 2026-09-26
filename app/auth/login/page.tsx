@@ -26,6 +26,8 @@ export default function LoginPage() {
   const [remainingTime, setRemainingTime] = useState<number>(0);
   const [registeredMessage, setRegisteredMessage] = useState<string | null>(null);
   const [verifiedMessage, setVerifiedMessage] = useState<string | null>(null);
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendInfo, setResendInfo] = useState<string | null>(null);
 
   // URL params'dan email ve registered bilgisini al
   useEffect(() => {
@@ -167,6 +169,31 @@ export default function LoginPage() {
     }
   };
 
+  // Onay maili gelmedi veya süresi doldu → yeniden gönder
+  // (endpoint IP 5/10dk + e-posta 3/saat limitiyle korunur)
+  const handleResendVerification = async () => {
+    if (!formData.email || resendBusy) return;
+    setResendBusy(true);
+    setResendInfo(null);
+    try {
+      const response = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email }),
+      });
+      const data = await response.json().catch(() => ({}));
+      setResendInfo(
+        response.ok
+          ? 'Onay maili yeniden gönderildi. Kutunuzu (ve spam klasörünü) kontrol edin.'
+          : data.error || 'Mail gönderilemedi. Lütfen bir süre sonra tekrar deneyin.'
+      );
+    } catch {
+      setResendInfo('Sunucuya ulaşılamadı. Lütfen tekrar deneyin.');
+    } finally {
+      setResendBusy(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setFormMessage({ type: null, text: '' });
@@ -238,6 +265,18 @@ export default function LoginPage() {
           <p className="text-gray-600 mb-8">
             Hesabına giriş yaparak öğrenmeye devam et
           </p>
+
+          {/* Registered Success Message */}
+          {registeredMessage && (
+            <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <p className="text-sm text-green-800">{registeredMessage}</p>
+              </div>
+            </div>
+          )}
 
           {/* Email Verified Success Message */}
           {verifiedMessage && (
@@ -360,6 +399,23 @@ export default function LoginPage() {
               </div>
             )}
           </form>
+
+          {/* Onay maili yeniden gönderme */}
+          <div className="mt-4 text-center space-y-2">
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={!formData.email || resendBusy}
+              className="text-sm text-purple-600 hover:text-purple-700 underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {resendBusy ? 'Gönderiliyor...' : 'Onay maili gelmedi mi? Yeniden gönder'}
+            </button>
+            {resendInfo && (
+              <p className={`text-xs ${resendInfo.includes('gönderildi') ? 'text-green-700' : 'text-red-700'}`}>
+                {resendInfo}
+              </p>
+            )}
+          </div>
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">

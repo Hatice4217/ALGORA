@@ -78,6 +78,8 @@ export default function DashboardPage() {
     gucluAlanlar: [],
   }); // Empty state - no mock data
   const [selectedSubject, setSelectedSubject] = useState('Matematik');
+  // Onboarding'de seçilen sınav türü (üretim isteğine gider; LGS müfredatı üretimde TYT'ye düşer)
+  const [profileExamType, setProfileExamType] = useState<'TYT' | 'AYT'>('TYT');
   const [selectedDifficulty, setSelectedDifficulty] = useState('baslangic');
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -196,6 +198,19 @@ export default function DashboardPage() {
                 localStorage.setItem('userName', profile.data.name);
               }
             }
+            // Onboarding seçimlerini üretim varsayılanlarına bağla
+            if (profile && profile.data) {
+              if (profile.data.exam_type === 'AYT') {
+                setProfileExamType('AYT');
+              }
+              const kayitliDersler: string[] = Array.isArray(profile.data.subjects)
+                ? profile.data.subjects
+                : [];
+              const gecerliDers = kayitliDersler.find((d) => SUBJECTS.includes(d));
+              if (gecerliDers) {
+                setSelectedSubject(gecerliDers);
+              }
+            }
           } catch (profileError) {
             console.log('Profile not found, using metadata');
           }
@@ -298,7 +313,7 @@ export default function DashboardPage() {
           subject: selectedSubject,
           topic: 'Genel',
           difficulty: selectedDifficulty,
-          exam_type: 'TYT',
+          exam_type: profileExamType,
           // Sıradaki sorunun öncekinden farklı olması için mevcut soru metnini gönder
           previous_question: currentQuestion?.question ?? null,
         }),

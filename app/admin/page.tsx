@@ -59,9 +59,11 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Key localStorage'da varsa otomatik giriş dene
+  // Key sessionStorage'da varsa otomatik giriş dene (sekme kapanınca silinir;
+  // localStorage kalıcı saklamayı güvenlik gereği kaldırdık — eski kayıtları da temizle)
   useEffect(() => {
-    const saved = localStorage.getItem('adminKey');
+    localStorage.removeItem('adminKey');
+    const saved = sessionStorage.getItem('adminKey');
     if (saved) {
       setAdminKey(saved);
       fetchClaims(saved);
@@ -71,7 +73,7 @@ export default function AdminPage() {
   const handleLogin = async () => {
     const ok = await fetchClaims(adminKey);
     if (ok) {
-      localStorage.setItem('adminKey', adminKey);
+      sessionStorage.setItem('adminKey', adminKey);
     }
   };
 

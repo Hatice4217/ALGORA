@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authHelpers } from '@/lib/supabase';
+import { authHelpers, dbHelpers } from '@/lib/supabase';
 import { Logo } from '../../components/ui/Logo';
 
 export default function AuthCallbackPage() {
@@ -47,9 +47,9 @@ export default function AuthCallbackPage() {
           }
 
           setStatus('success');
-          // Check if user has completed onboarding
-          // For now, redirect to dashboard
-          setTimeout(() => router.push('/dashboard'), 1000);
+          // Onboarding'i tamamlamamış Google kullanıcısı direkt dashboard'a düşemez
+          const { completed } = await dbHelpers.hasCompletedOnboarding(user.id);
+          setTimeout(() => router.push(completed ? '/dashboard' : '/onboarding'), 1000);
         } else {
           setStatus('error');
           setErrorMessage('Geçersiz OAuth callback');
