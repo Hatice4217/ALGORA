@@ -1906,3 +1906,24 @@ Planın 8 adımı eksiksiz uygulandı (dün onaylanan revize 2 planı):
 ### Session Bitişi
 - Bitiş: kullanıcının 3 adımlı öncelik listesi tamam — build ×3 yeşil, smoke yeşil
 - Sıradaki adım: commit + push (deploy) → canlı teyit; ardından kalan temizlik adayları (dark/en ölü seçenekleri, 5 ölü paket, dev artıkları, README)
+
+## 27 Eylül 2026 - Cumartesi (Sunucu tarafı tekrar yasağı — "her girişte aynı soru" bug'ı)
+
+### 🐛 Teşhis (kullanıcı raporu + kod taraması)
+- Belirti: her oturumun İLK üretilen sorusu hep aynı; sonraki üretimler farklı
+- Kök zincir: tekrar önleme YALNIZCA istemcinin oturumluk `previous_question`'ıyla çalışıyordu → state reload'da ölünce her oturumun ilk çağrısı birebir aynı prompt'la gidiyor (subject/topic/difficulty sabit + previous_question=null) → flash-lite küçük model, özdeş prompt'ta rastgele seed + temp 1.0'a rağmen aynı "kanonik" soruya yakınsıyor
+- Sunucuda oturumlar arası hafıza YOKTU: questions tablosuna yazılıyor ama hiç okunmuyordu
+
+### 🔧 Çözüm (route.ts, tek bölge)
+- Gemini çağrısı ÖNCESİNE service-role (adminClient) ile `questions` tablosundan bu öğrencinin bu derste son 5 sorusu okunuyor (`subject` + `created_by` filtresi, `created_at DESC LIMIT 5`, metin başına 300 karakter kırpma)
+- Ban listesi = sunucu geçmişi (5) + istemci previous_question'ı → Set ile tekilleştirme → TEKRAR YASAĞI bloğuna numaralı liste olarak gömülüyor
+- Non-fatal tasarım: SELECT hata verirse üretim eski davranışla devam eder (sadece log); liste boşsa (ilk üretim) genel ÇEŞİTLİLİK bloğu
+
+### ✅ E2E Doğrulama (kalıcı probe metodolojisi)
+- Test kullanıcısı (admin createUser) → gerçek oturum → **İKİ ardışık üretim çağrısı, ikisinde de previous_question=null** (sayfa tazeleme simülasyonu)
+- Q1 "kırtasiye kalem-defter" problemi, Q2 "otobüs bagaj limiti" problemi → FARKLI ✅ (düzelme öncesi ikisi de aynı kanonik soruya düşüyordu)
+- Temizlik: answers/questions/credit_transactions/subscriptions + auth deleteUser (iz bırakılmadı); probe script silindi; zombi PID 24540 temizlendi
+
+### Session Bitişi
+- Bitiş: "her girişte aynı soru" bug'ı sunucu tarafı hafıza ile çözüldü + E2E kanıtlı; build ✓ (27/27)
+- Not: commit + push sonrası canlıda da aynı probe mantığıyla doğrulanabilir (kullanıcı isterse)

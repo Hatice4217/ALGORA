@@ -238,11 +238,44 @@ export async function POST(request: Request) {
 
     // 5. Gemini REST API ile direkt call
     // Tekrar önleme: aynı istek parametreleriyle Gemini hep aynı/benzer soru üretebiliyor.
-    // Önceki soru metni + rastgele seed + yüksek sıcaklık ile her seferinde yeni bir soru zorlanır.
+    // İki katman: (a) istemcinin oturumluk gönderdiği son soru metni, (b) bu öğrencinin
+    // bu derste daha önce üretilen son 5 sorusu (questions tablosundan service-role ile
+    // okunur — oturumlar arası sunucu hafızası; sayfa yenilense de ilk üretimde devreye girer).
     const previousQuestionText = safePreviousQuestion || null;
 
-    const antiRepeatBlock = previousQuestionText
-      ? `\n\nÇOK ÖNEMLİ — TEKRAR YASAĞI: Bu oturumda öğrenciye az önce şu soru soruldu:\n"${previousQuestionText}"\nBu soruyla aynı veya benzer bir soru KESİNLİKLE üretme. Farklı sayılar, farklı bağlam/kurgu ve mümkünse farklı bir alt konu kullanarak tamamen YENİ bir soru üret.`
+    let recentQuestionTexts: string[] = [];
+    try {
+      const { data: recentQuestions, error: recentError } = await adminClient
+        .from('questions')
+        .select('question_text')
+        .eq('subject', subject)
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (recentError) {
+        console.error('generate: son sorular okunamadı (tekrar yasağı zayıflar):', recentError.message);
+      } else if (recentQuestions) {
+        recentQuestionTexts = recentQuestions
+          .map((q: { question_text: string | null }) => (q.question_text || '').slice(0, 300))
+          .filter((t: string) => t.length > 0);
+      }
+    } catch (recentException) {
+      // Non-fatal: geçmiş okunamasa da üretim devam eder (istemci previous_question'ı hâlâ korur)
+      console.error('generate: son sorular sorgusu istisna:', recentException);
+    }
+
+    // Yasak listesi: sunucu geçmişi + istemciden gelen son soru (mükerrer metin tekilleştirilir)
+    const bannedQuestions = Array.from(
+      new Set([
+        ...recentQuestionTexts,
+        ...(previousQuestionText ? [previousQuestionText.slice(0, 300)] : []),
+      ])
+    );
+
+    const antiRepeatBlock = bannedQuestions.length > 0
+      ? `\n\nÇOK ÖNEMLİ — TEKRAR YASAĞI: Bu öğrenciye bu derste daha önce şu sorular soruldu:\n${bannedQuestions
+          .map((q, i) => `${i + 1}) "${q}"`)
+          .join('\n')}\nBu sorularla aynı veya benzer bir soru KESİNLİKLE üretme. Farklı sayılar, farklı bağlam/kurgu ve mümkünse farklı bir alt konu kullanarak tamamen YENİ bir soru üret.`
       : `\n\nÇEŞİTLİLİK: Yaygın bilinen örnek soruları değil, özgün bir soru üret. Sayı değerlerini ve kurguyu çeşitlendir.`;
 
     const prompt = `${SYSTEM_PROMPT}
