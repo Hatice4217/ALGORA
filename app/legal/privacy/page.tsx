@@ -75,7 +75,7 @@ const icerikler = [
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
             <h4 className="font-semibold text-gray-900 mb-3">Eğitim Bilgileri</h4>
             <ul className="list-disc pl-4 text-sm text-gray-700 space-y-2">
-              <li>Sınav türü (TYT, AYT, LGS)</li>
+              <li>Sınav türü (TYT, AYT)</li>
               <li>Hedef puan</li>
               <li>Çalışma saatleri</li>
               <li>Sınav tarihi</li>

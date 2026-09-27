@@ -64,7 +64,6 @@ export function getExamTypeName(examType: string): string {
   const names: Record<string, string> = {
     TYT: 'Temel Yeterlilik Testi',
     AYT: 'Alan Yeterlilik Testleri',
-    LGS: 'Lise Geçiş Sınavı',
   };
   return names[examType] || examType;
 }

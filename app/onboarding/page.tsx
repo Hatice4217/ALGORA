@@ -7,7 +7,6 @@ import { Select } from '../components/ui/Select';
 import { dbHelpers, authHelpers } from '../../lib/supabase';
 
 const EXAM_TYPES = [
-  { value: 'LGS', label: 'LGS', fullName: 'Lise Geçiş Sınavı (LGS)', emoji: '🎓' },
   { value: 'TYT', label: 'TYT', fullName: 'Temel Yeterlilik Testi (TYT)', emoji: '📝' },
   { value: 'AYT', label: 'AYT', fullName: 'Alan Yeterlilik Testleri (AYT)', emoji: '🎯' },
 ];
@@ -33,7 +32,6 @@ const SUBJECTS_BY_EXAM = {
     'Coğrafya',
     'Edebiyat',
   ],
-  LGS: ['Matematik', 'Türkçe', 'Fen Bilimleri', 'Sosyal Bilgiler', 'İngilizce'],
 };
 
 const TARGET_SCORES = Array.from({ length: 41 }, (_, i) => ({
@@ -152,7 +150,7 @@ export default function OnboardingPage() {
             <h2 className="text-2xl font-semibold text-gray-900 mb-6">
               Hangi sınava hazırlanıyorsun?
             </h2>
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 gap-4">
               {EXAM_TYPES.map((exam) => (
                 <button
                   key={exam.value}

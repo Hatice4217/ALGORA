@@ -17,7 +17,6 @@ import type { SettingsFormState, SettingsValidationErrors } from '../../types/qu
 const EXAM_TYPES = [
   { value: 'TYT', label: 'TYT (Temel Yeterlilik Testi)' },
   { value: 'AYT', label: 'AYT (Alan Yeterlilik Testi)' },
-  { value: 'LGS', label: 'LGS (Liseye Geçiş Sistemi)' },
 ];
 
 const THEMES = [

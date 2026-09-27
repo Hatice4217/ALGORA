@@ -141,39 +141,6 @@ INSERT INTO questions (subject, topic, difficulty, exam_type, question_text, cho
  'Ölçek 1:100.000 ise, her 1 cm = 100.000 cm = 1000 m. 2 cm = 2000 m.',
  ARRAY['harita', 'ölçek', 'coğrafya', 'tyt']),
 
--- LGS Soruları
--- LGS - Matematik - Beginner
-('Matematik', 'Oran-Orantı', 'beginner', 'LGS',
- 'Bir kitabevinde 3 kitap 45 TL"ye satılıyor. 5 kitap kaç TL"dir?',
- ARRAY['60 TL', '65 TL', '70 TL', '75 TL'],
- 3,
- '3 kitap = 45 TL ise, 1 kitap = 15 TL. 5 kitap = 5 × 15 = 75 TL.',
- ARRAY['oran-orantı', 'matematik', 'lgs']),
-
--- LGS - Türkçe - Beginner
-('Türkçe', 'Sözcükler', 'beginner', 'LGS',
- '"Güneş" kelimesinin eş anlamlısı hangisidir?',
- ARRAY['Ay', 'Yıldız', 'Gün ışığı', 'Karanlık'],
- 2,
- 'Güneş kelimesinin eş anlamlısı "gün ışığı"dır. Güneş ve gün ışığı aynı anlama gelir.',
- ARRAY['sözcük', 'eş anlam', 'türkçe', 'lgs']),
-
--- LGS - Fen Bilimleri - Beginner
-('Fen Bilimleri', 'Maddenin Halleri', 'beginning', 'LGS',
- 'Aşağıdakilerden hangisi maddenin gaz hali örneğidir?',
- ARRAY['Taş', 'Su', 'Oksijen', 'Buz'],
- 2,
- 'Oksijen gaz halinde bir maddedir. Taş katı, su sıvı, buzbuz da katı haldedir.',
- ARRAY['maddenin halleri', 'gaz', 'fen', 'lgs']),
-
--- LGS - Sosyal Bilgiler - Beginner
-('Sosyal Bilgiler', 'Türkiye Coğrafyası', 'beginner', 'LGS',
- 'Türkiye"nin başkenti neresidir?',
- ARRAY['İstanbul', 'İzmir', 'Ankara', 'Bursa'],
- 2,
- 'Türkiye"nin başkenti Ankara"dır. 1923"ten beri başkentimiz Ankara"dır.',
- ARRAY['türkiye', 'başkent', 'sosyal', 'lgs']),
-
 -- More TYT Questions
 ('Matematik', 'Trigonometri', 'intermediate', 'TYT',
  'sin(30°) + cos(60°) değeri nedir?',

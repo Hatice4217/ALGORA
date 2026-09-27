@@ -78,7 +78,7 @@ export default function DashboardPage() {
     gucluAlanlar: [],
   }); // Empty state - no mock data
   const [selectedSubject, setSelectedSubject] = useState('Matematik');
-  // Onboarding'de seçilen sınav türü (üretim isteğine gider; LGS müfredatı üretimde TYT'ye düşer)
+  // Onboarding'de seçilen sınav türü (üretim isteğine gider)
   const [profileExamType, setProfileExamType] = useState<'TYT' | 'AYT'>('TYT');
   const [selectedDifficulty, setSelectedDifficulty] = useState('baslangic');
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);

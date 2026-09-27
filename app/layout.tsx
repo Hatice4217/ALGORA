@@ -28,8 +28,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "ALGORA - AI Destekli Sınav Hazırlığı",
-  description: "YKS ve LGS sınavlarına hazırlık için yapay zeka destekli kişiselleştirilmiş sorular, detaylı analizler ve sürekli ilerleme takibi.",
-  keywords: ["YKS", "TYT", "AYT", "LGS", "sınav", "hazırlık", "AI", "yapay zeka", "öğrenme", "eğitim"],
+  description: "YKS (TYT/AYT) sınavına hazırlık için yapay zeka destekli kişiselleştirilmiş sorular, detaylı analizler ve sürekli ilerleme takibi.",
+  keywords: ["YKS", "TYT", "AYT", "sınav", "hazırlık", "AI", "yapay zeka", "öğrenme", "eğitim"],
   authors: [{ name: "ALGORA" }],
   icons: {
     icon: "/icon.svg",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "ALGORA - AI Destekli Sınav Hazırlığı",
-    description: "YKS ve LGS sınavlarına yapay zeka ile hazırlanın",
+    description: "YKS (TYT/AYT) sınavına yapay zeka ile hazırlanın",
     type: "website",
     locale: "tr_TR",
   },

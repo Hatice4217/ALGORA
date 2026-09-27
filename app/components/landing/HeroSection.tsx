@@ -13,7 +13,7 @@ export function HeroSection() {
       <div className="flex flex-col lg:flex-row items-center gap-12">
         <div className="lg:w-1/2">
           <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
-            YKS ve LGS Hazırlığında
+            YKS (TYT/AYT) Hazırlığında
             <span className="text-purple-600"> AI Destekli</span> Öğrenme
           </h1>
           <p className="text-xl text-gray-600 mb-8">
@@ -85,7 +85,7 @@ export function HeroSection() {
                   </div>
                   <div>
                     <h2 className="font-semibold">Hedef Odaklı</h2>
-                    <p className="text-sm text-gray-600">TYT, AYT, LGS</p>
+                    <p className="text-sm text-gray-600">TYT, AYT</p>
                   </div>
                 </div>
               </div>

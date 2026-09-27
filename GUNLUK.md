@@ -1803,3 +1803,25 @@ Planın 8 adımı eksiksiz uygulandı (dün onaylanan revize 2 planı):
 ### Session Bitişi
 - Bitiş: final tarama raporu dokümante edildi (2c9f16f sonrası ayrı commit gelecek); kritik bulgu sıfır — sistem Faz 0 hedefine ulaştı (tutarlılaştırma)
 - Sıradaki adım: kullanıcı kararı — hızlı düzeltme paketi (F1-F7 + tek-satırlıklar) → savunma hazırlık dosyası
+
+## [27 Eylül 2026] - Pazar (LGS'nin Üründen Tamamen Kaldırılması + BAP Formu Arşivi)
+
+### 📄 BAP Proje Formu Kaydı
+- Kullanıcının danışmana gönderdiği BAP proje önerisi formunun TAM METNİ `docs/BAP_PROJE_FORMU.md`'ye kaydedildi (10 bölüm + takvim/risk/bütçe tabloları). Başına kayıt notu eklendi
+- Formdan kritik bilgi: **hedef kitle resmen yalnızca YKS (TYT/AYT)** (Bölüm 5.5: "Hedef kitle ... yalnızca YKS'ye (TYT/AYT) hazırlanan lise öğrencileriyle sınırlandırılmıştır") → LGS kaldırma kararının resmi dayanağı
+- Formdaki maxOutputTokens notu düzeltildi: form İKİ ayrı konfigürasyon tanımlıyor — soru üretimi 1000 / Sokratik ipucu üretimi 2000 (önceki notta tek değer 1000 sanılmıştı; ipucu çağrısı zaten kodda yok)
+
+### 🗑️ LGS Temizliği (17+ dosya)
+- **Karar:** ALGORA yalnızca YKS (TYT/AYT); LGS tamamen kaldırıldı. Bu işle denetim raporundaki **F11 bulgusu (LGS→TYT sessiz fallback) ÇÖZÜLDÜ** olarak işaretlendi
+- **Fonksiyonel kod:** onboarding EXAM_TYPES + LGS ders listesi silindi (sınav kartı grid'i 3→2 kolon), SettingsPanel LGS seçeneği, `types/question.ts` exam_type union `'TYT'|'AYT'`'e daraltıldı (2 yer), `lib/utils.ts` LGS ad eşlemesi, dashboard'daki LGS yorumu
+- **SQL:** `schema.sql` iki CHECK constraint'i (user_profiles + questions) `('TYT','AYT')`'e daraltıldı; `seed.sql`'den 4 LGS sorusu silindi
+- **Yeni migrasyon: `database/remove_lgs.sql`** — canlı DB için idempotent script: ① LGS profillerini TYT'ye taşır ② LGS sorularını siler (answers CASCADE) ③ CHECK constraint'leri yeniden oluşturur + doğrulama sorguları içerir
+- **İçerik/SEO/yasal:** layout.tsx meta description + keywords + OG ("YKS (TYT/AYT)..."), Footer "YKS Strateji", Hero başlık "YKS (TYT/AYT) Hazırlığında" + rozet "TYT, AYT", DemoModal, HowItWorks "TYT veya AYT seçin", terms, privacy
+- **Test/doküman:** questions-api.test.ts examTypes dizisi + curriculum logu, MANUAL_TEST_CHECKLIST LGS maddesi, README'deki 3 LGS referansı (README'nin OpenAI/Next14 bayatlığı ayrı bilinen CFG-11 bulgusu — scope dışı bırakıldı)
+- **Doğrulama:** build ✅ → smoke: /, /onboarding, /legal/terms, /legal/privacy 200 ✅ → render edilen 4 sayfanın HTML'inde LGS sayımı 0/0/0/0 ✅ → meta description güncel ✅. Sunucu durduruldu
+- **Bilinçli kalan LGS izleri:** GUNLUK.md (tarih günlüğü — geçmişe dokunulmaz), BAP formu + F11 çözüm notu + remove_lgs.sql (kendi konuları)
+
+### Session Bitişi
+- Bitiş: LGS kod tarafında %100 temizlendi; build + smoke + HTML taraması yeşil
+- Kullanıcı yapacak: ① `database/remove_lgs.sql`'i Supabase SQL Editor'de çalıştırmak (önce Bölüm 0'daki sayım sorgularıyla ne silineceğini görebilir) ② istersen commit + deploy
+- Sıradaki adım: F1-F7 hızlı düzeltme paketi (denetim raporu Bölüm 8.1) → savunma hazırlık dosyası

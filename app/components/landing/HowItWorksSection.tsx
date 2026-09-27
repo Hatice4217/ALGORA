@@ -8,7 +8,7 @@ export function HowItWorksSection() {
     {
       step: '2',
       title: 'Sınav Seç',
-      description: 'TYT, AYT veya LGS seçin',
+      description: 'TYT veya AYT seçin',
     },
     {
       step: '3',

@@ -279,7 +279,7 @@ F1 forgot-password (önce stub gerçek `resetPasswordForEmail`'e bağlanacak) ·
 | F8 | Verify token tek kullanımlık değil (24s) + GET query string'de → log/geçmiş sızıntısında 24s doğrulama çalınması | `email-token.ts:6`, `confirm/route.ts:21` | güvenlik |
 | F9 | Confirm'da listUsers taraması 20×200=4000 kullanıcı tavanı → büyüyen DB'de meşru onay sessizce "invalid" | `confirm/route.ts:41-57` | ölçek |
 | F10 | CSP `script-src 'unsafe-inline'` → XSS'te ikinci savunma katmanı yok (nonce-CSP middleware ile çözülür) | `next.config.ts:30` | savunma-derinlik |
-| F11 | LGS kullanıcısı sessizce TYT sorusu alıyor (bildirim yok; ders listesi LGS içermiyor) | `dashboard/page.tsx:81-82,203-209` | UX |
+| F11 | LGS kullanıcısı sessizce TYT sorusu alıyor (bildirim yok; ders listesi LGS içermiyor) | `dashboard/page.tsx:81-82,203-209` | UX | ✅ **ÇÖZÜLDÜ (27 Eyl)** — LGS üründen tamamen kaldırıldı (onboarding/Settings/seeder/DB CHECK); canlı DB için `database/remove_lgs.sql` hazır (LGS profiller TYT'ye taşınır + LGS sorular silinir + constraint yenilenir — çalıştırma kullanıcıya ait) |
 
 ## 8.2 DÜŞÜK bulgular (hızlı temizlik paketi)
 

@@ -39,7 +39,7 @@ const icerikler = [
     icerik: (
       <div className="space-y-4">
         <p className="text-gray-700 leading-relaxed">
-          ALGORA, Türk eğitim sistemi (YKS - TYT/AYT, LGS) için hazırlanan öğrencilere
+          ALGORA, Türk eğitim sistemi (YKS - TYT/AYT) için hazırlanan öğrencilere
           yönelik AI destekli öğrenme platformudur:
         </p>
 

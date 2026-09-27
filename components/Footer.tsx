@@ -195,7 +195,7 @@ export function Footer() {
             {/* Category Badge */}
             <div className="inline-block mb-4">
               <span className="bg-purple-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                YKS / LGS Strateji
+                YKS Strateji
               </span>
             </div>
 

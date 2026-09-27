@@ -88,7 +88,6 @@ Comprehensive manual testing checklist for ALGORA Web MVP.
 - [ ] Navigate to onboarding after registration
 - [ ] TYT option selectable
 - [ ] AYT option selectable
-- [ ] LGS option selectable
 - [ ] Selection saves correctly
 - [ ] Next button enables after selection
 

@@ -23,7 +23,7 @@
 CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  exam_type TEXT NOT NULL CHECK (exam_type IN ('TYT', 'AYT', 'LGS')),
+  exam_type TEXT NOT NULL CHECK (exam_type IN ('TYT', 'AYT')),
   target_score INTEGER NOT NULL CHECK (target_score >= 100 AND target_score <= 500),
   subjects TEXT[] NOT NULL,
   study_hours_per_day INTEGER NOT NULL CHECK (study_hours_per_day >= 1 AND study_hours_per_day <= 24),
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS questions (
   subject TEXT NOT NULL,
   topic TEXT NOT NULL,
   difficulty TEXT NOT NULL CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
-  exam_type TEXT NOT NULL CHECK (exam_type IN ('TYT', 'AYT', 'LGS')),
+  exam_type TEXT NOT NULL CHECK (exam_type IN ('TYT', 'AYT')),
   question_text TEXT NOT NULL,
   choices TEXT[] NOT NULL CHECK (array_length(choices, 1) = 4),
   correct_answer INTEGER NOT NULL CHECK (correct_answer >= 0 AND correct_answer <= 3),

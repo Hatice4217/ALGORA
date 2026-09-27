@@ -4,7 +4,7 @@
 
 ## 🎯 Overview
 
-ALGORA is an AI-powered personal tutor platform for Turkish students preparing for YKS (TYT, AYT) and LGS exams. The platform generates personalized questions using OpenAI's GPT-4o-mini and provides detailed analytics for student progress.
+ALGORA is an AI-powered personal tutor platform for Turkish students preparing for the YKS (TYT, AYT) exams. The platform generates personalized questions using OpenAI's GPT-4o-mini and provides detailed analytics for student progress.
 
 ## 🏗️ Architecture
 
@@ -113,7 +113,7 @@ algora/
 CREATE TABLE user_profiles (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users NOT NULL,
-  exam_type TEXT NOT NULL CHECK (exam_type IN ('TYT', 'AYT', 'LGS')),
+  exam_type TEXT NOT NULL CHECK (exam_type IN ('TYT', 'AYT')),
   target_score INTEGER NOT NULL,
   subjects TEXT[] NOT NULL,
   study_hours_per_day INTEGER NOT NULL,
@@ -128,7 +128,7 @@ CREATE TABLE questions (
   subject TEXT NOT NULL,
   topic TEXT NOT NULL,
   difficulty TEXT NOT NULL CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
-  exam_type TEXT NOT NULL CHECK (exam_type IN ('TYT', 'AYT', 'LGS')),
+  exam_type TEXT NOT NULL CHECK (exam_type IN ('TYT', 'AYT')),
   question_text TEXT NOT NULL,
   choices TEXT[] NOT NULL,
   correct_answer INTEGER NOT NULL,

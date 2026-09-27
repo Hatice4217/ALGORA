@@ -240,7 +240,7 @@ describe('Question Generation API Tests', () => {
       console.log('📝 Curriculum alignment test');
       console.log('⚠️  Requires authenticated test user');
 
-      console.log('📋 Expected: YKS/LGS curriculum aligned');
+      console.log('📋 Expected: YKS curriculum aligned');
     }, TEST_TIMEOUT);
   });
 
@@ -338,7 +338,7 @@ describe('Question Generation API Tests', () => {
     }, TEST_TIMEOUT);
 
     it('should handle all exam types', () => {
-      const examTypes = ['TYT', 'AYT', 'LGS'];
+      const examTypes = ['TYT', 'AYT'];
 
       console.log('📝 Exam type tests');
       console.log('⚠️  Requires authenticated test user');

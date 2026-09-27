@@ -80,7 +80,7 @@ export interface UserProfile {
   user_id?: string;
   name: string;
   email: string;
-  exam_type: 'TYT' | 'AYT' | 'LGS';
+  exam_type: 'TYT' | 'AYT';
   target_score: number;
   exam_date?: string;
   study_hours_per_day: number;
@@ -96,7 +96,7 @@ export interface SettingsFormState {
   name: string;
   email: string;
   // Exam targets section
-  exam_type: 'TYT' | 'AYT' | 'LGS';
+  exam_type: 'TYT' | 'AYT';
   target_score: string;
   exam_date: string;
   study_hours_per_day: string;
