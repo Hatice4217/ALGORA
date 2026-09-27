@@ -33,7 +33,7 @@ const demoSteps: DemoStep[] = [
   {
     id: 'final',
     title: 'Harika! 🎉',
-    description: 'ALGORA ile YKS sınavına en iyi şekilde hazırlan. 500+ öğrenci arasına katıl!',
+    description: 'ALGORA ile YKS sınavına en iyi şekilde hazırlan. Ücretsiz hesabını oluştur, ilk sorunuzu hemen üret!',
     type: 'final'
   }
 ];

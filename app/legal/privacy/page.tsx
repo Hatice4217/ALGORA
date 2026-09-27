@@ -172,7 +172,7 @@ const icerikler = [
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
             <h4 className="font-semibold text-gray-900 mb-2">Hizmet Sağlayıcılar</h4>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Supabase (veritabanı), OpenAI (AI hizmetleri), Vercel (hosting)
+              Supabase (veritabanı), Google (Gemini API - AI hizmetleri), Vercel (hosting)
             </p>
           </div>
 
@@ -482,7 +482,7 @@ const icerikler = [
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
             <h4 className="font-semibold text-gray-900 mb-2">GDPR Uyumlu Hizmetler</h4>
             <p className="text-sm text-gray-700 leading-relaxed">
-              OpenAI gibi hizmet sağlayıcılar, GDPR uyumlu çerçevelerde veri işler
+              Google gibi hizmet sağlayıcılar, GDPR uyumlu çerçevelerde veri işler
             </p>
           </div>
         </div>

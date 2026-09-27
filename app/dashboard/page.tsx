@@ -158,11 +158,11 @@ export default function DashboardPage() {
     soru: ''
   });
 
-  // Weekly statistics state
+  // Weekly statistics state (gerçek veri kaynağı bağlanana kadar sıfır — sahte gösterim yok)
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats>({
-    buHaftaToplamSaat: '3.5',
-    buHaftaToplamSoru: 35,
-    buGunToplam: '2.0'
+    buHaftaToplamSaat: '0',
+    buHaftaToplamSoru: 0,
+    buGunToplam: '0'
   });
 
 

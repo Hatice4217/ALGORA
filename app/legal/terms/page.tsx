@@ -301,7 +301,7 @@ const icerikler = [
         <div className="bg-red-50 border-l-4 border-red-600 rounded-r-xl p-4">
           <h4 className="font-semibold text-red-900 mb-2">Yapay Zeka Sorumluluk Reddi ⚠️</h4>
           <p className="text-sm text-red-800 leading-relaxed">
-            Platformda sunulan tüm eğitim materyalleri ve sorular bir yapay zeka modeli (OpenAI GPT-4o-mini) tarafından üretilmektedir.
+            Platformda sunulan tüm eğitim materyalleri ve sorular bir yapay zeka modeli (Google Gemini API) tarafından üretilmektedir.
             Bu yapay zeka destekli içerikler eğitim amaçlı destekleyici araçlar olup, her zaman %100 doğruluk garantisi verilemez.
             Yapay zeka üretimli soruların müfredata uygunluğunu ve doğruluğunu kullanıcıların kendi sorumluluğunda kontrol etmesi gerekir.
           </p>

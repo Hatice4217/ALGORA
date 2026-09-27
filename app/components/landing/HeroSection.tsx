@@ -41,18 +41,11 @@ export function HeroSection() {
             isOpen={isDemoModalOpen}
             onClose={() => setIsDemoModalOpen(false)}
           />
-          <div className="mt-8 flex items-center gap-6">
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="w-10 h-10 rounded-full bg-purple-200 border-2 border-white shadow-sm"
-                />
-              ))}
-            </div>
+          <div className="mt-8 flex items-center gap-2">
+            <span className="text-xl">✨</span>
             <p className="text-gray-600">
-              <span className="font-semibold text-gray-900">500+</span> öğrenci
-              hazırlanıyor
+              <span className="font-semibold text-gray-900">Ücretsiz başla</span> —
+              her gün 10 soru hakkıyla dene
             </p>
           </div>
         </div>

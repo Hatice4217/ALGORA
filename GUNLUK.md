@@ -1825,3 +1825,55 @@ Planın 8 adımı eksiksiz uygulandı (dün onaylanan revize 2 planı):
 - Bitiş: LGS kod tarafında %100 temizlendi; build + smoke + HTML taraması yeşil
 - Kullanıcı yapacak: ① `database/remove_lgs.sql`'i Supabase SQL Editor'de çalıştırmak (önce Bölüm 0'daki sayım sorgularıyla ne silineceğini görebilir) ② istersen commit + deploy
 - Sıradaki adım: F1-F7 hızlı düzeltme paketi (denetim raporu Bölüm 8.1) → savunma hazırlık dosyası
+
+## [27 Eylül 2026] - Pazar 2 (Formda Olmayan Kod Kalıntıları Taraması + İlk 3 Düzeltme)
+
+### 🔍 "Kodda Var, Formda Yok" Envanteri (LGS ailesinden kalanlar)
+- **🔴 Yasal metinlerde yanlış AI sağlayıcı:** terms "OpenAI GPT-4o-mini ile üretilir" + privacy'de "OpenAI (AI hizmetleri)" üçüncü taraf işlemeci → GERÇEK: Google Gemini. KVKK aydınlatma metni yanlış şirketi işaret ediyordu
+- **🔴 Sahte "500+ öğrenci" istatistiği** (Hero + DemoModal) — saha testi yok, form 80-100 gönüllü HEDEFİ diyor
+- **🔴 Footer'da sahte blog makalesi** (hardcoded "Zaman Kaybını Durdur..." + sahte tarih/tarih bilgisine gerek yok)
+- **🟠 Ölü UI seçenekleri:** "Koyu" tema (dark mode yok) ve "English" dil (i18n yok) — profile kaydediliyor ama hiçbir bileşen okumuyor
+- **🟠 WorkRecords yarım özellik** — elle çalışma kaydı DB'ye YAZILMIYOR (useState; yenileince gider; Faz F2 zaten kayıtlı)
+- **🟡 Eski sağlayıcı kalıntıları:** test altyapısı OpenAI env/log'ları, README "Next 14 + GPT-4o-mini" (gerçek: Next 16.2.10 + React 19.2.4 — formun sürüm bilgisi DOĞRU, README bayat!)
+- **🟡 Ölü bağımlılıklar:** resend, @google/generative-ai + YENİ KEŞİF: react-hook-form + @hookform/resolvers + zod (5 paket SIFIR import)
+- **🟡 Dev artıkları:** app/logo-preview-old (PROD BUILD'E GİRİYOR), kök dizinde 7 test/result dosyası, lib/backend-test.ts (ölü + token logluyor), scripts/'te 6 canlı-DB dev scripti
+- **🆕 YENİ BULGU (kullanıcı kararı bekliyor):** Footer bülten formu SAHTE — setTimeout + yalan "abone oldunuz" mesajı, hiç API yok (forgot-password bug'ının aynısı). Çözüm seçenekleri: Brevo contacts API'ye bağla / bölümü kaldır
+
+### 🔧 İlk 3 Düzeltme (kullanıcının öncelik listesi)
+1. **Yasal metinler:** terms AI feragatnamesi "(Google Gemini API)" olarak düzeltildi; privacy işlemeci "Google (Gemini API - AI hizmetleri)" ve GDPR maddesi "Google gibi..." olarak düzeltildi
+2. **Sahte istatistik:** Hero'daki 4 sahte avatar + "500+ öğrenci hazırlanıyor" bloğu → "Ücretsiz başla — her gün 10 soru hakkıyla dene" (gerçek free plan bilgisi); DemoModal "ilk sorunuzu hemen üret" mesajına çevrildi
+3. **Sahte blog:** Footer'dan Blog butonu + 158 satırlık modal + isBlogModalOpen state + ESC handler tamamen silindi (Ürün kolonunda artık Özellikler/Nasıl Çalışır/Fiyatlandırma)
+
+### ✅ Doğrulama + 🔥 Yeni Tuzak Kaydı
+- **🔥 Zombi sunucu tuzağı (2. kez, farklı yüzü):** TaskStop npm wrapper'ı öldürüyor, next-server child'ı HAYATTA KALIYOR → yeni npm start sessizce başarısız/bayat, curl ESKI build'i servis eden sürece gidiyor. Belirti: diskte düzenleme VAR ama render ESKİ. Çözüm: TaskStop sonrası MUTLAKA netstat + taskkill //PID ile port boşaltma (bu sefer PID 13404 zombisini öldürdüm). Doğrulama sırası: önce diski grep'le (kaynak doğru mu), sonra süreci öldür, sonra taze start
+- **Yasal sayfaların sekmeli render'ı:** curl HTML'inde yalnızca AKTİF SEKME (1. madde) var → AI feragatnamesi curl ile DOĞRULANAMAZ. Doğru yöntem: build bundle grep — `.next/static/chunks/`'ta OpenAI YOK ✅, Gemini API VAR (terms+privacy chunk'ları) ✅, "500+" YOK ✅, blog metni YOK ✅
+- Landing HTML: 500+=0, Blog butonu=0, yeni hero metni=1 ✅ → build ✅ → port temizlendi
+
+### Session Bitişi
+- Bitiş: öncelik listesinin ilk 3 maddesi canlı-koda işlendi (commit yok — kullanıcı isteyince), build + bundle + HTML doğrulaması yeşil
+- Sıradaki adım: kullanıcı kararı — sahte bülten formu (Brevo'ya bağla/kaldır) + ölü seçenekler (dark/en) + 5 ölü paket + dev artıkları temizliği + logo-preview-old
+- Kullanıcı yapacak: istersen commit + deploy
+
+## 27 Eylül 2026 - Cumartesi (Sahte bülten kaldırıldı + genel sahte-UI taraması)
+
+### 🎯 Kullanıcı Kararı: Bülten Brevo'ya Bağlanmayacak, TAMAMEN KALDIRILACAK
+- Gerekçe: BAP + pilot odak; bülten altyapısı (e-posta listesi, KVKK onay checkbox'ı, unsubscribe) yeni sorumluluk; "yarım/sahte özellik taşımaktansa hiç olmaması daha temiz"
+- Footer.tsx tamamen sadeleşti: 154 satır → 48 satır. Silinenler: 'use client', 6 useState (email/loading/status/message/showNotification/subscribedEmails), handleSubmit (setTimeout mock + yalan "Bültene başarıyla abone oldunuz! 🎉"), bildirim auto-hide useEffect, 4. sütun "Gelişmelerden Haberdar Ol" + form
+- Footer artık STATİK server component (yalnızca Link importu; grid md:grid-cols-4 → md:grid-cols-3)
+
+### 🔍 Genel Sahte/Mock Tarama Sonuçları (5 grep dalgası: başarıyla/🎉, mock, ölü buton, sahte istatistik, hafta verisi)
+- **🔴 YENİ BULGU — görünen UI'da sahte veri:** dashboard `weeklyStats` başlangıç değeri HARDCODE ('3.5' saat / 35 soru / '2.0' bugün) ve setWeeklyStats HİÇ çağrılmıyor → her kullanıcı Genel Bakış'ta yalan "Bu Hafta" satırı görüyordu. Düzeltildi: hepsi 0'dan başlıyor (bundle grep ile doğrulandı: buHaftaToplamSaat:"0")
+- **🔴 /api/users/stats route'u ÖLÜ KOD + Math.random mock:** generateWeeklyProgress() her istekte UYDURMA haftalık ilerleme üretiyor (10-50 soru, %50-80) — ama kimse çağırmıyor (dashboard dbHelpers.getUserStats kullanıyor; lib/api.ts'teki getUserStats wrapper'ı da import edilmiyor). BU commit'te SİLİNMEDİ (tests/api/users-api.test.ts bağımlı) → kullanıcı kararı: route + wrapper + test birlikte temizlenmeli
+- **🟠 WorkRecords fake-save:** elle çalışma kaydı yalnızca useState — DB'ye yazmıyor, yenileyince kayboluyor (önceki kayıtla teyitli, Faz F2)
+- **🟠 time_spent: 30 hardcoded** (dashboard selectAnswer; gerçek timer yok)
+- **✅ Temiz çıktı:** DemoModal (etiketli demo, kabul edilebilir), verify-email/register/login başarı mesajları gerçek akışlara bağlı, landing'de sahte istatistik kalmadı, href="#" ölü link yok
+
+### ✅ Doğrulama + Deploy
+- build ✅ → zombi PID 10296 taskkill'lendi (tuzak 3. kez teyitli) → npm start → landing 200: "Abone Ol"=0, bülten=0, Haberdar=0, Blog=0, 500+=0, OpenAI=0, Gemini=2 chunk, Gizlilik=1, copyright=1, "Ücretsiz başla"=1
+- Bundle grep: Abone Ol=0, Haberdar=0 dosyada; weeklyStats üç alan da 0
+- Commit + push → Vercel otomatik deploy (bu 3 düzeltme + bülten kaldırma + weeklyStats sıfırlama tek commit'te)
+
+### Session Bitişi
+- Bitiş: kullanıcının iki komutu tamam — "bülteni tamamen kaldır" ✅ + "genel sahte/mock taraması" ✅ (4 gerçek bulgu: 2 düzeltildi, 2 raporlandı)
+- Sıradaki adım (kullanıcı kararı): stats route+wrapper+test temizliği, WorkRecords gerçek DB kaydı ya da kaldırma, ölü seçenekler (dark/en), 5 ölü paket, dev artıkları, README modernizasyonu
+- Kullanıcı yapacak: deploy sonrası canlıda landing + dashboard Genel Bakış'ta "Bu Hafta: 0 saat | 0 soru" görsel teyidi
