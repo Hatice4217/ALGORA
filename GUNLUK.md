@@ -1995,3 +1995,29 @@ Planın 8 adımı eksiksiz uygulandı (dün onaylanan revize 2 planı):
 ### Session Bitişi
 - Bitiş: onboarding yok; laboratuvar TYT/AYT + 2 adım; sorular 5 şıklı; 4/4 probe; commit + push + deploy doğrulama bu oturumda
 - Sıradaki: kazanım kodu eşlemesi (kullanıcı 'kazanım' kelimesi prompt'ta konu anlamında), üretim istatistiklerinde exam_type görünümü, BAP formu revizyonu
+
+## 27 Eylül 2026 - Pazar 2 (YDT: 3. Sınav Türü + 🔥 Canlı CHECK-Kısıtı Krizi Yakalandı)
+
+### 🎯 İstek
+YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YDT), examType state'i 3'lü union, MEB_SYLLABUS'a YDT objesi (İngilizce, 11 konu — kullanıcı verisi birebir).
+
+### 🔧 Değişenler
+- `lib/constants/syllabus.ts`: EXAM_TYPES + Record tipi + YDT bloğu
+- `app/api/questions/generate/route.ts`: VALID_EXAM_TYPES + VALID_SUBJECTS artık TYT ∪ AYT ∪ **YDT** (İngilizce'yi ilk denemede 400'de yakaladı — aynı tuzağın 2. turu, kök çözüm: whitelist HER ZAMAN veriden)
+- `app/dashboard/page.tsx`: state tipi + **tür değişiminde ders → türün İLK dersi** (YDT'de Matematik yok → hardcoded 'Matematik' reseti bozuk ders grid'i üretirdi; getSubjects(tur)[0] fix'i)
+- `components/dashboard/QuestionPractice.tsx`: SINAV_TURLERI + 'İngilizce' 🌐 ikonu
+- types/question.ts'deki profile union'ları DEĞİŞMEDİ (user_profiles/Settings katmanı — DB CHECK ile uyumlu ayrı katman)
+
+### 🔥 KRİTİK: Canlı DB CHECK kısıtları 5 şık/YDT'yi ENGELLİYORDU (probe yakaladı)
+- Belirti: soru EKRANA geliyordu (A/B testleri 200) ama `questions` INSERT'i canlıda DÜŞÜYOR: `violates check constraint "questions_choices_check"`
+- Kök: schema'daki 4-şık era kısıtları hâlâ canlıda: `choices CHECK (array_length=4)`, `correct_answer <= 3`, `exam_type IN ('TYT','AYT')` (+ answers.selected_answer <= 3)
+- **Etki:** b3fef26'dan beri her üretilen soru DB'ye kaydedİLEMİYORDU → placeholder UUID → answer FK reddi → Son Çözülenler/istatistik sessizce bozuluyordu
+- Çözüm: `database/5sik_ve_ydt.sql` migration'ı yazıldı (DO bloklarıyla isimden bağımsız DROP + choices'a NOT VALID → eski 4 şıklık satırlar grandfathered, yeni yazım 5 zorunlu). **Kullanıcı SQL Editor'de çalıştıracak** — sonrası Test C probe ile doğrulanacak
+- schema.sql taban çizgisi de eşitlendi (yeni kurulumda doğru)
+
+### ✅ Doğrulama
+- build ✓ · probe: A (YDT+İngilizce+Türkçe-İngilizce Çeviri → 200, 5 şık, exam_type=YDT, gerçek çeviri sorusu) ✓ · B (konusuz → Genel) ✓ · C (DB exam_type=YDT) ⏳ migration sonrası
+- Yeni tuzak güncellemesi: whitelist-from-data kuralı artık 3 türü de kapsıyor; "yeni tür ekle" checklist'i: syllabus.ts → VALID_* (veriden) → toggle listesi → ikon → DB CHECK
+
+### Session Bitişi
+- Bitiş: kod tarafı %100 canlıya gidiyor; DB migration'ı kullanıcı adımı — çalıştırınca Test C probe ile kapanacak

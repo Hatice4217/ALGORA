@@ -6,10 +6,10 @@
  * MEB resmi kazanım kodu çerçevesiyle eşleme ayrı bir sonraki aşamadır.
  */
 
-export const EXAM_TYPES = ['TYT', 'AYT'] as const;
+export const EXAM_TYPES = ['TYT', 'AYT', 'YDT'] as const;
 export type ExamType = (typeof EXAM_TYPES)[number];
 
-export const MEB_SYLLABUS: Record<"TYT" | "AYT", Record<string, string[]>> = {
+export const MEB_SYLLABUS: Record<"TYT" | "AYT" | "YDT", Record<string, string[]>> = {
   TYT: {
     "Matematik": ["Temel Kavramlar", "Sayı Basamakları", "Bölünebilme", "Rasyonel Sayılar", "Birinci Dereceden Denklemler", "Mutlak Değer", "Üslü ve Köklü İfadeler", "Çarpanlara Ayırma", "Oran-Orantı ve Problemler", "Kümeler", "Fonksiyonlar", "Polinomlar", "Sayma ve Olasılık"],
     "Türkçe": ["Sözcükte Anlam", "Cümlede Anlam", "Paragrafta Anlam", "Ses Bilgisi", "Sözcük Türleri", "Fiiller ve Fiilimsiler", "Cümle Ögeleri", "Cümle Türleri", "Yazım Kuralları", "Noktalama İşaretleri", "Anlatım Bozuklukları"],
@@ -29,6 +29,21 @@ export const MEB_SYLLABUS: Record<"TYT" | "AYT", Record<string, string[]>> = {
     "Biyoloji": ["Sinir Sistemi ve Duyu Organları", "Destek ve Hareket Sistemi", "Sindirim Sistemi", "Dolaşım Sistemi", "Solunum Sistemi", "Boşaltım Sistemi", "Üreme Sistemi", "Komünite ve Popülasyon Ekolojisi", "Genden Proteine", "Bitki Biyolojisi", "Canlılarda Enerji Dönüşümleri"],
     "Tarih": ["Tarih ve Zaman", "İlk Çağ Uygarlıkları", "Türklerin İslamiyet'i Kabulü", "Osmanlı Devleti (Kuruluş-Yıkılış)", "Milli Mücadele", "Atatürk İlke ve İnkılapları", "Çağdaş Türk ve Dünya Tarihi"],
     "Coğrafya": ["Doğadaki Ekstremler", "Küresel İklim Değişimi", "Ekonomik Faaliyetler", "Türkiye'nin Ekonomisi", "Küresel Ortam: Bölgeler ve Ülkeler", "Çevre ve Toplum"]
+  },
+  YDT: {
+    "İngilizce": [
+      "Kelime Bilgisi (Vocabulary)",
+      "Dil Bilgisi (Grammar / Tenses, Modals, vb.)",
+      "Cloze Test",
+      "Cümle Tamamlama (Sentence Completion)",
+      "İngilizce-Türkçe Çeviri",
+      "Türkçe-İngilizce Çeviri",
+      "Paragraf Okuma (Reading Comprehension)",
+      "Diyalog Tamamlama (Dialogue Completion)",
+      "Anlamca En Yakın Cümleyi Bulma",
+      "Paragraf Tamamlama",
+      "Anlam Bütünlüğünü Bozan Cümle"
+    ]
   }
 };
 

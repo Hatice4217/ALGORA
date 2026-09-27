@@ -64,13 +64,13 @@ const difficultyMap: Record<string, string> = {
 };
 
 // Sunucu tarafı girdi whitelist'i — MEB_SYLLABUS'taki tüm derslerden türetilir
-// (TYT ∪ AYT), böylece veri dosyasıyla asla ayrışmaz.
+// (TYT ∪ AYT ∪ YDT), böylece veri dosyasıyla asla ayrışmaz.
 // Enum alanlar kapanık küme; serbest metin alanları (topic, previous_question)
 // uzunluk sınırına zorlanır, aksi halde doğrudan prompt'a girebilir.
 const VALID_SUBJECTS: readonly string[] = [
-  ...new Set([...getSubjects('TYT'), ...getSubjects('AYT')]),
+  ...new Set([...getSubjects('TYT'), ...getSubjects('AYT'), ...getSubjects('YDT')]),
 ];
-const VALID_EXAM_TYPES: readonly string[] = ['TYT', 'AYT'];
+const VALID_EXAM_TYPES: readonly string[] = ['TYT', 'AYT', 'YDT'];
 const TOPIC_MAX_LENGTH = 100;
 const PREVIOUS_QUESTION_MAX_LENGTH = 2000;
 

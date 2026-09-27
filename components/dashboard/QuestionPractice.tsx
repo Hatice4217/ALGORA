@@ -21,7 +21,7 @@ interface Difficulty {
 interface QuestionPracticeProps {
   // Sınav türü state'i dashboard'ta yaşar (üretim isteğine gider)
   examType: string;
-  setExamType: (tur: 'TYT' | 'AYT') => void;
+  setExamType: (tur: 'TYT' | 'AYT' | 'YDT') => void;
   DERSLER: string[];
   ZORLUKLER: Difficulty[];
   KONULAR: string[];
@@ -63,7 +63,7 @@ function gecmisZamaniEtiketi(isoTarih: string): string {
   );
 }
 
-const SINAV_TURLERI: Array<'TYT' | 'AYT'> = ['TYT', 'AYT'];
+const SINAV_TURLERI: Array<'TYT' | 'AYT' | 'YDT'> = ['TYT', 'AYT', 'YDT'];
 
 export function QuestionPractice({
   examType,
@@ -102,6 +102,7 @@ export function QuestionPractice({
     'Coğrafya': '🌍',
     'Felsefe': '🤔',
     'Din Kültürü': '✨',
+    'İngilizce': '🌐',
   };
 
   // Adım 1'de ders kartına basınca ders seçilir ve akış 2. adıma ilerler
@@ -111,7 +112,7 @@ export function QuestionPractice({
   };
 
   // Sınav türü değişimi parent'ta ders + konu sıfırlamasını tetikler
-  const sinavTuruDegistir = (tur: 'TYT' | 'AYT') => {
+  const sinavTuruDegistir = (tur: 'TYT' | 'AYT' | 'YDT') => {
     if (tur !== examType) {
       setExamType(tur);
     }

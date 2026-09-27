@@ -338,7 +338,7 @@ describe('Question Generation API Tests', () => {
     }, TEST_TIMEOUT);
 
     it('should handle all exam types', () => {
-      const examTypes = ['TYT', 'AYT'];
+      const examTypes = ['TYT', 'AYT', 'YDT'];
 
       console.log('📝 Exam type tests');
       console.log('⚠️  Requires authenticated test user');

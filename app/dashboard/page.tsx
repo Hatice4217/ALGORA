@@ -67,8 +67,8 @@ export default function DashboardPage() {
     gucluAlanlar: [],
   }); // Empty state - no mock data
   const [selectedSubject, setSelectedSubject] = useState('Matematik');
-  // Sınav türü artık laboratuvarda seçilir (TYT | AYT toggle)
-  const [examType, setExamType] = useState<'TYT' | 'AYT'>('TYT');
+  // Sınav türü artık laboratuvarda seçilir (TYT | AYT | YDT toggle)
+  const [examType, setExamType] = useState<'TYT' | 'AYT' | 'YDT'>('TYT');
   const [selectedDifficulty, setSelectedDifficulty] = useState('baslangic');
   // Konu seçilmeden üretim yapılamaz; ders/sınav türü değişince sıfırlanır
   const [selectedTopic, setSelectedTopic] = useState('');
@@ -585,7 +585,8 @@ export default function DashboardPage() {
             examType={examType}
             setExamType={(tur) => {
               setExamType(tur);
-              setSelectedSubject('Matematik'); // her iki sınavda da ortak ders
+              // Türün ilk dersi varsayılan olur (TYT/AYT → Matematik, YDT → İngilizce)
+              setSelectedSubject(getSubjects(tur)[0] ?? 'Matematik');
               setSelectedTopic('');
             }}
             DERSLER={getSubjects(examType)}
