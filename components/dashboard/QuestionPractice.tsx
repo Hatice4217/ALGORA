@@ -395,61 +395,77 @@ export function QuestionPractice({
 
             {/* Modal Content */}
             <div className="p-6 space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold text-slate-800 mb-6">
-                  {mevcutSoru.question}
-                </h3>
-              </div>
+              {/* Soru gövdesi — yeni soru üretilirken eski soruyla etkileşim fiziksel olarak kesilir */}
+              <div className="relative">
+                <div className={`space-y-6 ${soruUretiliyor ? 'opacity-50 pointer-events-none select-none' : ''}`}>
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-800 mb-6">
+                      {mevcutSoru.question}
+                    </h3>
+                  </div>
 
-              <div className="space-y-3">
-                {mevcutSoru.choices.map((secenek: string, index: number) => {
-                  let butonSinifi = 'border-slate-200 hover:border-purple-300 bg-white';
+                  <div className="space-y-3">
+                    {mevcutSoru.choices.map((secenek: string, index: number) => {
+                      let butonSinifi = 'border-slate-200 hover:border-purple-300 bg-white';
 
-                  if (cevapGoster) {
-                    if (index === mevcutSoru.correctAnswer) {
-                      butonSinifi = 'border-emerald-500 bg-emerald-50';
-                    } else if (index === seciliCevap && index !== mevcutSoru.correctAnswer) {
-                      butonSinifi = 'border-red-400 bg-red-50';
-                    }
-                  } else if (seciliCevap === index) {
-                    butonSinifi = 'border-purple-500 bg-purple-50';
-                  }
+                      if (cevapGoster) {
+                        if (index === mevcutSoru.correctAnswer) {
+                          butonSinifi = 'border-emerald-500 bg-emerald-50';
+                        } else if (index === seciliCevap && index !== mevcutSoru.correctAnswer) {
+                          butonSinifi = 'border-red-400 bg-red-50';
+                        }
+                      } else if (seciliCevap === index) {
+                        butonSinifi = 'border-purple-500 bg-purple-50';
+                      }
 
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => cevapSec(index)}
-                      disabled={cevapGoster}
-                      className={`w-full p-4 text-left border rounded-xl transition-all ${butonSinifi}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                          cevapGoster && index === mevcutSoru.correctAnswer
-                            ? 'bg-emerald-500 text-white'
-                            : cevapGoster && index === seciliCevap && index !== mevcutSoru.correctAnswer
-                            ? 'bg-red-400 text-white'
-                            : 'bg-slate-200 text-slate-600'
-                        }`}>
-                          {String.fromCharCode(65 + index)}
-                        </div>
-                        <span className="flex-1 text-base text-slate-700">{secenek}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => cevapSec(index)}
+                          disabled={cevapGoster || soruUretiliyor}
+                          className={`w-full p-4 text-left border rounded-xl transition-all disabled:cursor-not-allowed ${butonSinifi}`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                              cevapGoster && index === mevcutSoru.correctAnswer
+                                ? 'bg-emerald-500 text-white'
+                                : cevapGoster && index === seciliCevap && index !== mevcutSoru.correctAnswer
+                                ? 'bg-red-400 text-white'
+                                : 'bg-slate-200 text-slate-600'
+                            }`}>
+                              {String.fromCharCode(65 + index)}
+                            </div>
+                            <span className="flex-1 text-base text-slate-700">{secenek}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-              {cevapGoster && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                  <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Açıklama
-                  </h4>
-                  <p className="text-slate-600">{mevcutSoru.explanation}</p>
+                  {cevapGoster && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                      <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Açıklama
+                      </h4>
+                      <p className="text-slate-600">{mevcutSoru.explanation}</p>
+                    </div>
+                  )}
                 </div>
-              )}
+
+                {/* Üretim sürerken kilitli gövdenin üstünde spinner örtüsü */}
+                {soruUretiliyor && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white/40 rounded-xl">
+                    <svg className="animate-spin h-8 w-8 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="text-sm font-medium text-purple-700">Yeni soru üretiliyor...</span>
+                  </div>
+                )}
+              </div>
 
               <button
                 onClick={soruUret}

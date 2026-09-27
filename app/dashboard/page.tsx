@@ -329,7 +329,8 @@ export default function DashboardPage() {
   };
 
   const selectAnswer = async (index: number) => {
-    if (showAnswer) return;
+    // Yeni soru üretilirken eski soruya cevap kabul edilmez (mükerrer kayıt/yanlış state önlemi)
+    if (showAnswer || isGeneratingQuestion) return;
     setSelectedAnswer(index);
     setShowAnswer(true);
 
