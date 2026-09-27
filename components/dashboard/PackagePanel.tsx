@@ -50,7 +50,10 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
       : 0;
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      {/* SOL SÜTUN: mevcut durum + bekleyen talep + kullanım geçmişi.
+          Premium'da sağ sütun boşalacağı için sol tam genişliğe çıkar. */}
+      <div className={`space-y-4 ${subscription.plan !== 'premium' ? 'lg:col-span-7' : 'lg:col-span-12'}`}>
       {/* 1. Durum kartı */}
       <div className="bg-white rounded-2xl shadow-sm p-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -58,7 +61,11 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
             <p className="text-sm text-gray-500 mb-1">Mevcut Paket</p>
             <h2 className="text-2xl font-bold text-gray-900">{planConfig.name}</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Yenilenme: {formatDate(subscription.period_end)}
+              Yenilenme: {formatDate(subscription.period_end)} ·{' '}
+              <QuotaCountdown
+                periodEnd={subscription.period_end}
+                className="font-medium text-purple-600"
+              />
             </p>
           </div>
           <div className="text-right">
@@ -159,12 +166,13 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
           </div>
         )}
       </div>
+      </div>
 
-      {/* 4. Upgrade kartları */}
+      {/* SAĞ SÜTUN: satış vitrini — kartlar alt alta dikey sıralanır */}
       {subscription.plan !== 'premium' && (
-        <div>
+        <div className="lg:col-span-5">
           <h3 className="font-semibold text-gray-900 mb-3">Paketini Yükselt</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col gap-4">
             {(['pro', 'premium'] as PaidPlanId[])
               .filter((id) => id !== subscription.plan)
               .map((id) => {
