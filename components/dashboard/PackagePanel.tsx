@@ -9,6 +9,8 @@ import { authFetch } from '@/lib/api';
 import { QuotaCountdown } from './QuotaCountdown';
 
 // Kredi hareketi sebep etiketleri (monthly_reset: free'de günlük, ücretlilerde aylık dönem yenilemesi)
+// NOT: 'generation' etiketi tip bütünlüğü için duruyor ama listede GİSTERİLMEZ (aşağıda filtrelenir) —
+// her soru üretimi (-1) listeyi günlük 20 satırla doldurup asıl olayları gömerdi.
 const REASON_LABELS: Record<CreditTransaction['reason'], string> = {
   generation: 'Soru üretimi',
   monthly_reset: 'Kredi yenileme',
@@ -43,6 +45,8 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
   }
 
   const { subscription, transactions, pending_claim } = summary;
+  // Soru üretimi (-1) hareketleri gizlenir: yalnızca yenileme/paket/iade olayları kalsın
+  const history = transactions.filter((tx) => tx.reason !== 'generation');
   const planConfig = PLANS[subscription.plan];
   const percent =
     subscription.credits_limit > 0
@@ -139,13 +143,13 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
       {/* 3. Kullanım geçmişi */}
       <div className="bg-white rounded-2xl shadow-sm p-6">
         <h3 className="font-semibold text-gray-900 mb-4">Kullanım Geçmişi</h3>
-        {transactions.length === 0 ? (
-          <p className="text-sm text-gray-500">Henüz kredi hareketi yok.</p>
+        {history.length === 0 ? (
+          <p className="text-sm text-gray-500">Gösterilecek kredi hareketi yok.</p>
         ) : (
           <div className="max-h-72 overflow-y-auto pr-2 thin-scrollbar">
             {/* İç kaydırma: liste uzasa bile sayfayı aşağı itmesin — upgrade kartları erişilebilir kalsın */}
             <ul className="divide-y divide-gray-100">
-              {transactions.map((tx) => (
+              {history.map((tx) => (
                 <li key={tx.id} className="py-3 flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-gray-800">{REASON_LABELS[tx.reason]}</p>
@@ -168,10 +172,9 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
       </div>
       </div>
 
-      {/* SAĞ SÜTUN: satış vitrini — kartlar alt alta dikey sıralanır */}
+      {/* SAĞ SÜTUN: satış vitrini — başlıksız, kartlar alt alta dikey sıralanır */}
       {subscription.plan !== 'premium' && (
         <div className="lg:col-span-5">
-          <h3 className="font-semibold text-gray-900 mb-3">Paketini Yükselt</h3>
           <div className="flex flex-col gap-4">
             {(['pro', 'premium'] as PaidPlanId[])
               .filter((id) => id !== subscription.plan)
