@@ -351,8 +351,10 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     // denenmez — anında iade edilir.
     const MAX_ATTEMPTS = 2; // 1 deneme + 1 otomatik yeniden deneme
     let parsedQuestion: GeminiSoru | null = null;
+    const generationStartedAt = Date.now(); // latency gözlemi (Vercel logları)
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const attemptStartedAt = Date.now();
       // API key URL query param yerine header ile gönderilir
       // (key, loglarda/proxy kayıtlarında URL içinde görünmez)
       const response = await fetch(apiUrl, {
@@ -407,6 +409,7 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
       }
 
       const data = await response.json();
+      console.log(`generate: deneme ${attempt}/${MAX_ATTEMPTS} ${Math.round((Date.now() - attemptStartedAt) / 1000)}s (toplam ${Math.round((Date.now() - generationStartedAt) / 1000)}s), model: gemini-flash-lite-latest, usage:`, JSON.stringify(data.usageMetadata ?? {}));
       console.log('Gemini API Response:', JSON.stringify(data, null, 2));
 
       // API yanıtını al
