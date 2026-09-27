@@ -110,12 +110,12 @@ test.describe('Registration Flow', () => {
     await fillRegistrationForm(page, user);
     await page.click('button:has-text("Kayıt Ol")');
 
-    // Should redirect to onboarding or dashboard
-    await page.waitForURL(/\/onboarding|\/dashboard/, { timeout: 10000 });
+    // Should redirect to dashboard
+    await page.waitForURL(/\/dashboard/, { timeout: 10000 });
 
     // Check if we're logged in
     const currentUrl = page.url();
-    expect(currentUrl).toMatch(/\/onboarding|\/dashboard/);
+    expect(currentUrl).toMatch(/\/dashboard/);
 
     console.log('✅ Registration successful, redirected to:', currentUrl);
   });
@@ -306,12 +306,7 @@ test.describe('Logout Flow', () => {
     await fillRegistrationForm(page, user);
     await page.click('button:has-text("Kayıt Ol")');
 
-    await page.waitForURL(/\/onboarding|\/dashboard/, { timeout: 10000 });
-
-    // If on onboarding, skip it
-    if (page.url().includes('/onboarding')) {
-      await page.goto('/dashboard');
-    }
+    await page.waitForURL(/\/dashboard/, { timeout: 10000 });
 
     // Find and click logout button
     const logoutButton = page.locator('button:has-text("Çıkış")').or(

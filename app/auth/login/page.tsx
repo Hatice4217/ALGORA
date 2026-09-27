@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { authHelpers, dbHelpers } from '@/lib/supabase';
+import { authHelpers } from '@/lib/supabase';
 import { Logo } from '../../components/ui/Logo';
 import { validateEmail, sanitizeInput, loginRateLimiter } from '@/lib/security';
 
@@ -150,14 +150,8 @@ export default function LoginPage() {
           text: 'Giriş başarılı! Hoş geldiniz 👋'
         });
 
-        // Check if user has completed onboarding
-        const { completed } = await dbHelpers.hasCompletedOnboarding(data.user.id);
-
-        if (completed) {
-          router.push('/dashboard');
-        } else {
-          router.push('/onboarding');
-        }
+        // Doğrudan Soru Laboratuvarı'na (onboarding kaldırıldı)
+        router.push('/dashboard');
       }
     } catch (error) {
       setFormMessage({

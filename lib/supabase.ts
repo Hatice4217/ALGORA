@@ -254,26 +254,6 @@ export const dbHelpers = {
     );
   },
 
-  createUserProfile: async (profile: {
-    user_id: string;
-    exam_type: string;
-    target_score: number;
-    subjects: string[];
-    study_hours_per_day: number;
-    exam_date?: string;
-  }) => {
-    if (!supabase) {
-      return { data: null, error: 'Supabase not initialized' };
-    }
-
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .insert(profile)
-      .select()
-      .single();
-    return { data, error };
-  },
-
   updateUserProfile: async (userId: string, updates: Record<string, unknown>) => {
     try {
       if (!supabase) {
@@ -593,27 +573,6 @@ export const dbHelpers = {
     } catch (error) {
       console.error('updateUserSettings error:', error);
       return { data: null, error: 'Ayarlar güncellenirken bir hata oluştu' };
-    }
-  },
-
-  hasCompletedOnboarding: async (userId: string) => {
-    try {
-      if (!supabase) {
-        return { completed: false, error: 'Supabase bağlantısı yok' };
-      }
-
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (error) {
-        return { completed: false, error: error.message };
-      }
-      return { completed: !!data, error: null };
-    } catch (error) {
-      return { completed: false, error: 'Onboarding durumu kontrol edilemedi' };
     }
   },
 

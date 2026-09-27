@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../../../../lib/supabase';
 import { PLAN_LIMITS } from '../../../../lib/subscription-config';
 import { rateLimit } from '../../../../lib/rate-limit';
-import { isSpecificTopic } from '../../../../lib/curriculum-topics';
+import { getSubjects, isSpecificTopic } from '../../../../lib/constants/syllabus';
 
 // Yapay zekaya gönderilecek katı sistem promptu
 const SYSTEM_PROMPT = `Sen Türkiye'deki üniversite sınavlarına (TYT, AYT) hazırlık yapan öğrenciler için soru üreten bir yapay zeka asistanısın.
@@ -11,13 +11,14 @@ const SYSTEM_PROMPT = `Sen Türkiye'deki üniversite sınavlarına (TYT, AYT) ha
 Aşağıdaki JSON formatında VE SADECE bu formatta yanıt vermelisin:
 {
   "soruMetni": "soru metni buraya...",
-  "secenekler": ["A şıkkı metni", "B şıkkı metni", "C şıkkı metni", "D şıkkı metni"],
+  "secenekler": ["A şıkkı metni", "B şıkkı metni", "C şıkkı metni", "D şıkkı metni", "E şıkkı metni"],
   "dogruCevapIndex": 0,
   "aciklama": "detaylı açıklama metni..."
 }
 
 KURALLAR:
-- dogruCevapIndex 0-3 arasında olmalı (0=A, 1=B, 2=C, 3=D)
+- dogruCevapIndex 0-4 arasında olmalı (0=A, 1=B, 2=C, 3=D, 4=E)
+- Her soru TAM 5 şık içermelidir (A, B, C, D, E) — ÖSYM sınav formatı
 - Sorular TYT/AYT müfredatına uygun olmalı
 - Zorluk seviyesine uygun sorular üretmelisin
 - Açıklama öğrencinin konuyu anlamasına yardımcı olacak detaylı olmalı
@@ -62,19 +63,12 @@ const difficultyMap: Record<string, string> = {
   'ileri': 'İleri'
 };
 
-// Sunucu tarafı girdi whitelist'i — UI'ın üretebileceği değerlerle sınırlıdır.
+// Sunucu tarafı girdi whitelist'i — MEB_SYLLABUS'taki tüm derslerden türetilir
+// (TYT ∪ AYT), böylece veri dosyasıyla asla ayrışmaz.
 // Enum alanlar kapanık küme; serbest metin alanları (topic, previous_question)
 // uzunluk sınırına zorlanır, aksi halde doğrudan prompt'a girebilir.
 const VALID_SUBJECTS: readonly string[] = [
-  'Matematik',
-  'Türkçe',
-  'Fizik',
-  'Kimya',
-  'Biyoloji',
-  'Tarih',
-  'Coğrafya',
-  'Felsefe',
-  'Din Kültürü',
+  ...new Set([...getSubjects('TYT'), ...getSubjects('AYT')]),
 ];
 const VALID_EXAM_TYPES: readonly string[] = ['TYT', 'AYT'];
 const TOPIC_MAX_LENGTH = 100;
@@ -146,7 +140,7 @@ export async function POST(request: Request) {
     ).data;
 
     if (!subscription) {
-      // Beklenmedik boşluk (backfill/onboarding atlanmış) — free seed ile devam
+      // Beklenmedik boşluk (backfill/trigger atlanmış) — free seed ile devam
       // free dönemi GÜNLÜKTÜR (PLAN_LIMITS.free = 10 soru/gün)
       const now = new Date();
       const periodEnd = new Date(now);
@@ -187,7 +181,8 @@ export async function POST(request: Request) {
     }
 
     // 1. İstekten gelen JSON verisini al
-    const { subject, topic, difficulty, exam_type, previous_question } = await request.json();
+    // examType: yeni alan (UI toggle); exam_type: eski isteklerle geriye dönük uyum için yedek
+    const { subject, topic, difficulty, exam_type, examType, previous_question } = await request.json();
 
     // 2. Gerekli parametreleri kontrol et
     if (!subject || !difficulty) {
@@ -209,15 +204,17 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    const rawExamType = examType !== undefined ? examType : exam_type;
     if (
-      exam_type !== undefined &&
-      (typeof exam_type !== 'string' || !VALID_EXAM_TYPES.includes(exam_type))
+      rawExamType !== undefined &&
+      (typeof rawExamType !== 'string' || !VALID_EXAM_TYPES.includes(rawExamType))
     ) {
       return NextResponse.json(
         { error: 'Geçersiz sınav türü. TYT veya AYT olmalıdır.' },
         { status: 400 }
       );
     }
+    const effectiveExamType: string = typeof rawExamType === 'string' ? rawExamType : 'TYT';
     const safeTopic = typeof topic === 'string' ? topic.trim().slice(0, TOPIC_MAX_LENGTH) : '';
     const safePreviousQuestion =
       typeof previous_question === 'string'
@@ -287,7 +284,7 @@ export async function POST(request: Request) {
 
     const prompt = `${SYSTEM_PROMPT}
 
-Lütfen ${subject} dersinde, ${safeTopic || 'genel'} konusu için ${difficultyText} (${exam_type || 'TYT'}) seviyesinde bir çoktan seçmeli soru üret.${topicFocusBlock}${antiRepeatBlock}
+Öğrenciye MEB müfredatına uygun, ${effectiveExamType} sınavı ${subject} dersinin '${safeTopic || 'Genel'}' kazanımından, ${difficultyText} zorluk seviyesinde bir YKS sorusu üret.${topicFocusBlock}${antiRepeatBlock}
 
 ÖNEMLİ: Matematiksel ifadeleri DÜZ METİN olarak yaz, $, \\, LaTeX kodları KULLANMA.
 Örnek: "x kare 2 artı x" yerine "x² + 2x", "karekök 16" yerine "4", "x küçük eşit 5" yerine "x <= 5" gibi.
@@ -464,7 +461,7 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
       // Şema kontrolü: soru metni + tam 4 seçenek yoksa bu üretim elenir
       const secenekler = parsedQuestion?.secenekler || parsedQuestion?.choices || [];
       const metinVar = Boolean(parsedQuestion?.soruMetni || parsedQuestion?.question);
-      if (!parsedQuestion || !metinVar || secenekler.length !== 4) {
+      if (!parsedQuestion || !metinVar || secenekler.length !== 5) {
         console.error(
           `generate: şema dışı üretim elendi (deneme ${attempt}/${MAX_ATTEMPTS}), ham yanıt (ilk 300 karakter):`,
           aiResponse.substring(0, 300)
@@ -490,16 +487,17 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
       id: `gemini_${Date.now()}`, // Aşağıda DB insert başarılıysa gerçek UUID ile değiştirilir
       question: cleanMathText(parsedQuestion.soruMetni || parsedQuestion.question || 'Soru metni bulunamadı'),
       choices: (parsedQuestion.secenekler || parsedQuestion.choices || []).map((choice: string) => cleanMathText(choice)),
-      correctAnswer: Math.min(3, Math.max(0, parsedQuestion.dogruCevapIndex ?? parsedQuestion.correctAnswer ?? 0)),
+      correctAnswer: Math.min(4, Math.max(0, parsedQuestion.dogruCevapIndex ?? parsedQuestion.correctAnswer ?? 0)),
       explanation: cleanMathText(parsedQuestion.aciklama || parsedQuestion.explanation || 'Açıklama bulunamadı'),
       // İstemcide rozet/başlık gösterimi için meta (DB'ye de aynı değerler yazılır)
       subject,
       topic: safeTopic || 'Genel',
       difficulty: difficultyToDb[difficulty] || difficulty,
+      exam_type: effectiveExamType,
     };
 
     // 9. Veri validasyonu
-    if (!questionData.question || questionData.choices.length !== 4) {
+    if (!questionData.question || questionData.choices.length !== 5) {
       console.error('Geçersiz soru formatı:', questionData);
       throw new Error('Yapay zekadan geçersiz soru formatı alındı');
     }
@@ -514,7 +512,7 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
         subject,
         topic: safeTopic || 'Genel',
         difficulty: difficultyToDb[difficulty] || difficulty,
-        exam_type: exam_type || 'TYT',
+        exam_type: effectiveExamType,
         question_text: questionData.question,
         choices: questionData.choices,
         correct_answer: questionData.correctAnswer,

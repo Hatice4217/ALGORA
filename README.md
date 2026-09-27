@@ -41,7 +41,6 @@ algora/
 │   │   ├── auth/                # Authentication pages
 │   │   │   ├── login/
 │   │   │   └── register/
-│   │   ├── onboarding/          # Onboarding flow
 │   │   ├── dashboard/           # Main dashboard
 │   │   └── api/                 # API routes
 │   │       ├── questions/generate/  # AI question generation
@@ -190,7 +189,7 @@ CREATE POLICY "Users can insert own answers" ON answers
 - ✅ Next.js 14 project with TypeScript and Tailwind CSS
 - ✅ Responsive landing page with hero, features, and pricing sections
 - ✅ User authentication (email + Google OAuth)
-- ✅ Onboarding flow for exam type and subject selection
+- ✅ Soru Laboratuvarı: TYT/AYT seçimi + MEB müfredatına göre ders/konu seçimi
 - ✅ Dashboard with user stats and progress tracking
 - ✅ AI-powered question generation using OpenAI GPT-4o-mini
 - ✅ User statistics API
@@ -345,7 +344,6 @@ npm run test:coverage
 - ✅ Base UI components
 - ✅ Landing page
 - ✅ Authentication pages
-- ✅ Onboarding flow
 - ✅ Dashboard page
 - ✅ API routes (questions, stats)
 

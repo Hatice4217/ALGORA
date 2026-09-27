@@ -1949,3 +1949,49 @@ Planın 8 adımı eksiksiz uygulandı (dün onaylanan revize 2 planı):
 ### Session Bitişi
 - Bitiş: konu seçimi uçtan uca canlı-kodda; E2E kanıtlı; commit + push + deploy doğrulama bu oturumda
 - Sıradaki adım (kullanıcının BAP planına bağlı): kazanım kodu veritabanı tasarımı (MEB resmi kazanım çerçevesiyle eşleme), AYT ders ayrımı (Edebiyat vs Türkçe konu listeleri ayrışması), sınıf kavramı (9-12) gerekip gerekmediği
+
+## 27 Eylül 2026 - Pazar (Onboarding Kaldırıldı + TYT/AYT Laboratuvar UX + 5 Şık + MEB Müfredat Split'i)
+
+### 🎯 Üç Büyük Değişim (tek paket, kullanıcı direktifi)
+1. **Onboarding modülü TAMAMEN SİLİNDİ** — kullanıcı giriş yaptığında doğrudan Soru Laboratuvarı
+2. **Soru Laboratuvarı UX baştan yazıldı** — TYT/AYT toggle + 2 adımlı akış
+3. **Sorular 5 şıklı (A-E)** — ÖSYM gerçek sınav formatı
+
+### 🗑️ Onboarding Silme (hiçbir iz yok)
+- `app/onboarding/` dizini silindi; login/callback artık doğrudan `/dashboard`'a push'lar
+- `lib/supabase.ts`: `hasCompletedOnboarding` + `createUserProfile` helper'ları silindi (yalnız onboarding kullanıyordu; login/callback importları da arındırıldı)
+- Dashboard'daki "onboarding seçimlerini profile bağlama" bloğu silindi (exam_type/subjects artık profile'dan OKUNMUYOR — laboratuvarda seçiliyor)
+- e2e spec'leri (auth-flow, dashboard-flow): onboarding skip/regex mantıkları → düz `/dashboard`
+- README yapı ağacı + özellik listesi güncellendi; route'taki "backfill/onboarding atlanmış" yorumu düzeltildi
+- NOT: onboarding'in profil yazması (user_profiles) artık hiçbir akışta yapılmıyor; dashboard/Settings getUserProfile'sız da çalışıyor (graceful fallback). Abonelik seed zaten `on_auth_user_created` trigger'ında (Faz 0.2'de taşınmıştı) — silme güvenli
+
+### 🧪 UI: 2 Adımlı Soru Laboratuvarı (QuestionPractice.tsx baştan yazıldı)
+- **Adım 1:** Sınav Türü toggle (TYT | AYT) + ders grid'i (MEB_SYLLABUS'tan; TYT 9 / AYT 7 ders). Üret butonu BU EKRANDA YOK. Ders kartına basınca ders seçilir + adım 2'ye geçilir
+- **Adım 2:** "← Geri" + "{examType} - {ders}" başlığı + konu dropdown (boş varsayılan, "Konu seçin" placeholder, disabled option) + zorluk segmented + üret butonu (KONU SEÇİLMEDEN disabled, buton yazısı "Önce konu seçin")
+- examType state dashboard'da; tür değişimi ders→'Matematik' + konu→'' resetler. Dashboard varsayılan sekmesi artık 'practiceRoom'
+- Modal'daki "Sıradaki Soru" butonu da konu seçili değilse disabled
+
+### 📚 MEB Müfredatı: lib/constants/syllabus.ts (YENİ)
+- Kullanıcının verdiği MÜREDAT verisi BİREBİR: `MEB_SYLLABUS: Record<"TYT"|"AYT", Record<string, string[]>>` — TYT 9 ders / AYT 7 ders (AYT'de "Türk Dili ve Edebiyatı" var, Türkçe/Din yok)
+- Helper'lar: getSubjects(exam) / getTopics(exam, subject) / isSpecificTopic; EXAM_TYPES + ExamType
+- **lib/curriculum-topics.ts SİLİNDİ** (TYT+AYT tek liste olan eski dosya — ders ayrımı yapamıyordu)
+- Route whitelist'i artık VERİDEN türetiliyor: `[...new Set([...getSubjects('TYT'), ...getSubjects('AYT')])]` — eski hardcoded listede olmayan "Türk Dili ve Edebiyatı" böylece otomatik kabul (yoksa 400 atacaktı)
+
+### 🔧 Backend (generate route)
+- Payload'a `examType` alanı (yeni); `exam_type` (eski) geriye dönük yedek olarak okunmaya devam → `effectiveExamType` (yoksa 'TYT'); whitelist VALID_EXAM_TYPES dışında 400
+- **Prompt'un çekirdeği kullanıcının BİREBİR cümlesi:** "Öğrenciye MEB müfredatına uygun, {examType} sınavı {subject} dersinin '{topic}' kazanımından, {difficulty} zorluk seviyesinde bir YKS sorusu üret." (+ konu odağı/tekrar yasağı blokları aynı)
+- questions INSERT `exam_type: effectiveExamType` (eski ham değişken değil) + questionData meta'ya exam_type eklendi (istemci rozeti için)
+- **5 ŞIK:** SYSTEM_PROMPT JSON şeması 5 öğe + "dogruCevapIndex 0-4" + "TAM 5 şık — ÖSYM formatı" kuralı; parse doğrulama `length !== 5`; correctAnswer clamp Math.min(4); final validasyon `!== 5`
+- DOKUNULMADI (kullanıcı mandatu): RLS, atomik deduct_credit/refund, MAX_ATTEMPTS=2 retry, sunucu tarafı tekrar yasağı (son 5 soru SELECT), seed+temperature
+
+### ✅ Doğrulama
+- build ×4 + tsc --noEmit ✓ (onboarding route'u build çıktısından kayboldu)
+- **E2E probe 4/4:** ① examType='AYT'+Matematik+Türev → 200, 5 şık, exam_type=AYT, topic=Türev, GERÇEK türev sorusu ("f(x)=x³-3x²-9x+5 yerel minimum") ② legacy exam_type='TYT'+topicsuz → 200, Genel, 5 şık ③ examType='LGS' → 400 "Geçersiz sınav türü" ④ GET /onboarding → 404
+- Temizlik: 5 tablo + deleteUser; probe silindi
+
+### 🐛 Yeni Tuzak: `npm start | head -20` EPIPE öldürür
+- Prod sunucuyu `| head -20` ile başlatınca route'un uzun Gemini console.log'u 20 satırı aşar → head kapanır → sonraki stdout yazımı EPIPE → **next-server 2. istekten sonra sessizce ölür** ("fetch failed" probe hatasının kökü). Doğrusu: `npm start > log 2>&1` (pipe'sız). Zombi temizliği yine şart (bu oturumda 3 PID: 15312, 9772, 23320)
+
+### Session Bitişi
+- Bitiş: onboarding yok; laboratuvar TYT/AYT + 2 adım; sorular 5 şıklı; 4/4 probe; commit + push + deploy doğrulama bu oturumda
+- Sıradaki: kazanım kodu eşlemesi (kullanıcı 'kazanım' kelimesi prompt'ta konu anlamında), üretim istatistiklerinde exam_type görünümü, BAP formu revizyonu

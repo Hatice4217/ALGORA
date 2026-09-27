@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { getSubjectColor } from '../../lib/utils';
 import type { RecentAnswer } from '../../types/question';
 
@@ -18,6 +19,9 @@ interface Difficulty {
 }
 
 interface QuestionPracticeProps {
+  // Sınav türü state'i dashboard'ta yaşar (üretim isteğine gider)
+  examType: string;
+  setExamType: (tur: 'TYT' | 'AYT') => void;
   DERSLER: string[];
   ZORLUKLER: Difficulty[];
   KONULAR: string[];
@@ -59,7 +63,11 @@ function gecmisZamaniEtiketi(isoTarih: string): string {
   );
 }
 
+const SINAV_TURLERI: Array<'TYT' | 'AYT'> = ['TYT', 'AYT'];
+
 export function QuestionPractice({
+  examType,
+  setExamType,
   DERSLER,
   ZORLUKLER,
   KONULAR,
@@ -79,10 +87,14 @@ export function QuestionPractice({
   kayitIncele,
   modalKapat,
 }: QuestionPracticeProps) {
+  // 2 adımlı akış: 1 = sınav türü + ders, 2 = konu + zorluk + üretim
+  const [step, setStep] = useState<1 | 2>(1);
+
   // Ders ikonları
   const dersIkonlari: Record<string, string> = {
     'Matematik': '🧮',
     'Türkçe': '📚',
+    'Türk Dili ve Edebiyatı': '📖',
     'Fizik': '⚡',
     'Kimya': '🧪',
     'Biyoloji': '🧬',
@@ -92,6 +104,19 @@ export function QuestionPractice({
     'Din Kültürü': '✨',
   };
 
+  // Adım 1'de ders kartına basınca ders seçilir ve akış 2. adıma ilerler
+  const dersSec = (ders: string) => {
+    setSeciliDers(ders); // parent konuyu sıfırlar
+    setStep(2);
+  };
+
+  // Sınav türü değişimi parent'ta ders + konu sıfırlamasını tetikler
+  const sinavTuruDegistir = (tur: 'TYT' | 'AYT') => {
+    if (tur !== examType) {
+      setExamType(tur);
+    }
+  };
+
   return (
     <div className="h-full w-full">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full items-start">
@@ -99,107 +124,163 @@ export function QuestionPractice({
         <div className="lg:col-span-8">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm h-full">
             <div className="p-8 h-full flex flex-col">
-              <h2 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">
-                Soru Çözmeye Başla
-              </h2>
-              <p className="text-slate-500 mb-8 text-sm">
-                Çalışmak istediğin ders ve zorluk seviyesini seç
-              </p>
+              {step === 1 ? (
+                <>
+                  {/* ══════════ ADIM 1: Sınav Türü + Ders ══════════ */}
+                  <h2 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">
+                    Soru Çözmeye Başla
+                  </h2>
+                  <p className="text-slate-500 mb-8 text-sm">
+                    1. Adım: Sınav türünü ve çalışmak istediğin dersi seç
+                  </p>
 
-              <div className="space-y-8 flex-1">
-                {/* AI Butonu - Gradient with Spinner */}
-                <button
-                  onClick={soruUret}
-                  disabled={soruUretiliyor}
-                  className="w-full py-4 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 hover:from-purple-700 hover:via-purple-600 hover:to-pink-600 text-white font-bold rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-purple-200 hover:shadow-xl hover:shadow-purple-300 transform hover:-translate-y-0.5"
-                >
-                  <span className="flex items-center justify-center gap-3">
-                    {soruUretiliyor ? (
-                      <>
-                        {/* Spinner Animation */}
-                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Yapay Zeka Soru Üretiliyor...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-xl">✨</span>
-                        <span>Yapay Zeka ile Soru Üret</span>
-                      </>
-                    )}
-                  </span>
-                </button>
-                {/* Ders Seçimi - Chips */}
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-4">
-                    Ders Seç
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {DERSLER.map((ders) => (
-                      <button
-                        key={ders}
-                        onClick={() => setSeciliDers(ders)}
-                        className={`
-                          px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200
-                          flex items-center justify-center gap-2
-                          ${seciliDers === ders
-                            ? 'bg-purple-600 text-white shadow-lg shadow-purple-200 transform scale-105'
-                            : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-2 border-slate-200 hover:border-purple-300'
-                          }
-                        `}
-                      >
-                        <span className="text-lg">{dersIkonlari[ders] || '📚'}</span>
-                        <span>{ders}</span>
-                      </button>
-                    ))}
+                  <div className="space-y-8">
+                    {/* Sınav Türü - TYT | AYT Toggle */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-4">
+                        Sınav Türü
+                      </label>
+                      <div className="bg-slate-100 p-1.5 rounded-xl inline-flex w-full">
+                        {SINAV_TURLERI.map((tur) => (
+                          <button
+                            key={tur}
+                            onClick={() => sinavTuruDegistir(tur)}
+                            className={`
+                              flex-1 py-3 px-4 rounded-lg font-bold text-sm tracking-wide transition-all duration-200
+                              ${examType === tur
+                                ? 'bg-white text-purple-700 shadow-sm'
+                                : 'text-slate-600 hover:text-slate-800'
+                              }
+                            `}
+                          >
+                            {tur}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Ders Seçimi - Chips (seçim akışı 2. adıma taşır) */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-4">
+                        Ders Seç
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {DERSLER.map((ders) => (
+                          <button
+                            key={ders}
+                            onClick={() => dersSec(ders)}
+                            className={`
+                              px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200
+                              flex items-center justify-center gap-2
+                              ${seciliDers === ders
+                                ? 'bg-purple-600 text-white shadow-lg shadow-purple-200'
+                                : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-2 border-slate-200 hover:border-purple-300 hover:-translate-y-0.5'
+                              }
+                            `}
+                          >
+                            <span className="text-lg">{dersIkonlari[ders] || '📚'}</span>
+                            <span>{ders}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
-
-                {/* Konu Seçimi - Dropdown */}
-                <div>
-                  <label htmlFor="konu-secimi" className="block text-sm font-semibold text-slate-700 mb-4">
-                    Konu Seçimi
-                  </label>
-                  <select
-                    id="konu-secimi"
-                    value={seciliKonu}
-                    onChange={(e) => setSeciliKonu(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-700 font-medium text-sm focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer"
-                  >
-                    {KONULAR.map((konu) => (
-                      <option key={konu} value={konu}>
-                        {konu}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Zorluk Seviyesi - Segmented Control */}
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-4">
-                    Zorluk Seviyesi
-                  </label>
-                  <div className="bg-slate-100 p-1.5 rounded-xl inline-flex w-full">
-                    {ZORLUKLER.map((zorluk) => (
-                      <button
-                        key={zorluk.deger}
-                        onClick={() => setSeciliZorluk(zorluk.deger)}
-                        className={`
-                          flex-1 py-3 px-4 rounded-lg font-medium text-sm transition-all duration-200
-                          ${seciliZorluk === zorluk.deger
-                            ? 'bg-white text-purple-700 shadow-sm'
-                            : 'text-slate-600 hover:text-slate-800'
-                          }
-                        `}
-                      >
-                        {zorluk.etiket}
-                      </button>
-                    ))}
+                </>
+              ) : (
+                <>
+                  {/* ══════════ ADIM 2: Konu + Zorluk + Üretim ══════════ */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <button
+                      onClick={() => setStep(1)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-purple-700 hover:bg-purple-50 transition-all"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Geri
+                    </button>
                   </div>
-                </div>
-              </div>
+                  <h2 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">
+                    {examType} - {seciliDers}
+                  </h2>
+                  <p className="text-slate-500 mb-8 text-sm">
+                    2. Adım: Konu ve zorluk seviyesini seç, sonra soru üret
+                  </p>
+
+                  <div className="space-y-8 flex-1">
+                    {/* Konu Seçimi - Dropdown (seçim zorunlu) */}
+                    <div>
+                      <label htmlFor="konu-secimi" className="block text-sm font-semibold text-slate-700 mb-4">
+                        Konu Seçimi
+                      </label>
+                      <select
+                        id="konu-secimi"
+                        value={seciliKonu}
+                        onChange={(e) => setSeciliKonu(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-700 font-medium text-sm focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer"
+                      >
+                        <option value="" disabled>
+                          Konu seçin
+                        </option>
+                        {KONULAR.map((konu) => (
+                          <option key={konu} value={konu}>
+                            {konu}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Zorluk Seviyesi - Segmented Control */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-4">
+                        Zorluk Seviyesi
+                      </label>
+                      <div className="bg-slate-100 p-1.5 rounded-xl inline-flex w-full">
+                        {ZORLUKLER.map((zorluk) => (
+                          <button
+                            key={zorluk.deger}
+                            onClick={() => setSeciliZorluk(zorluk.deger)}
+                            className={`
+                              flex-1 py-3 px-4 rounded-lg font-medium text-sm transition-all duration-200
+                              ${seciliZorluk === zorluk.deger
+                                ? 'bg-white text-purple-700 shadow-sm'
+                                : 'text-slate-600 hover:text-slate-800'
+                              }
+                            `}
+                          >
+                            {zorluk.etiket}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* AI Butonu — konu seçilmeden devre dışı */}
+                    <button
+                      onClick={soruUret}
+                      disabled={soruUretiliyor || !seciliKonu}
+                      className="w-full py-4 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 hover:from-purple-700 hover:via-purple-600 hover:to-pink-600 text-white font-bold rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-purple-600 disabled:hover:via-purple-500 disabled:hover:to-pink-500 shadow-lg shadow-purple-200 hover:shadow-xl hover:shadow-purple-300 transform hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-lg"
+                    >
+                      <span className="flex items-center justify-center gap-3">
+                        {soruUretiliyor ? (
+                          <>
+                            {/* Spinner Animation */}
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Yapay Zeka Soru Üretiliyor...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-xl">✨</span>
+                            <span>{seciliKonu ? 'Yapay Zeka ile Soru Üret' : 'Önce konu seçin'}</span>
+                          </>
+                        )}
+                      </span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -354,8 +435,8 @@ export function QuestionPractice({
 
               <button
                 onClick={soruUret}
-                disabled={soruUretiliyor}
-                className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
+                disabled={soruUretiliyor || !seciliKonu}
+                className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
               >
                 {soruUretiliyor ? (
                   <span className="flex items-center justify-center gap-3">

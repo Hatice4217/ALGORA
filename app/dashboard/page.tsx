@@ -15,7 +15,7 @@ import { SettingsPanel } from '../../components/dashboard/SettingsPanel';
 import { PackagePanel, UpgradeModal } from '../../components/dashboard/PackagePanel';
 import { QuotaExhaustedModal } from '../../components/dashboard/QuotaExhaustedModal';
 import { authFetch } from '../../lib/api';
-import { getTopicOptionsForSubject } from '../../lib/curriculum-topics';
+import { getSubjects, getTopics } from '../../lib/constants/syllabus';
 
 import type { SubscriptionSummary, PaidPlanId } from '../../types/subscription';
 
@@ -46,18 +46,6 @@ interface DashboardStatistics {
   gucluAlanlar: string[];
 }
 
-const SUBJECTS = [
-  'Matematik',
-  'Türkçe',
-  'Fizik',
-  'Kimya',
-  'Biyoloji',
-  'Tarih',
-  'Coğrafya',
-  'Felsefe',
-  'Din Kültürü',
-];
-
 const DIFFICULTIES = [
   { deger: 'baslangic', etiket: 'Başlangıç' },
   { deger: 'orta', etiket: 'Orta' },
@@ -66,7 +54,8 @@ const DIFFICULTIES = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'overview' | 'practiceRoom' | 'analysis' | 'package' | 'settings'>('overview');
+  // Giriş yapan kullanıcı doğrudan Soru Laboratuvarı'nda başlar (onboarding kaldırıldı)
+  const [activeTab, setActiveTab] = useState<'overview' | 'practiceRoom' | 'analysis' | 'package' | 'settings'>('practiceRoom');
   const [statistics, setStatistics] = useState<DashboardStatistics>({
     toplamSoru: 0,
     dogruCevap: 0,
@@ -78,11 +67,11 @@ export default function DashboardPage() {
     gucluAlanlar: [],
   }); // Empty state - no mock data
   const [selectedSubject, setSelectedSubject] = useState('Matematik');
-  // Onboarding'de seçilen sınav türü (üretim isteğine gider)
-  const [profileExamType, setProfileExamType] = useState<'TYT' | 'AYT'>('TYT');
+  // Sınav türü artık laboratuvarda seçilir (TYT | AYT toggle)
+  const [examType, setExamType] = useState<'TYT' | 'AYT'>('TYT');
   const [selectedDifficulty, setSelectedDifficulty] = useState('baslangic');
-  // Ders seçilince sıfırlanır (her dersin kendi konu listesi var)
-  const [selectedTopic, setSelectedTopic] = useState('Genel');
+  // Konu seçilmeden üretim yapılamaz; ders/sınav türü değişince sıfırlanır
+  const [selectedTopic, setSelectedTopic] = useState('');
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -184,19 +173,6 @@ export default function DashboardPage() {
               // Update localStorage cache
               if (typeof window !== 'undefined') {
                 localStorage.setItem('userName', profile.data.name);
-              }
-            }
-            // Onboarding seçimlerini üretim varsayılanlarına bağla
-            if (profile && profile.data) {
-              if (profile.data.exam_type === 'AYT') {
-                setProfileExamType('AYT');
-              }
-              const kayitliDersler: string[] = Array.isArray(profile.data.subjects)
-                ? profile.data.subjects
-                : [];
-              const gecerliDers = kayitliDersler.find((d) => SUBJECTS.includes(d));
-              if (gecerliDers) {
-                setSelectedSubject(gecerliDers);
               }
             }
           } catch (profileError) {
@@ -301,7 +277,7 @@ export default function DashboardPage() {
           subject: selectedSubject,
           topic: selectedTopic,
           difficulty: selectedDifficulty,
-          exam_type: profileExamType,
+          examType,
           // Sıradaki sorunun öncekinden farklı olması için mevcut soru metnini gönder
           previous_question: currentQuestion?.question ?? null,
         }),
@@ -606,9 +582,15 @@ export default function DashboardPage() {
         {/* Pratik Odası Sekmesi */}
         {activeTab === 'practiceRoom' && (
           <QuestionPractice
-            DERSLER={SUBJECTS}
+            examType={examType}
+            setExamType={(tur) => {
+              setExamType(tur);
+              setSelectedSubject('Matematik'); // her iki sınavda da ortak ders
+              setSelectedTopic('');
+            }}
+            DERSLER={getSubjects(examType)}
             ZORLUKLER={DIFFICULTIES}
-            KONULAR={getTopicOptionsForSubject(selectedSubject)}
+            KONULAR={getTopics(examType, selectedSubject)}
             seciliDers={selectedSubject}
             seciliZorluk={selectedDifficulty}
             seciliKonu={selectedTopic}
@@ -618,7 +600,7 @@ export default function DashboardPage() {
             seciliCevap={selectedAnswer}
             setSeciliDers={(ders) => {
               setSelectedSubject(ders);
-              setSelectedTopic('Genel'); // ders değişince konu sıfırlanır
+              setSelectedTopic(''); // ders değişince konu sıfırlanır
             }}
             setSeciliZorluk={setSelectedDifficulty}
             setSeciliKonu={setSelectedTopic}

@@ -31,11 +31,6 @@ async function loginAndGoToDashboard(page: Page) {
   // Wait for registration
   await page.waitForTimeout(2000);
 
-  // If on onboarding, skip it
-  if (page.url().includes('/onboarding')) {
-    await page.goto('/dashboard');
-  }
-
   // Wait for dashboard to load
   await page.waitForURL('/dashboard', { timeout: 10000 });
 
