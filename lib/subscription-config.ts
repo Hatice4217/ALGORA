@@ -2,12 +2,12 @@
 import type { PlanId } from '@/types/subscription';
 
 // Kredi limitleri. DÖNEM UZUNLUKLARI FARKLIDIR:
-//   free    → 10 soru / GÜN   (her gün yenilenir — SQL tarafı: INTERVAL '1 day')
+//   free    → 20 soru / GÜN   (her gün yenilenir — SQL tarafı: INTERVAL '1 day')
 //   pro     → 1000 soru / AY  (ödeme dönemiyle uyumlu — INTERVAL '1 month')
 //   premium → 5000 soru / AY
 // DİKKAT: database/subscriptions.sql içindeki rollover/seed fonksiyonlarıyla senkron tutulmalı.
 export const PLAN_LIMITS: Record<PlanId, number> = {
-  free: 10,
+  free: 20,
   pro: 1000,
   premium: 5000,
 };

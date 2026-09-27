@@ -45,7 +45,7 @@ export function HeroSection() {
             <span className="text-xl">✨</span>
             <p className="text-gray-600">
               <span className="font-semibold text-gray-900">Ücretsiz başla</span> —
-              her gün 10 soru hakkıyla dene
+              her gün 20 soru hakkıyla dene
             </p>
           </div>
         </div>

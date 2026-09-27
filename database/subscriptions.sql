@@ -7,7 +7,7 @@
 -- atomik kredi düşme fonksiyonunu ve mevcut kullanıcı backfill'ini oluşturur.
 -- Supabase SQL Editor'de ELLE çalıştırılır. Idempotent'tir (tekrar çalıştırılabilir).
 
--- NOT: Free plan kredi limiti (10) burada sabit kodlanmıştır.
+-- NOT: Free plan kredi limiti (20) burada sabit kodlanmıştır.
 -- lib/subscription-config.ts > PLAN_LIMITS ile senkron tutulmalıdır.
 
 -- ===================================
@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'pro', 'premium')),
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'pending', 'cancelled')),
-  credits_remaining INTEGER NOT NULL DEFAULT 10 CHECK (credits_remaining >= 0),
-  credits_limit INTEGER NOT NULL DEFAULT 10 CHECK (credits_limit > 0),
+  credits_remaining INTEGER NOT NULL DEFAULT 20 CHECK (credits_remaining >= 0),
+  credits_limit INTEGER NOT NULL DEFAULT 20 CHECK (credits_limit > 0),
   period_start TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   period_end TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW() + INTERVAL '1 month',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -189,7 +189,7 @@ $$ LANGUAGE plpgsql;
 
 -- rollover_subscription(p_user_id)
 -- Lazy rollover: period_end geçmişse yeni dönem açar, kredi plan limitine reset.
--- DÖNEM UZUNLUĞU plana göre: free = 1 GÜN (günlük 10 soru), pro/premium = 1 AY.
+-- DÖNEM UZUNLUĞU plana göre: free = 1 GÜN (günlük 20 soru), pro/premium = 1 AY.
 -- Dönem henüz bitmemişse satırı olduğu gibi döndürür (no-op). Yarış koruması:
 -- UPDATE ... WHERE period_end < NOW() — paralel çağrılarda yalnızca biri resetler.
 -- Çağrım: YALNIZCA service-role (GET /api/subscription ve generate route) — kullanıcı
@@ -210,11 +210,11 @@ BEGIN
     RETURN v_row; -- dönem geçerli, dokunma
   END IF;
 
-  -- PLAN_LIMITS ile senkron: free 10 / pro 1000 / premium 5000
+  -- PLAN_LIMITS ile senkron: free 20 / pro 1000 / premium 5000
   v_limit := CASE v_row.plan
     WHEN 'pro' THEN 1000
     WHEN 'premium' THEN 5000
-    ELSE 10
+    ELSE 20
   END;
 
   -- Dönem uzunluğu: free günlük, ücretli paketler aylık (ödeme dönemiyle uyumlu)
@@ -284,10 +284,10 @@ BEGIN
     NEW.id,
     'free',
     'active',
-    10,                              -- PLAN_LIMITS.free (lib/subscription-config.ts ile senkron)
-    10,                              -- PLAN_LIMITS.free
+    20,                              -- PLAN_LIMITS.free (lib/subscription-config.ts ile senkron)
+    20,                              -- PLAN_LIMITS.free
     NOW(),
-    NOW() + INTERVAL '1 day'         -- free dönemi GÜNLÜK (günlük 10 soru)
+    NOW() + INTERVAL '1 day'         -- free dönemi GÜNLÜK (günlük 20 soru)
   )
   ON CONFLICT (user_id) DO NOTHING;  -- idempotent
   RETURN NEW;
@@ -320,8 +320,8 @@ SELECT
   id,
   'free',
   'active',
-  10,                              -- PLAN_LIMITS.free
-  10,                              -- PLAN_LIMITS.free
+  20,                              -- PLAN_LIMITS.free
+  20,                              -- PLAN_LIMITS.free
   NOW(),
   NOW() + INTERVAL '1 day'         -- free dönemi GÜNLÜK
 FROM auth.users

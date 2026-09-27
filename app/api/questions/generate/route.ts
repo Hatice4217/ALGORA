@@ -141,7 +141,7 @@ export async function POST(request: Request) {
 
     if (!subscription) {
       // Beklenmedik boşluk (backfill/trigger atlanmış) — free seed ile devam
-      // free dönemi GÜNLÜKTÜR (PLAN_LIMITS.free = 10 soru/gün)
+      // free dönemi GÜNLÜKTÜR (PLAN_LIMITS.free = 20 soru/gün)
       const now = new Date();
       const periodEnd = new Date(now);
       periodEnd.setDate(periodEnd.getDate() + 1);
