@@ -9,6 +9,7 @@ interface Question {
   // "Son Çözülenler" kaydından incelenirken dolar (rozet doğru ders/zorluğu göstersin)
   subject?: string;
   difficulty?: string;
+  topic?: string;
 }
 
 interface Difficulty {
@@ -19,14 +20,17 @@ interface Difficulty {
 interface QuestionPracticeProps {
   DERSLER: string[];
   ZORLUKLER: Difficulty[];
+  KONULAR: string[];
   seciliDers: string;
   seciliZorluk: string;
+  seciliKonu: string;
   soruUretiliyor: boolean;
   mevcutSoru: Question | null;
   cevapGoster: boolean;
   seciliCevap: number | null;
   setSeciliDers: (ders: string) => void;
   setSeciliZorluk: (zorluk: string) => void;
+  setSeciliKonu: (konu: string) => void;
   soruUret: () => void;
   cevapSec: (index: number) => void;
   sonCozulenler: RecentAnswer[];
@@ -58,14 +62,17 @@ function gecmisZamaniEtiketi(isoTarih: string): string {
 export function QuestionPractice({
   DERSLER,
   ZORLUKLER,
+  KONULAR,
   seciliDers,
   seciliZorluk,
+  seciliKonu,
   soruUretiliyor,
   mevcutSoru,
   cevapGoster,
   seciliCevap,
   setSeciliDers,
   setSeciliZorluk,
+  setSeciliKonu,
   soruUret,
   cevapSec,
   sonCozulenler,
@@ -148,6 +155,25 @@ export function QuestionPractice({
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* Konu Seçimi - Dropdown */}
+                <div>
+                  <label htmlFor="konu-secimi" className="block text-sm font-semibold text-slate-700 mb-4">
+                    Konu Seçimi
+                  </label>
+                  <select
+                    id="konu-secimi"
+                    value={seciliKonu}
+                    onChange={(e) => setSeciliKonu(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-700 font-medium text-sm focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer"
+                  >
+                    {KONULAR.map((konu) => (
+                      <option key={konu} value={konu}>
+                        {konu}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Zorluk Seviyesi - Segmented Control */}
@@ -248,6 +274,11 @@ export function QuestionPractice({
                 <span className={`px-3 py-1 rounded-lg text-sm font-medium ${getSubjectColor(mevcutSoru.subject || seciliDers)} text-white`}>
                   {mevcutSoru.subject || seciliDers}
                 </span>
+                {mevcutSoru.topic && mevcutSoru.topic !== 'Genel' && (
+                  <span className="px-3 py-1 rounded-lg text-sm font-medium bg-slate-100 text-slate-700">
+                    {mevcutSoru.topic}
+                  </span>
+                )}
                 <span className="px-3 py-1 rounded-lg text-sm font-medium bg-slate-100 text-slate-600">
                   {difficultyEtiketleri[mevcutSoru.difficulty ?? ''] ??
                     (seciliZorluk === 'baslangic' ? 'Başlangıç' : seciliZorluk === 'orta' ? 'Orta' : 'İleri')}

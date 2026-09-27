@@ -15,6 +15,7 @@ import { SettingsPanel } from '../../components/dashboard/SettingsPanel';
 import { PackagePanel, UpgradeModal } from '../../components/dashboard/PackagePanel';
 import { QuotaExhaustedModal } from '../../components/dashboard/QuotaExhaustedModal';
 import { authFetch } from '../../lib/api';
+import { getTopicOptionsForSubject } from '../../lib/curriculum-topics';
 
 import type { SubscriptionSummary, PaidPlanId } from '../../types/subscription';
 
@@ -80,6 +81,8 @@ export default function DashboardPage() {
   // Onboarding'de seçilen sınav türü (üretim isteğine gider)
   const [profileExamType, setProfileExamType] = useState<'TYT' | 'AYT'>('TYT');
   const [selectedDifficulty, setSelectedDifficulty] = useState('baslangic');
+  // Ders seçilince sıfırlanır (her dersin kendi konu listesi var)
+  const [selectedTopic, setSelectedTopic] = useState('Genel');
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -296,7 +299,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subject: selectedSubject,
-          topic: 'Genel',
+          topic: selectedTopic,
           difficulty: selectedDifficulty,
           exam_type: profileExamType,
           // Sıradaki sorunun öncekinden farklı olması için mevcut soru metnini gönder
@@ -605,14 +608,20 @@ export default function DashboardPage() {
           <QuestionPractice
             DERSLER={SUBJECTS}
             ZORLUKLER={DIFFICULTIES}
+            KONULAR={getTopicOptionsForSubject(selectedSubject)}
             seciliDers={selectedSubject}
             seciliZorluk={selectedDifficulty}
+            seciliKonu={selectedTopic}
             soruUretiliyor={isGeneratingQuestion}
             mevcutSoru={currentQuestion}
             cevapGoster={showAnswer}
             seciliCevap={selectedAnswer}
-            setSeciliDers={setSelectedSubject}
+            setSeciliDers={(ders) => {
+              setSelectedSubject(ders);
+              setSelectedTopic('Genel'); // ders değişince konu sıfırlanır
+            }}
             setSeciliZorluk={setSelectedDifficulty}
+            setSeciliKonu={setSelectedTopic}
             soruUret={generateQuestion}
             cevapSec={selectAnswer}
             sonCozulenler={recentAnswers}

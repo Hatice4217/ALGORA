@@ -1927,3 +1927,25 @@ Planın 8 adımı eksiksiz uygulandı (dün onaylanan revize 2 planı):
 ### Session Bitişi
 - Bitiş: "her girişte aynı soru" bug'ı sunucu tarafı hafıza ile çözüldü + E2E kanıtlı; build ✓ (27/27)
 - Not: commit + push sonrası canlıda da aynı probe mantığıyla doğrulanabilir (kullanıcı isterse)
+
+## 27 Eylül 2026 - Cumartesi (Konu seçimi: statik YKS konu listeleri + dropdown + konu odaklı üretim)
+
+### 🔍 Mevcut Durum Tespiti (kullanıcı sorusu üzerine, kod değişikliği öncesi)
+- Yapılandırılmış MEB verisi YOKTU: kazanım kodu/konu listesi JSON veya tablosu hiçbir yerde yok; yalnızca SYSTEM_PROMPT'ta genel talimat ("TYT/AYT müfredatına uygun olmalı") + yasal MEB/ÖSYM feragatnamesi
+- Ders listeleri (3 yerde, farklı ama uyumlu): dashboard SUBJECTS (9 ders), route VALID_SUBJECTS (aynı 9), onboarding SUBJECTS_BY_EXAM (TYT 9 / AYT 7 — AYT'de Edebiyat var, Türkçe/Din yok)
+- Sınıf (9-12) kavramı YOK; yalnızca exam_type TYT/AYT. Zorluk: baslangic/orta/ileri
+- Konu seçimi YOKTU: dashboard generate isteğinde topic HARDCODED 'Genel' (route zaten topic alanını kabul ediyor, 100 krk limitli, prompt'a ${safeTopic || 'genel'} olarak giriyordu)
+
+### 🔧 Uygulama (kapsam: yalnızca konu İSİMLERİ, kazanım kodu değil)
+1. **lib/curriculum-topics.ts (YENİ, izole):** 9 ders için standart YKS konu listeleri (TYT+AYT tek liste; Matematik 29, Türkçe 13, Fizik 11, Kimya 11, Biyoloji 10, Tarih 13, Coğrafya 12, Felsefe 9, Din Kültürü 8) + DEFAULT_TOPIC='Genel' + getTopicsForSubject (bilinmeyen ders → [Genel], geriye dönük güvenli) + getTopicOptionsForSubject + isSpecificTopic
+2. **Frontend:** dashboard'a selectedTopic state (ders değişince 'Genel'e resetlenir); QuestionPractice'a KONULAR/seciliKonu/setSeciliKonu prop'ları + "Konu Seçimi" dropdown'u (ders chips ile zorluk segmented control arasında, select stilide mevcut temaya uygun); generate isteğinde topic: 'Genel' hardcoded'ı → selectedTopic; soru kartında topic rozeti ('Genel' değilse)
+3. **Route:** KONU ODAĞI bloğu — yalnızca isSpecificTopic(safeTopic) doğruyken ("Soru YALNIZCA X konusuyla ilgili olmalı"); 'Genel'/boş → blok YOK (geriye dönük uyum); questionData'ya subject/topic/difficulty meta eklendi (difficultyToDb haritası questionData üstüne taşındı), DB insert zaten aynı değerleri yazıyordu
+
+### ✅ Doğrulama (adım başına build ×3 + E2E probe)
+- build ×3 ✓ (27/27)
+- **E2E:** test kullanıcısıyla ① Matematik + Türev + Başlangıç → data.topic='Türev'/difficulty='beginner'/subject='Matematik' + soru "f(x) = x³ - 3x² + 5 yerel minimum" — GERÇEK türev uygulaması ✅ ② topic alanı hiç gönderilmeyen eski stil istek → 200, data.topic='Genel', hata yok ✅
+- Temizlik: 4 tablo + deleteUser; probe silindi; zombi PID 4760 temizlendi
+
+### Session Bitişi
+- Bitiş: konu seçimi uçtan uca canlı-kodda; E2E kanıtlı; commit + push + deploy doğrulama bu oturumda
+- Sıradaki adım (kullanıcının BAP planına bağlı): kazanım kodu veritabanı tasarımı (MEB resmi kazanım çerçevesiyle eşleme), AYT ders ayrımı (Edebiyat vs Türkçe konu listeleri ayrışması), sınıf kavramı (9-12) gerekip gerekmediği

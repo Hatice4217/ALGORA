@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../../../../lib/supabase';
 import { PLAN_LIMITS } from '../../../../lib/subscription-config';
 import { rateLimit } from '../../../../lib/rate-limit';
+import { isSpecificTopic } from '../../../../lib/curriculum-topics';
 
 // Yapay zekaya gönderilecek katı sistem promptu
 const SYSTEM_PROMPT = `Sen Türkiye'deki üniversite sınavlarına (TYT, AYT) hazırlık yapan öğrenciler için soru üreten bir yapay zeka asistanısın.
@@ -278,9 +279,15 @@ export async function POST(request: Request) {
           .join('\n')}\nBu sorularla aynı veya benzer bir soru KESİNLİKLE üretme. Farklı sayılar, farklı bağlam/kurgu ve mümkünse farklı bir alt konu kullanarak tamamen YENİ bir soru üret.`
       : `\n\nÇEŞİTLİLİK: Yaygın bilinen örnek soruları değil, özgün bir soru üret. Sayı değerlerini ve kurguyu çeşitlendir.`;
 
+    // Konu odağı: yalnızca somut bir konu seçildiyse eklenir ('Genel'/boş → eklenmez,
+    // eski istekler ve varsayılan akış aynen çalışır — geriye dönük uyum)
+    const topicFocusBlock = isSpecificTopic(safeTopic)
+      ? `\n\nKONU ODAĞI: Soru YALNIZCA "${safeTopic}" konusuyla ilgili olmalı. Soru, bu konunun bilgisini/uygulamasını test etmeli; başka konulardan bağımsız soru üretme.`
+      : '';
+
     const prompt = `${SYSTEM_PROMPT}
 
-Lütfen ${subject} dersinde, ${safeTopic || 'genel'} konusu için ${difficultyText} (${exam_type || 'TYT'}) seviyesinde bir çoktan seçmeli soru üret.${antiRepeatBlock}
+Lütfen ${subject} dersinde, ${safeTopic || 'genel'} konusu için ${difficultyText} (${exam_type || 'TYT'}) seviyesinde bir çoktan seçmeli soru üret.${topicFocusBlock}${antiRepeatBlock}
 
 ÖNEMLİ: Matematiksel ifadeleri DÜZ METİN olarak yaz, $, \\, LaTeX kodları KULLANMA.
 Örnek: "x kare 2 artı x" yerine "x² + 2x", "karekök 16" yerine "4", "x küçük eşit 5" yerine "x <= 5" gibi.
@@ -474,12 +481,21 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     }
 
     // 8. Yanıt formatını kontrol et ve standart forma çevir
+    const difficultyToDb: Record<string, string> = {
+      'baslangic': 'beginner',
+      'orta': 'intermediate',
+      'ileri': 'advanced',
+    };
     const questionData = {
       id: `gemini_${Date.now()}`, // Aşağıda DB insert başarılıysa gerçek UUID ile değiştirilir
       question: cleanMathText(parsedQuestion.soruMetni || parsedQuestion.question || 'Soru metni bulunamadı'),
       choices: (parsedQuestion.secenekler || parsedQuestion.choices || []).map((choice: string) => cleanMathText(choice)),
       correctAnswer: Math.min(3, Math.max(0, parsedQuestion.dogruCevapIndex ?? parsedQuestion.correctAnswer ?? 0)),
-      explanation: cleanMathText(parsedQuestion.aciklama || parsedQuestion.explanation || 'Açıklama bulunamadı')
+      explanation: cleanMathText(parsedQuestion.aciklama || parsedQuestion.explanation || 'Açıklama bulunamadı'),
+      // İstemcide rozet/başlık gösterimi için meta (DB'ye de aynı değerler yazılır)
+      subject,
+      topic: safeTopic || 'Genel',
+      difficulty: difficultyToDb[difficulty] || difficulty,
     };
 
     // 9. Veri validasyonu
@@ -491,11 +507,6 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     // 9.5 Üretilen soruyu questions tablosuna kaydet.
     // answers.question_id sütunu questions(id)'e FK — soru kaydedilmeden cevap kaydedilemez,
     // istatistik view'ları da questions ile JOIN yapar.
-    const difficultyToDb: Record<string, string> = {
-      'baslangic': 'beginner',
-      'orta': 'intermediate',
-      'ileri': 'advanced',
-    };
     let questionId = crypto.randomUUID(); // insert başarısızsa yedek (cevap kaydı bu durumda düşer)
     const { data: insertedQuestion, error: insertError } = await adminClient
       .from('questions')
