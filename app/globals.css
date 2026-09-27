@@ -69,3 +69,27 @@ body {
 html {
   scroll-behavior: smooth;
 }
+
+/* İnce, modern kaydırma çubuğu (Paketim > Kullanım Geçmişi gibi iç kaydırmalı listeler için).
+   Firefox: scrollbar-width/color; WebKit: ::-webkit-scrollbar pseudo'ları. */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent; /* gray-300 */
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 9999px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af; /* gray-400 */
+}

@@ -135,25 +135,28 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
         {transactions.length === 0 ? (
           <p className="text-sm text-gray-500">Henüz kredi hareketi yok.</p>
         ) : (
-          <ul className="divide-y divide-gray-100">
-            {transactions.map((tx) => (
-              <li key={tx.id} className="py-3 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{REASON_LABELS[tx.reason]}</p>
-                  {tx.created_at && (
-                    <p className="text-xs text-gray-500">{formatDateTime(tx.created_at)}</p>
-                  )}
-                </div>
-                <span
-                  className={`text-sm font-bold ${
-                    tx.amount > 0 ? 'text-green-600' : 'text-gray-700'
-                  }`}
-                >
-                  {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="max-h-72 overflow-y-auto pr-2 thin-scrollbar">
+            {/* İç kaydırma: liste uzasa bile sayfayı aşağı itmesin — upgrade kartları erişilebilir kalsın */}
+            <ul className="divide-y divide-gray-100">
+              {transactions.map((tx) => (
+                <li key={tx.id} className="py-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{REASON_LABELS[tx.reason]}</p>
+                    {tx.created_at && (
+                      <p className="text-xs text-gray-500">{formatDateTime(tx.created_at)}</p>
+                    )}
+                  </div>
+                  <span
+                    className={`text-sm font-bold ${
+                      tx.amount > 0 ? 'text-green-600' : 'text-gray-700'
+                    }`}
+                  >
+                    {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
 
