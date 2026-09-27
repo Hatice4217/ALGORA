@@ -346,7 +346,8 @@ export default function DashboardPage() {
       // Save answer to database
       try {
         // Gerçek çözme süresi: soru ekrana geldiğinden cevap verilen ana kadar (saniye)
-        const timeSpentSeconds = Math.max(0, Math.round((Date.now() - questionStartedAtRef.current) / 1000));
+        // min 1: DB CHECK (time_spent > 0) — saniye altı cevapta 0 yazıp kaydı düşürme
+        const timeSpentSeconds = Math.max(1, Math.round((Date.now() - questionStartedAtRef.current) / 1000));
         const answerRecord = await dbHelpers.saveAnswer({
           user_id: user.id,
           question_id: currentQuestion?.id || `temp_${Date.now()}`,
