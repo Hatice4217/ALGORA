@@ -129,13 +129,6 @@ export const generateQuestion = async (params: {
   return data;
 };
 
-// User statistics API
-export const getUserStats = async () => {
-  const response = await authFetch(`${API_BASE}/api/users/stats`);
-  const data = await response.json();
-  return data;
-};
-
 // Submit answer API
 export const submitAnswer = async (answer: {
   question_id: string;

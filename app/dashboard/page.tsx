@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '../components/ui/Button';
@@ -9,7 +9,6 @@ import { MobileMenu, HamburgerButton } from '../../components/MobileMenu';
 import { getSubjectColor } from '../../lib/utils';
 import { authHelpers, dbHelpers } from '../../lib/supabase';
 import { StatisticsCards } from '../../components/dashboard/StatisticsCards';
-import { WorkRecords } from '../../components/dashboard/WorkRecords';
 import { AnalysisPanel } from '../../components/dashboard/AnalysisPanel';
 import { QuestionPractice } from '../../components/dashboard/QuestionPractice';
 import { SettingsPanel } from '../../components/dashboard/SettingsPanel';
@@ -19,7 +18,7 @@ import { authFetch } from '../../lib/api';
 
 import type { SubscriptionSummary, PaidPlanId } from '../../types/subscription';
 
-import type { Question, StudyRecord, Statistics, NewRecord, WeeklyStats, RecentAnswer } from '../../types/question';
+import type { Question, Statistics, RecentAnswer } from '../../types/question';
 
 // Type definitions for dashboard
 interface SubjectStat {
@@ -85,6 +84,8 @@ export default function DashboardPage() {
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  // Soru görüntülenmeye başlandığındaki zaman damgası (gerçek çözme süresi için)
+  const questionStartedAtRef = useRef<number>(Date.now());
   const [userName, setUserName] = useState<string | null>(null); // null = not loaded yet
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // Loading state for auth check
@@ -107,9 +108,6 @@ export default function DashboardPage() {
       }
     }
   }, []);
-
-  // Load study records from database
-  const [studyRecords, setStudyRecords] = useState<StudyRecord[]>([]); // Empty state - no mock data
 
   // Pricing sayfası yönlendirmesi: /dashboard?tab=package&upgrade=pro|premium
   useEffect(() => {
@@ -151,19 +149,6 @@ export default function DashboardPage() {
     // Kullanıcıyı bilgilendirip ana sayfaya döndür
     setTimeout(() => router.push('/'), 1200);
   };
-
-  const [newRecord, setNewRecord] = useState<NewRecord>({
-    ders: '',
-    saat: '',
-    soru: ''
-  });
-
-  // Weekly statistics state (gerçek veri kaynağı bağlanana kadar sıfır — sahte gösterim yok)
-  const [weeklyStats, setWeeklyStats] = useState<WeeklyStats>({
-    buHaftaToplamSaat: '0',
-    buHaftaToplamSoru: 0,
-    buGunToplam: '0'
-  });
 
 
   // Authentication check and fetch user data
@@ -336,6 +321,8 @@ export default function DashboardPage() {
       const data = await response.json();
       if (data.success) {
         setCurrentQuestion(data.data);
+        // Soru artık ekranda: çözme süresi sayacını sıfırdan başlat
+        questionStartedAtRef.current = Date.now();
         // Kredi sayacını güncelle
         if (typeof data.data.credits_remaining === 'number') {
           setSubscriptionSummary((prev) =>
@@ -379,12 +366,14 @@ export default function DashboardPage() {
 
       // Save answer to database
       try {
+        // Gerçek çözme süresi: soru ekrana geldiğinden cevap verilen ana kadar (saniye)
+        const timeSpentSeconds = Math.max(0, Math.round((Date.now() - questionStartedAtRef.current) / 1000));
         const answerRecord = await dbHelpers.saveAnswer({
           user_id: user.id,
           question_id: currentQuestion?.id || `temp_${Date.now()}`,
           selected_answer: index,
           is_correct: isCorrect,
-          time_spent: 30, // Mock value, real timer needed
+          time_spent: timeSpentSeconds,
         });
 
         if (answerRecord.error) {
@@ -493,31 +482,6 @@ export default function DashboardPage() {
     { id: 'package' as const, label: 'Paketim' },
     { id: 'settings' as const, label: 'Ayarlar' },
   ];
-
-  // Add study record function
-  const addStudyRecord = () => {
-    if (newRecord.ders && newRecord.saat && newRecord.soru) {
-      const today = new Date();
-      const day = String(today.getDate()).padStart(2, '0');
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const year = today.getFullYear();
-
-      const record = {
-        id: Date.now(),
-        tarih: `${day}.${month}.${year}`,
-        ders: newRecord.ders,
-        saat: parseFloat(newRecord.saat),
-        soru: parseInt(newRecord.soru)
-      };
-
-      setStudyRecords([record, ...studyRecords]);
-      setNewRecord({ ders: '', saat: '', soru: '' });
-    }
-  };
-
-  const deleteStudyRecord = (id: number) => {
-    setStudyRecords(studyRecords.filter(record => record.id !== id));
-  };
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
@@ -633,16 +597,6 @@ export default function DashboardPage() {
 
             {/* İstatistik Kartları */}
             <StatisticsCards istatistikler={statistics} />
-
-            {/* Çalışma Kayıtları */}
-            <WorkRecords
-              calismaKayitlari={studyRecords}
-              yeniKayit={newRecord}
-              haftalikIstatistikleri={weeklyStats}
-              setYeniKayit={setNewRecord}
-              calismaKaydiEkle={addStudyRecord}
-              calismaKaydiSil={deleteStudyRecord}
-            />
           </div>
         )}
 

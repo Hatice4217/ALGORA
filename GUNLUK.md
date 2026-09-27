@@ -1877,3 +1877,32 @@ Planın 8 adımı eksiksiz uygulandı (dün onaylanan revize 2 planı):
 - Bitiş: kullanıcının iki komutu tamam — "bülteni tamamen kaldır" ✅ + "genel sahte/mock taraması" ✅ (4 gerçek bulgu: 2 düzeltildi, 2 raporlandı)
 - Sıradaki adım (kullanıcı kararı): stats route+wrapper+test temizliği, WorkRecords gerçek DB kaydı ya da kaldırma, ölü seçenekler (dark/en), 5 ölü paket, dev artıkları, README modernizasyonu
 - Kullanıcı yapacak: deploy sonrası canlıda landing + dashboard Genel Bakış'ta "Bu Hafta: 0 saat | 0 soru" görsel teyidi
+
+## 27 Eylül 2026 - Cumartesi (Gerçek süre ölçümü + ölü kod temizliği)
+
+### ⏱️ 1. Gerçek time_spent ölçümü (hardcoded 30 gitti)
+- `dashboard/page.tsx`: `questionStartedAtRef` (useRef) eklendi — soru `setCurrentQuestion` ile ekrana basıldığı anda `Date.now()` ile sıfırlanıyor
+- `selectAnswer` içinde gerçek süre hesaplanıyor: `Math.max(0, Math.round((Date.now() - start)/1000))` saniye → `saveAnswer({ time_spent })`
+- "Son Çözülenler" inceleme modunda selectAnswer erken dönüyor (showAnswer=true) → incelemeler süreyi bozmuyor
+- Artık "Ortalama Süre" istatistiği ve answers.time_spent verisi GERÇEK (istatistik view'u answers.time_spent ortalamasını kullanıyor)
+
+### 🗑️ 2. Ölü /api/users/stats tamamen silindi
+- Silinen: `app/api/users/stats/route.ts` (+ boş klasör), `lib/api.ts` getUserStats wrapper'ı, `tests/api/users-api.test.ts`
+- Teyit: referans taraması 3 dosyayla sınırlıydı; `dbHelpers.getUserStats` (lib/supabase.ts, dashboard'un gerçek DB kaynağı) KORUNDU
+- Route manifest 28→27; canlı smoke: `/api/users/stats` → 404 ✅
+- Böylece Math.random mock'un son kalıntısı da gitti (F7 tam kapandı)
+
+### 🗑️ 3. WorkRecords (sahte çalışma kayıtları) tamamen kaldırıldı
+- dashboard/page.tsx: WorkRecords importu, `studyRecords`/`newRecord`/`weeklyStats` state'leri, `addStudyRecord`/`deleteStudyRecord` handler'ları, JSX bloğu silindi
+- `components/dashboard/WorkRecords.tsx` dosyası silindi
+- `types/question.ts`: öksüz kalan `StudyRecord`/`NewRecord`/`WeeklyStats` interface'leri silindi (SubjectStat/Statistics/DailyProgress korundu)
+- `tests/e2e/dashboard-flow.spec.ts`: çalışma kayıtlarını test eden 2 e2e testi silindi
+- Genel Bakış sekmesi artık Merhaba kartı + İstatistik Kartları (gerçek DB verisi) — sahte "Bu Hafta" satırı da tarih oldu
+
+### ✅ Doğrulama (adım başına build + final smoke)
+- 3 ayrı `npm run build` — hepsi ✓ (27/27 sayfa)
+- Smoke: /dashboard 200, /api/users/stats 404, landing 200; zombi PID 19788 temizlendi (tuzak rutin)
+
+### Session Bitişi
+- Bitiş: kullanıcının 3 adımlı öncelik listesi tamam — build ×3 yeşil, smoke yeşil
+- Sıradaki adım: commit + push (deploy) → canlı teyit; ardından kalan temizlik adayları (dark/en ölü seçenekleri, 5 ölü paket, dev artıkları, README)

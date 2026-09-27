@@ -13,14 +13,6 @@ export interface Question {
   correct_answer?: number;
 }
 
-export interface StudyRecord {
-  id: number;
-  tarih: string;
-  ders: string;
-  saat: number;
-  soru: number;
-}
-
 export interface SubjectStat {
   ders: string;
   toplam: number;
@@ -43,18 +35,6 @@ export interface DailyProgress {
   tarih: string;
   sorular: number;
   basari: number;
-}
-
-export interface NewRecord {
-  ders: string;
-  saat: string;
-  soru: string;
-}
-
-export interface WeeklyStats {
-  buHaftaToplamSaat: string;
-  buHaftaToplamSoru: number;
-  buGunToplam: string;
 }
 
 // Dashboard "Son Çözülenler" panel kaydı (answers JOIN questions, en yeniden eskiye)

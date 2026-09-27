@@ -94,49 +94,6 @@ test.describe('Dashboard Statistics', () => {
     await expect(statsSection.first()).toBeVisible();
     console.log('✅ Statistics show numerical values');
   });
-
-  test('should display study records section', async ({ page }) => {
-    await loginAndGoToDashboard(page);
-
-    // Check for study records
-    await expect(page.locator('text=/çalışma kayıtları/i')).toBeVisible();
-
-    const studyRecords = page.locator('[class*="record"]').or(
-      page.locator('text=/ders|saat|soru/i')
-    );
-
-    await expect(studyRecords.first()).toBeVisible();
-    console.log('✅ Study records section visible');
-  });
-
-  test('should allow adding new study records', async ({ page }) => {
-    await loginAndGoToDashboard(page);
-
-    // Find the add form
-    const addButton = page.locator('button:has-text("Ekle")').or(
-      page.locator('button[class*="add"]')
-    );
-
-    // Try to add a record
-    const subjectSelect = page.locator('select').or(
-      page.locator('[role="combobox"]')
-    );
-
-    const hasForm = await addButton.isVisible().catch(() => false);
-    console.log('Study record form available:', hasForm);
-
-    if (hasForm) {
-      // Try filling the form
-      await subjectSelect.first().selectOption('Matematik');
-      await page.fill('input[placeholder*="saat"]', '2');
-      await page.fill('input[placeholder*="soru"]', '15');
-
-      await addButton.click();
-      await page.waitForTimeout(1000);
-
-      console.log('✅ Study record form works');
-    }
-  });
 });
 
 test.describe('Question Practice Flow', () => {
