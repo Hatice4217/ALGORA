@@ -54,12 +54,12 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
       : 0;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)] gap-8 items-start lg:items-stretch lg:h-full">
       {/* SOL SÜTUN: mevcut durum + bekleyen talep + kullanım geçmişi.
           Premium'da sağ sütun boşalacağı için sol tam genişliğe çıkar. */}
-      <div className={`space-y-4 ${subscription.plan !== 'premium' ? 'lg:col-span-7' : 'lg:col-span-12'}`}>
+      <div className={`space-y-4 lg:h-full lg:min-h-0 lg:flex lg:flex-col ${subscription.plan !== 'premium' ? 'lg:col-span-7' : 'lg:col-span-12'}`}>
       {/* 1. Durum kartı */}
-      <div className="bg-white rounded-2xl shadow-sm p-6">
+      <div className="bg-white rounded-2xl shadow-sm p-6 lg:shrink-0">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <p className="text-sm text-gray-500 mb-1">Mevcut Paket</p>
@@ -111,7 +111,7 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
 
       {/* 2. Bekleyen talep kartı */}
       {pending_claim && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 lg:shrink-0">
           <div className="flex items-start gap-3">
             <svg
               className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5"
@@ -140,13 +140,13 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
         </div>
       )}
 
-      {/* 3. Kullanım geçmişi */}
-      <div className="bg-white rounded-2xl shadow-sm p-6">
+      {/* 3. Kullanım geçmişi — lg'de kalan yüksekliği doldurur, liste kendi içinde kayar */}
+      <div className="bg-white rounded-2xl shadow-sm p-6 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
         <h3 className="font-semibold text-gray-900 mb-4">Kullanım Geçmişi</h3>
         {history.length === 0 ? (
           <p className="text-sm text-gray-500">Gösterilecek kredi hareketi yok.</p>
         ) : (
-          <div className="max-h-72 overflow-y-auto pr-2 thin-scrollbar">
+          <div className="max-h-72 overflow-y-auto pr-2 thin-scrollbar lg:max-h-none lg:flex-1 lg:min-h-0">
             {/* İç kaydırma: liste uzasa bile sayfayı aşağı itmesin — upgrade kartları erişilebilir kalsın */}
             <ul className="divide-y divide-gray-100">
               {history.map((tx) => (
@@ -174,7 +174,7 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
 
       {/* SAĞ SÜTUN: satış vitrini — başlıksız, kartlar alt alta dikey sıralanır */}
       {subscription.plan !== 'premium' && (
-        <div className="lg:col-span-5">
+        <div className="lg:col-span-5 lg:h-full lg:min-h-0 lg:overflow-y-auto thin-scrollbar lg:pr-2">
           <div className="flex flex-col gap-4">
             {(['pro', 'premium'] as PaidPlanId[])
               .filter((id) => id !== subscription.plan)
@@ -183,16 +183,16 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                 return (
                   <div
                     key={id}
-                    className={`bg-white rounded-2xl p-6 ${
+                    className={`bg-white rounded-2xl p-5 ${
                       config.highlighted ? 'border-2 border-purple-500 shadow-lg' : 'border border-gray-200'
                     }`}
                   >
-                    <h4 className="text-lg font-bold text-gray-900">{config.name}</h4>
-                    <p className="text-2xl font-black text-gray-900 mt-2">
+                    <h4 className="text-base font-bold text-gray-900">{config.name}</h4>
+                    <p className="text-xl font-black text-gray-900 mt-1">
                       ₺{config.price}
                       <span className="text-sm font-normal text-gray-500 ml-1">/ ay</span>
                     </p>
-                    <ul className="mt-3 space-y-2 mb-5">
+                    <ul className="mt-2 space-y-1.5 mb-4">
                       {config.features.map((feature, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
                           <svg
@@ -209,7 +209,7 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                     </ul>
                     <Button
                       variant={config.highlighted ? 'primary' : 'outline'}
-                      size="md"
+                      size="sm"
                       fullWidth
                       onClick={() => onUpgrade(id)}
                     >
