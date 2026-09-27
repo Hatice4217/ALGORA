@@ -14,6 +14,8 @@ import { QuestionPractice } from '../../components/dashboard/QuestionPractice';
 import { SettingsPanel } from '../../components/dashboard/SettingsPanel';
 import { PackagePanel, UpgradeModal } from '../../components/dashboard/PackagePanel';
 import { QuotaExhaustedModal } from '../../components/dashboard/QuotaExhaustedModal';
+import { DailyGoals } from '../../components/dashboard/DailyGoals';
+import { ExamCountdown } from '../../components/dashboard/ExamCountdown';
 import { authFetch } from '../../lib/api';
 import { getSubjects, getTopics } from '../../lib/constants/syllabus';
 
@@ -578,6 +580,12 @@ export default function DashboardPage() {
 
             {/* İstatistik Kartları */}
             <StatisticsCards istatistikler={statistics} />
+
+            {/* Hedefler + Geri Sayım — mobilde alt alta, lg'de yan yana */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+              <DailyGoals />
+              <ExamCountdown />
+            </div>
           </div>
         )}
 
