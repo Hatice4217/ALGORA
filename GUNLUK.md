@@ -2495,3 +2495,21 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Commit: a8572b5 (push → Vercel deploy izlenecek)
+
+## [28 Eylül 2026] - Takvim türe göre + Settings scroll + 400 kök nedeni (f5f83a7)
+
+### 🎯 Kullanıcı istekleri
+- ① Sınav Tipi (TYT/AYT/YDT) seçimine göre dashboard sayacı doğru güne saymalı ② Sınav Hedefleri'ndeki ana scroll masaüstünde kalkmalı ③ console'da 400 hatası
+
+### ✅ Yapılanlar
+- **ExamCountdown context'e bağlandı:** SINAV_TAKVIMI haritası — TYT → 19 Haz 10:15, AYT/YDT → 20 Haz 15:00 (ÖSYM kalıp düzeni; resmî tarih açıklanınca sabitler güncellenir). UserPreferences.examType 3'lü kümeye genişletildi + `gecerliTur` normalize helper'ı (bozuk eski localStorage dahil)
+- **Settings scroll:** section görünümü `lg:h-full lg:flex lg:flex-col` + kart `lg:my-auto` (my-auto taşmada güvenle 0'a düşer — justify-center'ın üst-kırpması yok) + exam kartı kompaktlaştırıldı (p-6 lg:p-8, mt-6, py-2.5)
+- **🔥 400 kök nedeni: şema↔form çelişkisi** — user_profiles CHECK'leri `target_score >= 100` ve `study_hours_per_day >= 1 INTEGER`; form 0-500 / 0-24 (0.5 adım) vaat ediyordu → 0/0.5/0-99 kayıtlar 23514 → HTTP 400. `database/user_profiles_ayarlar_uyum.sql` (DO blok isimden-bağımsız DROP + NUMERIC ALTER + 0 tabanlı yeni CHECK'ler + YDT garantisi, idempotent) + schema.sql baseline eşitlendi
+- **Profil-satır-yoku düzeltmesi:** onboarding silinince yeni kullanıcıların user_profiles satırı hiç oluşmuyordu → updateUserSettings UPDATE 0 satır dönerse NOT NULL varsayılanlarla INSERT (kayıtlar artık sessizce boşa gitmez)
+- **Settings Sınav Tipi'ne YDT seçeneği**
+
+### 📌 Not
+- Migration'ı KULLANICI Supabase SQL Editor'de çalıştıracak; öncesinde 0/0.5 kayıtlar hâlâ 400 alabilir (post-migration temiz)
+
+### Session Bitişi
+- Commit: f5f83a7 (push → Vercel deploy izlenecek)
