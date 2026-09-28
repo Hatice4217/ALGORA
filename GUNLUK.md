@@ -2610,7 +2610,13 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 - **Sunucudan doğrulama:** `GET /auth/v1/settings` (anon key header'lı) → `mailer_autoconfirm: false` ✓ (public endpoint — "Confirm email" durumunu dashboard'sız sorgulamanın yolu)
 - Probe kanıtı (ayar öncesi): test hesapları oluşturulduktan ~0.02-0.04 sn sonra `email_confirmed_at` doluydu + `confirmation_sent_at` undefined → autoconfirm'de mail hiç gönderilmiyor (kullanıcının "mail gelmedi + onaysız giriş + resend olmadı" üçlüsünün açıklaması)
 - Bugünün 3 test hesabı temizlendi (2'si service-role probe ile — tablolar: answers/study_sessions/user_profiles/credit_transactions/payment_claims/subscriptions/user_goals + questions.created_by→NULL + deleteUser; haticesarlak135 kullanıcı tarafından zaten silinmiş). Kalan: 2 gerçek hesap (sarlakhatice2, sarlakhatice656)
-- **Yeni akış E2E beklemede:** kayıt → onay maili (Supabase native) → linke basmadan login "EMAIL_NOT_CONFIRMED" Türkçe uyarı → link → otomatik giriş → /dashboard
+- **Yeni akış E2E BEKLEMEDE:** kayıt → onay maili (Supabase native) → linke basmadan login "EMAIL_NOT_CONFIRMED" Türkçe uyarı → link → otomatik giriş → /dashboard
+
+### ✅ Türkçe şablon + SMTP macerası (aynı gün, AKIŞ TAMAM)
+- İlk E2E testi geçti: mail geldi (13:42 oluşturma → 13:44 onay = **78 sn sonra KULLANICI tıklayınca** — autoconfirm'deki 0.02 sn'nin tersine, onayın gerçek kanıtı), onaysız login engellendi, link → dashboard ✓
+- **Şablon kilidi:** Email Templates sayfasında "Set up custom SMTP to edit templates" uyarısı + "Supabase bağlantıyı reddetti" ağ hataları → kullanıcı yine de Türkçe şablonu kaydetti
+- **🔥 SMTP bozuk → signup 500:** Brevo SMTP ayarları kaydedilince TÜM kayıtlar 500 döndürmeye başladı (supabase-js `AuthRetryableFetchError: {}` — mesaj boş). Neden: onay maili yapılandırılmış SMTP'den gönderilemeyince gotrue signup'u 500'le reddediyor; DB'de yarım kayıt bile kalmıyor. UI'da gösterilen hata "Bilinmeyen hata"/`{}` oluyordu → **düzeltme (dabba40):** signUp'da boş/`{}`/fetch'li mesajlar anlaşılır Türkçe uyarıya çevrildi
+- **Geçici çözüm = kalıcı durum:** Custom SMTP OFF → kayıt anında çalıştı VE **Türkçe şablon built-in göndericiyle de kullanıldı** (kullanıcının maili birebir ALGORA Türkçe şablonu) — "custom SMTP olmadan şablon editlenemez" uyarısı yanıltıcı: kaydedilen şablon built-in'de de GEÇERLİ. **Custom SMTP artık opsiyonel** (mail hacmi büyürse Brevo SMTP yeniden denenir; teşhis: Supabase → Logs → Auth → 500 detayı, ör. `535 Authentication failed` = şifre/username, `xkeysib-`(API key) ↔ `xsmtpsib-`(SMTP key) karışıklığı en sık hata)
 
 ### Session Bitişi
-- Commit: 200b34e + b7f8974 (push → Vercel deploy izlenecek)
+- Commit: 200b34e + b7f8974 + dabba40 (push → Vercel deploy SUCCESS)
