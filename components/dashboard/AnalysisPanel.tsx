@@ -112,7 +112,8 @@ function ZorlukAnaliziKarti() {
     };
   }, []);
 
-  // Filtre seçenekleri: Genel + kullanıcının gerçekten çözdüğü dersler
+  // Filtre seçenekleri: Genel + kullanıcının çözdüğü ders+tür kombinasyonları
+  // ("Matematik (TYT)", "Matematik (AYT)" ayrı seçenekler)
   const dersler = veri ? Object.keys(veri.dersBazli).sort((a, b) => a.localeCompare(b, 'tr')) : [];
   const kapsam = veri ? (seciliDers === 'Genel' ? veri.genel : veri.dersBazli[seciliDers]) : undefined;
   const yuzde = (s: ZorlukSayaci | undefined) =>

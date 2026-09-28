@@ -501,7 +501,7 @@ export const dbHelpers = {
         try {
           const { data, error } = await supabase!
             .from('answers')
-            .select('is_correct, question:questions(subject, difficulty)')
+            .select('is_correct, question:questions(subject, difficulty, exam_type)')
             .eq('user_id', userId);
 
           if (error) {
@@ -515,7 +515,7 @@ export const dbHelpers = {
 
           for (const raw of (data || []) as unknown as Array<{
             is_correct: boolean;
-            question: { subject: string; difficulty: string } | null;
+            question: { subject: string; difficulty: string; exam_type: string } | null;
           }>) {
             const q = raw.question;
             if (!q) continue;
@@ -523,10 +523,13 @@ export const dbHelpers = {
             genel[q.difficulty].toplam += 1;
             if (raw.is_correct) genel[q.difficulty].dogru += 1;
 
-            dersBazli[q.subject] ??= {};
-            dersBazli[q.subject][q.difficulty] ??= bos();
-            dersBazli[q.subject][q.difficulty].toplam += 1;
-            if (raw.is_correct) dersBazli[q.subject][q.difficulty].dogru += 1;
+            // Ders anahtarı sınav türüyle bileşik ("Matematik (TYT)" ≠ "Matematik (AYT)") —
+            // Analizler'in diğer kartlarıyla aynı kırılım
+            const dersAnahtari = `${q.subject} (${q.exam_type})`;
+            dersBazli[dersAnahtari] ??= {};
+            dersBazli[dersAnahtari][q.difficulty] ??= bos();
+            dersBazli[dersAnahtari][q.difficulty].toplam += 1;
+            if (raw.is_correct) dersBazli[dersAnahtari][q.difficulty].dogru += 1;
           }
 
           return { data: { genel, dersBazli }, error: null };
