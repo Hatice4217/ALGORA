@@ -2021,3 +2021,375 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Bitiş: kod tarafı %100 canlıya gidiyor; DB migration'ı kullanıcı adımı — çalıştırınca Test C probe ile kapanacak
+
+## 27 Eylül 2026 - Pazar 3 (Geçmiş Sorunu Çözüldü — Kanıtlı + YDT Latency Teşhisi + Bekleyiş Sayacı)
+
+### ✅ Kullanıcı teyidi + canlı DB kanıtı (migration çalıştı)
+- Salt-okunur DB teşhisi (diag probe): migration SONRASI kayıtlar akmaya başladı — YDT | İngilizce | Türkçe-İngilizce Çeviri (5 şık), AYT | Biyoloji | Boşaltım Sistemi ×2 (5 şık), cevap kayıtları (29s/7s/2s). Sabahki 4 şıklık satırlar duruyor (NOT VALID grandfathering ✓)
+- Kullanıcı: "geçmiş sorunu çözüldü, geçmiş soruları görebiliyorum" ✓
+
+### 🔍 YDT "2-3 dakika" şikayetinin teşhisi (kanıt: credit_transactions ↔ questions created_at)
+- Gerçek üretim süresi ~33 sn (kredi 16:19:29 → soru satırı 16:20:02). "Dakikalar" hissi: saat 16:15'teki 2 deneme migration ÖNCESİ DB kısıtına takılmış (2 kredi yandı, soru kaydı yok) + kullanıcı tekrar basmış → bekleyişler üst üste binmiş
+- Kök gecikme model tarafı: flash-lite + uzun prompt (ban list + konu odağı + 5 şık şeması) + YDT metin-türlü konular (çeviri/paragraf) uzun çıktı üretiyor
+
+### 🔧 İyileştirmeler (899b6f8, canlıda)
+- UI: üretim beklerken butonda saniye sayacı "(12 sn)", 30 sn sonrası sabır mesajı (adım 2 + modal "Sıradaki Soru")
+- Route: her Gemini denemesinin süresi + usage logu (Vercel latency teşhisi için) — `deneme 1/2 33s (toplam 33s), usage: {...}`
+- f50e422: time_spent Math.max(1,...) — saniye altı cevapta DB CHECK (time_spent > 0) kaydı düşürmesin
+
+### Session Bitişi
+- Bitiş: geçmiş akışı uçtan uca canlıda kanıtlı; latency gözlemlenebilir; commit'ler f50e422 + 899b6f8 canlıda
+- Sıradaki: Vercel loglarından latency istatistiği birikince model seçimi/ Output bütçesi gözden geçirme
+
+## 27 Eylül 2026 - Pazar 4 (Modal UX Bug: Üretim Sırasında Eski Soru Kilitlenmesi — 187a624)
+
+### 🐛 Kullanıcı bulgusu
+"Sıradaki Soru" basılınca yeni soru üretilirken eski sorunun şıkları tıklanabilir kalıyordu. Kök: generateQuestion showAnswer=false yaparken şık butonları yalnızca disabled={cevapGoster}'dı → cevapSec eski soru için tekrar tetiklenebiliyor (mükerrer cevap kaydı + yanlış istatistik).
+
+### 🔧 Çözüm (3 katman + 1 ek)
+1. Şık butonları: disabled={cevapGoster || soruUretiliyor} + disabled:cursor-not-allowed
+2. Gövde (soru+şıklar+açıklama): opacity-50 + pointer-events-none + select-none (sorunun istediği sınıflar)
+3. Spinner örtüsü: kilitli gövdenin üstünde absolute inset-0 + "Yeni soru üretiliyor..." (Sıradaki Soru butonu ve modal kapatma örtü dışında kaldı — çalışmaya devam)
+4. Ek güvenlik: selectAnswer erken dönüş guard'ı (showAnswer || isGeneratingQuestion) — UI aşılırsa bile handler reddeder
+
+### Session Bitişi
+- Bitiş: build ✓, commit 187a624 push edildi; canlı doğrulama kullanıcının manuel UI testiyle
+- ✅ 187a624 kullanıcı tarafından canlıda test edildi ve teyit edildi ("artık kilitleniyor")
+
+## 27 Eylül 2026 - Pazar (Free günlük kredi 10 → 20)
+
+### 🎯 Görev
+- Kullanıcı kararı: "krediyi 20'ye çekelim 10 gerçekten az" → free plan günlük kotası 20'ye çıkarıldı
+
+### ⚙️ Değişiklikler (commit d03a20f, canlıda ✅)
+- `lib/subscription-config.ts`: `PLAN_LIMITS.free = 20` (tek kod kaynağı)
+- `database/subscriptions.sql` (canonical kurulum scripti): kolon DEFAULT'leri, `rollover_subscription` CASE ELSE, `handle_new_user_subscription` seed, backfill — hepsi 20
+- **Yeni migrasyon: `database/free_kredi_20.sql`** (canlı DB için, kullanıcı SQL Editor'de çalıştıracak):
+  1. `rollover_subscription` → free reset limiti 20
+  2. `handle_new_user_subscription` → yeni kullanıcı seed 20/20
+  3. `ALTER TABLE subscriptions ALTER COLUMN ... SET DEFAULT 20` (iki kolon)
+  4. Mevcut free satırlarına TEK SEFERLİK tamamlama: `credits_remaining = 20, credits_limit = 20`, artış `credit_transactions`'e `admin_adjust` olarak yazılıyor (DO bloğu + FOR UPDATE; `plan='free' AND credits_limit<20` filtresiyle idempotent)
+  5. REVOKE/GRANT blokları (CREATE OR REPLACE sonrası default-privileges tuzağına karşı ZORUNLU)
+- Metinler: Hero "her gün 20 soru", PricingSection + `types/subscription.ts` PLANS "Günlük 20 AI soru kredisi"
+- `app/api/questions/generate/route.ts`: fallback seed yorumu 20
+
+### 📌 Kararlar / Notlar
+- Tarihi migrasyonlar (`daily_free_quota.sql`, GUNLUK eski kayıtları) olduğu gibi bırakıldı — 5sik_ve_ydt.sql presedenti: canonical dosya güncellenir, migration geçmişi değişmez
+- Top-up stratejisi: kalan krediyi 10 artırmak yerine 20'ye TAMAMLA (kotası bitmiş kullanıcı da bugün 20 soru kazanır; free dönem zaten 1 gün)
+- amount CHECK (`<> 0`) güvencesi: free satırlarda remaining ≤ 10 → amount ≥ 10 pozitif
+
+### Session Bitişi
+- Bitiş: build ✓, commit d03a20f push ✓, Vercel deploy SUCCESS ✓, canlı landing "her gün 20 soru" doğrulandı ✓
+- ⏳ Kullanıcı yapacak: `database/free_kredi_20.sql`'i Supabase SQL Editor'de çalıştırmak + doğrulama SELECT'ini kontrol etmek
+
+## 27 Eylül 2026 - Pazar (Paketim: iç kaydırma + split-screen + yenilenme geri sayımı)
+
+### 🎯 Görevler (kullanıcı 2 mesaj)
+1. Kullanım Geçmişi listesi mobilde sayfayı aşağı itiyordu → iç kaydırmalı kapsayıcı
+2. Paketim sayfası profesyonel SaaS split-screen'e çevrilecek + Yenilenme satırına geri sayım
+
+### ⚙️ Değişiklikler (commit fc79ed8 + 3e2e9d5, ikisi de canlıda ✅)
+- **fc79ed8:** PackagePanel transactions listesine `max-h-72 overflow-y-auto pr-2` kapsayıcı; globals.css'e `.thin-scrollbar` (6px yuvarlak thumb gray-300/400, Firefox scrollbar-width/color + WebKit pseudo'ları — tailwind-scrollbar eklentisi gerekmedi)
+- **3e2e9d5:** Ana kapsayıcı `grid grid-cols-1 lg:grid-cols-12 gap-8 items-start`; sol sütun `lg:col-span-7` (durum kartı + bekleyen talep + Kullanım Geçmişi), sağ sütun `lg:col-span-5` (Paketini Yükselt — kartlar `flex flex-col gap-4` ile alt alta). Premium'da sol sütun koşullu `lg:col-span-12` (boş sağ sütun kalmasın). Mobilde grid-cols-1 → doğal akış: sol üstte, satış altta
+- **Yenilenme geri sayımı:** durum kartındaki "Yenilenme: <tarih>" satırına canlı `QuotaCountdown` eklendi (mor, `tarih · geri sayım` formatı; bileşen SSR-safe, saniyede tick)
+
+### 🐛 Tuzaklar
+- **JSX ternary yorum tuzağı (build kırdı):** `) : (` dalının başındaki `{/* yorum */}` object literal olarak parse edilir → "Expected '</', got 'ident'". Çözüm: yorum JSX elementinin İÇİNE alındı
+- Satış kartları `md:grid-cols-2`'den `flex flex-col`'a çevrilirken filtre/map mantığı DOKUNULMADI (state + onUpgrade akışı aynı)
+
+### Session Bitişi
+- Bitiş: build ✓ (2 deneme — ilki yorum tuzağı), commit fc79ed8 + 3e2e9d5 push ✓, Vercel 2/2 SUCCESS ✓
+- Bekleyen: kullanıcının canlıda mobil + masaüstü görsel onayı; free_kredi_20.sql hâlâ kullanıcıda (Supabase SQL Editor)
+
+## 27 Eylül 2026 - Pazar (Kullanım Geçmişi filtresi + başlık kaldırma + free_kredi_20 canlı teyidi)
+
+### 🎯 Görevler (kullanıcı 2 mesaj)
+1. "Kullanım Geçmişi'nde soru üretimlerini göstermesek?" → -1 hareketleri gizlendi
+2. "Paketini Yükselt başlığını kapatalım, butonlar yeterli" → başlık silindi
+3. Kullanıcı free_kredi_20.sql'i çalıştırdığını bildirdi ("çalışıyor")
+
+### ⚙️ Değişiklikler (commit d7e6988, canlıda ✅)
+- PackagePanel: `history = transactions.filter(tx => tx.reason !== 'generation')` —
+  her soru üretimi (-1) listeyi günlük 20 satırla dolduruyordu; artık yalnızca
+  yenileme/paket değişimi/iade/yönetici düzeltmesi görünüyor
+- REASON_LABELS'ta 'generation' etiketi tip bütünlüğü (Record tam) için duruyor, UI'da gizli
+- Boş durum metni: "Gösterilecek kredi hareketi yok."
+- Sağ sütunda "Paketini Yükselt" h3'ü kaldırıldı — kartlardaki "Bu Pakete Geç" butonları yeterli
+
+### ✅ free_kredi_20.sql CANLI DOĞRULANDI (salt-okunur REST probe)
+- subscriptions: tüm free satırlar 20 limitli (biri 19 kalan — kullanıcı soru üretmiş, -1 düşmüş ✓)
+- credit_transactions: admin_adjust +19 (kredisi kısmen kullanılmış kullanıcıya) ve +20
+  (taze kullanıcıya) denetim izleri DOĞRU — DO bloğu kalan kadarını tamamlamış
+- Yani: migration + top-up + audit izi uçtan uca çalışıyor
+
+### Session Bitişi
+- Bitiş: build ✓, commit d7e6988 push ✓, Vercel SUCCESS ✓, canlı DB probe ✓, probe silindi
+
+- ✅ d7e6988 kullanıcı tarafından canlıda test edildi ve teyit edildi ("süper olmuş, geçmiş artık temiz") — 27 Eylül Paketim turu (fc79ed8 + 3e2e9d5 + d7e6988 + free_kredi_20.sql) tamamen kapandı
+
+## 27 Eylül 2026 - Pazar (Paketim masaüstünde ekrana tam sığdırma)
+
+### 🎯 Görev
+- "Paketim'de hâlâ ana scroll var, masaüstünde tam sığdır" → dashboard main'in scroll'unu Paketim sekmesi tetiklemesin
+
+### 🔍 Kök yapı
+- Dashboard kökü zaten `h-screen overflow-hidden`; scroll KAYNAĞI `<main class="overflow-y-auto">` (page.tsx:565). Header ≈130px + panel içeriği (özellikle sağ kolondaki 2 büyük satış kartı ≈780px) viewport'u aşıyordu
+
+### ⚙️ Çözüm (commit 445b1bf, canlıda ✅ — yalnızca PackagePanel, main'e dokunulmadı)
+- Panel kökü: `lg:h-full` + `lg:grid-rows-[minmax(0,1fr)]` → main içerik yüksekliğine kilit
+- Sol kolon `lg:flex lg:flex-col`: durum kartı + bekleyen talep `lg:shrink-0`; Kullanım Geçmişi `lg:flex-1 lg:min-h-0` → kalan yüksekliği doldurur, liste kendi içinde kayar (`lg:max-h-none lg:flex-1 lg:min-h-0`; mobilde max-h-72 aynen)
+- Sağ kolon `lg:overflow-y-auto thin-scrollbar lg:pr-2` → aşırı kısa ekranda kendi içinde kayar, ana scroll hiç açılmaz
+- Satış kartları kompakt: p-6→p-5, başlık lg→base, fiyat 2xl→xl, özellik aralıkları daraltıldı, buton md→sm
+- Graceful fallback: h-full çözülmezse doğal yükseklik + eski davranış (main scroll) — kırılmaz
+
+### Session Bitişi
+- Bitiş: build ✓, commit 445b1bf push ✓, Vercel SUCCESS ✓ — görsel onay kullanıcıda
+
+## 27 Eylül 2026 - Pazar (Genel Bakış: Hedefler + YKS geri sayım widget'ları)
+
+### 🎯 Görev
+- İstatistik kartlarının altına 2 interaktif widget (grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8)
+
+### ⚙️ Yeni dosyalar + entegrasyon (commit 8e3443e, canlıda ✅)
+- **components/dashboard/DailyGoals.tsx:** useState to-do (ekle/Enter, checkbox üstü çizme,
+  hover'da X ile silme — mobilde X hep görünür), done/total rozeti, boş durum mesaji.
+  BİLINÇLI olarak kalıcılıksız (useState; yenilenince sıfırlanır) — DB/localStorage bağlama
+  kullanıcı isterse sonraki iş
+- **components/dashboard/ExamCountdown.tsx:** 19 Haziran 2027 10:15 TSİ'ye (ISO'da +03:00
+  sabitlendi — Türkiye yıl boyunca UTC+3) gerçek zamanlı Gün/Saat/Dakika; gradient mor kart +
+  bg-white/15 kutucuklar + beyaz kalın tabular-nums rakamlar; SSR-safe '—' (QuotaCountdown
+  deseni); 0 negatife clamp'li
+- page.tsx Genel Bakış'a import + grid yerleşimi
+
+### Session Bitişi
+- Bitiş: build ✓, commit 8e3443e push ✓, Vercel SUCCESS ✓ — görsel onay kullanıcıda
+
+## 28 Eylül 2026 - Pazartesi (Hedefler localStorage'a bağlandı)
+
+### 🎯 Görev
+- "Hedefleri localStorage'a bağla" (önceki günün bilinçli kalıcılıksız kararının devamı)
+
+### ⚙️ Değişiklik (commit f7366b3, canlıda ✅)
+- DailyGoals: `algora_daily_goals` anahtarıyla localStorage okuma/yazma
+- **Kritik desen — hydrated bayrağı:** yükleme effect'i ([]) localStorage'ı okuyup
+  `setHydrated(true)`; yazma effect'i [goals, hydrated] yalnızca hydrate sonrası çalışır →
+  boş initial state localStorage'ı EZMEZ (bu guard olmadan mount anında veri silinir)
+- SSR-safe: server'da boş liste render → client doldurur, hydration uyuşmazlığı yok
+- Parse guard: text:string + done:boolean olmayan girdiler filtrelenir; bozuk JSON sessiz yutulur
+- Kapsam: cihaz bazlı (hesaptan bağımsız) — DB'ye bağlama (tüm cihazlarda aynı liste) istenirse sonraki iş
+
+### Session Bitişi
+- Bitiş: build ✓, commit f7366b3 push ✓, Vercel SUCCESS ✓ — canlı test kullanıcıda
+
+- ✅ Takip: geri sayıma saniye kutusu eklendi (f7181a2, canlıda) — "takılmadığı anlaşılsın" kullanıcı geri bildirimi; Gün/Saat/Dakika/Saniye 4'lü grid
+
+## 28 Eylül 2026 - Pazartesi (Refresh'te sekme sıfırlanması — "hedefler gitti" teşhisi)
+
+### 🔍 Teşhis
+- Kullanıcı: "sayfayı yenileyince hedefler kısmı gidiyor" → hedefler kaybolMUYOR; **activeTab**
+  refresh'te varsayılan 'practiceRoom'a dönüyordu → Genel Bakış içeriği (hedefler+geri sayım)
+  görünmez oluyordu (page.tsx:60 varsayılan; onboarding kaldırılırken bilinçli seçilmişti)
+
+### ⚙️ Çözüm (commit c09c716, canlıda ✅)
+- `algora_active_tab` localStorage anahtarı: restore effect'i ([]) + yazma effect'i
+  ([activeTab, tabRestored]) — **tabRestored guard'ı şart**: olmasa mount'ta varsayılan
+  'practiceRoom' kayıtlı sekmeyi ezerdi (DailyGoals hydrated deseniyle aynı koruma)
+- **Önemli etkileşim:** mevcut `/dashboard?tab=package&upgrade=pro` URL yönlendirmesi var —
+  restore effect'i URL effect'inden ÖNCE tanımlandı (aynı mount batch'inde son setActiveTab
+  kazanır → bilinçli yönlendirme önceliği korunur)
+- Kayıtlı değer 5 geçerli sekmeyle sınırlı; storage hataları sessiz
+
+### Session Bitişi
+- Bitiş: build ✓, commit c09c716 push ✓, Vercel SUCCESS ✓ — kullanıcı testi bekleniyor
+- Ders: "X gitti" şikayetinde önce görünürlük/sekme/state-sıfırlama ayrımı — veri kaybı sanılan
+  çoğu durum sekme resetidir
+
+## 28 Eylül 2026 - Pazartesi (Hedef sistemi: global state + arşiv + toast + tab teşhis kapanışı)
+
+### 🔍 Tab meselesi NET ÇÖZÜLDÜ
+- Canlı chunk taraması: `algora_active_tab` kodu Vercel bundle'ında VAR (3s51-6_rbz9yo) →
+  kod canlı, kullanıcının tarayıcısı eski JS'i cache'ten veriyordu → çözüm Ctrl+Shift+R
+
+### ⚙️ Global hedef mimarisi (commit 6d571e8, canlıda ✅)
+- **GoalsProvider (yeni dosya):** Context API + localStorage `algora_goals_v1`;
+  şema `{ id, text, isCompleted, date }` (kullanıcının istediği birebir); eski
+  `algora_daily_goals` {id,text,done} şeması otomatik migrate; hydrated-guard yazma;
+  seçeneklerden Context tercihi: sekmeler tek component tree'inde (sayfa değil) →
+  Zustand'a gerek yok; Supabase'e geçiş istenirse yalnız load/save effect değişir
+- **DailyGoals:** yalnız bugün + !isCompleted listesi; checkbox → 900ms
+  (opacity-0 -translate-x-8 max-h-0) animasyonu → completeGoal → filtre düşer;
+  çift tetikleme guard'ı (exitingId); boş durum: "Bugünün tüm hedeflerini tamamladın 🎉"
+- **Toast (provider içinde):** sağ altta yeşil, tam 4.5sn, kapatma X'i,
+  metinler kullanıcının verdiği birebir cümleler; animate-toast-in keyframes (globals.css)
+- **AnalysisPanel:** 'use client'a çevrildi + üstte "Hedef Arşivi 📚" kartı:
+  ‹ gün geri / ileri (bugün'de kilitli) / "(Bugün)" etiketi; seçili günün TÜM
+  hedefleri — tamamlananlar yeşil tikli + line-through + "Tamamlandı" rozeti
+- **Yerel tarih:** toISOString() UTC döndürdüğü için elle YYYY-MM-DD kurgusu
+  (TR akşamları dünü verirdi); string karşılaştırma kronolojik çalışır
+
+### Session Bitişi
+- Bitiş: build ✓, commit 6d571e8 push ✓, Vercel SUCCESS ✓ — kullanıcı testi bekleniyor
+- Not: sağ alt toast QuotaExhaustedModal'la çakışmaz (farklı köşe/zaman)
+
+## 28 Eylül 2026 - Pazartesi ("Soru Laboratuvarı" → "Dinamik Soru Bankası" yeniden adlandırma)
+
+### ✏️ Yalnızca isim değişikliği (commit 61f3b4a, canlıda ✅)
+- Kullanıcı kararı: "hayır sadece isim olarak değiştir, yapı aynı kalsın" —
+  4 mimari seçenek (SBB/banka/karışık mod/mutfak) önerilmişti, istek yalnızca isimdi
+- Değişen yerler: dashboard/page.tsx:499 tab label (tek kaynak — desktop tab bar +
+  mobil menü aynı diziden beslenir), :60 yorum; login:153 + callback:50 yorumları;
+  README:192 özellik satırı
+- Dokunulmadı: tab id 'practiceRoom' (localStorage `algora_active_tab` uyumu),
+  QuestionPractice bileşeni, sekme sırası
+
+### Session Bitişi
+- Bitiş: build ✓, commit 61f3b4a push ✓, Vercel SUCCESS ✓
+
+## 28 Eylül 2026 - Pazartesi (Analizler kompakt düzen: scroll fatigue çözümü)
+
+### 📦 Birleşik "Ders Performans Analizi" kartı (commit 9447bfd)
+- **Ölü UI temizliği istemle birleşti:** Güçlü/Gelişim kartları `gucluAlanlar`/
+  `gelisimGerekenler` state'ine bağlıydı — grep kanıtıyla bu alanlar HİÇBİR yerde
+  doldurulmuyor (hep []) → iki kart sürekli "belirlenmedi" boş durumu basıyordu.
+  Silindiler (AnalysisPanel yerel interface'i yalnız `dersler`'e indirildi)
+- **Header rozetleri gerçek veriden:** `dersler.reduce` ile en yüksek/en düşük
+  basari → "🏆 En Başarılı: X" (yeşil) + "📈 Odaklanılmalı: Y" (turuncu) pill'leri;
+  tek derste yalnız 🏆 görünür
+- **Body:** eski "Ders Bazlı Performans" bar'ları aynı kartta
+  grid-cols-1 md:2 lg:3 + max-h-[300px] overflow-y-auto
+- **Hedef Arşivi:** liste max-h-64 + overflow-y-auto (pr-2 + thin-scrollbar) —
+  çok hedefte sayfa uzamaz
+- Net −44 satır; build ✓, push ✓
+
+### Session Bitişi
+- Bitiş: build ✓, commit 9447bfd push ✓ — deploy doğrulaması ve kullanıcı testi bekleniyor
+
+## 28 Eylül 2026 - Pazartesi (Dinamik Soru Bankası: masaüstünde sayfa scroll'u kaldırıldı)
+
+### 🖥️ Ekrana sığdırma (commit 1ad67d6)
+- Paketim'deki kanıtlanmış desen aynen: grid'e `lg:grid-rows-[minmax(0,1fr)]` +
+  `lg:items-stretch` → tek satır main yüksekliğine kilitlenir (items-start'ın
+  content-height satırı yerine)
+- Taşma senaryoları kolon içine alındı: sol kart gövdesi
+  (`lg:min-h-0 lg:overflow-y-auto`) + "Son Çözülenler" listesi
+  (`lg:flex-1 lg:min-h-0 lg:overflow-y-auto thin-scrollbar lg:pr-1`,
+  başlık/p'de `lg:shrink-0`)
+- Hepsi lg:-prefixed → mobil stacked akış + sayfa scroll'u aynen korundu
+
+## 28 Eylül 2026 - Pazartesi (Analizler: sınav türü kırılımı + 5 sütun + ekrana sığdırma)
+
+### 📊 "Coğrafya çözdüm ama TYT mi AYT mi?" (commit 0a9f600)
+- **Veri katmanı:** `subject_breakdown` view (user_id, subject, exam_type) üçlüsüne
+  gruplandı — aynı ders tür başına ayrı satır. Migration:
+  `database/subject_exam_breakdown.sql` (**kullanıcı Supabase SQL Editor'de
+  çalıştıracak**); schema.sql baseline eşitlendi; security_invoker=true korundu;
+  veri taşıma yok (view answers+questions'tan yeniden hesaplar)
+- **page.tsx:** map + updateStatistics ders+examType birlikte anahtar
+  (yoksa canlı çözümde TYT cevabı birleşik satırı güncellerdi)
+- **AnalysisPanel:** kart/rozetlerde "Ders (TYT)"; ızgara xl:5 sütun
+  (sm:2/md:3 ara kademeler); React key ders+tür (aynı ders iki kez listelenir)
+- **Ekrana sığdırma:** root `lg:grid-rows-[auto_minmax(0,1fr)]` — arşiv auto,
+  performans kartı kalan yükseklik; kart flex-col + header shrink-0 +
+  ızgara flex-1 + max-h-300 iç kaydırma → main scroll'u Analizler'de de yok
+
+### Session Bitişi
+- Bitiş: build ✓, commit 0a9f600 push ✓ — deploy doğrulaması + SQL migration
+  kullanıcıyı bekliyor
+
+## 28 Eylül 2026 - Pazartesi (Son Çözülenler: 5 → 20 kayıt)
+
+### 🕘 Geçmiş derinliği (commit 0fa0362)
+- `getRecentAnswers` varsayılan limit 5 → 20; iki çağrı noktası
+  (ilk yükleme + cevap sonrası tazeleme) zaten varsayılanı kullanıyordu
+- Liste önceki işte lg'de kolon içi kaydırmaya alınmıştı → 20 kayıt
+  sayfayı uzamadan kendi içinde listelenir
+
+### ✅ Migration kapanışı (kullanıcı çalıştırdı + canlı probe doğrulaması)
+- Kullanıcı `subject_exam_breakdown.sql`'i çalıştırdı ("Success" + doğrulama tablosu)
+- Bağımsız salt-okunur probe: HTTP 200, dersler (exam_type) kırılımlı listeleniyor
+  (Biyoloji TYT 2/7 · AYT 1/2, İngilizce YDT vb.)
+- Şüphe anı: "Türkçe (TYT)" iki satır → user_id probe'u ile netleşti: İKİ FARKLI
+  kullanıcı (684bdadd / 713673ae), subject string birebir aynı (gizli boşluk yok)
+  → view kullanıcı+ders+tür gruplamasını DOĞRU yapıyor; tek kullanıcı RLS ile
+  kendi satırlarını görür, duplicate key riski yok
+
+## 28 Eylül 2026 - Pazartesi (Analizler: Zorluk Analizi kartı — gerçek veriyle)
+
+### 🧗‍♀️ Üst blok ikiye bölündü (commit bc6e044)
+- lg'de 2 kolon: solda Hedef Arşivi, sağda Zorluk Analizi 🧗‍♀️; alttaki
+  Ders Performans Analizi kartına DOKUNULMADI (kullanıcı mandatı)
+- **Mock-veri kararı:** kullanıcının verdiği %20/%50/%30 + hazır AI metni örnek
+  değerlerdi; "canlıda ASLA mock data" kuralı gereği GERÇEK veriye bağlandı:
+  - Yeni `dbHelpers.getDifficultyStats(userId)`: tüm cevaplar +
+    `question:questions(subject, difficulty)` embed → genel + ders bazlı
+    zorluk sayaçları (istemci tarafında aggregate; RLS kendi satırları)
+  - Barlar: gerçek başarı % (Başlangıç yeşil / Orta sarı / İleri mor, x/y sayaçlı)
+  - Dropdown "Genel" + kullanıcının GERÇEKten çözdüğü dersler (statik
+    "Matematik/Türkçe" yerine — boş derse filtre atılamasın)
+  - "AI Koç Yorumu": sabit metin DEĞİL — gerçek yüzdelerden kural bazlı
+    4 şablon (İleri≥60 / Orta≥60 / Başlangıç≥60 / pekiştirme önerisi);
+    veri yoksa "önce birkaç soru çöz" uyarısı. Not: bu kural bazlı,
+    Gemini çağrısı değil — gerçek Gemini koçu BAP formundaki gelecek iş
+- Kullanıcının spec'inden sapmalar (gerekçeli): rounded-xl→rounded-2xl (kart
+  uyumu), wrapper'da mb-8 yok (root gap-6 ile tutarlı aralık), select seçenekleri
+  dinamik (ölü filtre olmasın)
+
+## 28 Eylül 2026 - Pazartesi (Son Çözülenler: TYT/AYT/YDT rozetleri)
+
+### 🏷️ Tür kırılımı Son Çözülenler'e de (commit f054c99)
+- getRecentAnswers embed'ine exam_type + RecentAnswer tipi güncellendi
+- Satır rozetleri: [TYT mor] [ders renkli] [zorluk gri]; modal header'da da tür
+  (üretilen soruda anlık examType seçicisi, incelemede kaydın gerçek değeri)
+- **Bonus doğruluk düzeltmesi:** reviewRecentAnswer kaydın gerçek difficulty'sini
+  de kopyalamaya başladı — önceden inceleme modunda seçicideki ANLIK zorluk
+  basılıyordu (TYT Coğrafya kaydı, AYT+İleri seçiciyken "İleri" görünürdü)
+- Tip notu: paylaşılan Question tipi DB adlandırmasıyla exam_type; QuestionPractice
+  yerel interface'i de aynı ada çevrildi (ilk denemede examType → TS hatası)
+
+### Session Bitişi
+- Bitiş: build ✓, commit f054c99 push ✓ — deploy doğrulaması bekleniyor
+
+## 28 Eylül 2026 - Pazartesi (Dinamik Soru Bankası: 3 adımlı sınav→ders→konu akışı)
+
+### 🧭 "Sadece TYT derslerini seçebiliyorum" hissi (commit a45722d)
+- **Kök neden UX:** sınav toggle'ı + ders ızgarası aynı ekrandaydı; toggle'ın
+  ders listesini değiştirdiği görünmüyordu (toggle TYT'de kalınca kullanıcı
+  AYT derslerine ulaşamıyor sanmış — veri aslında doğruydu, AYT 7 ders tanımlı)
+- **Çözüm (kullanıcının önerisi):** 3 adımlı akış
+  1. Sınav kartları: TYT 📘 / AYT 📙 / YDT 🌐 + açıklama + dinamik ders sayısı
+  2. Seçilen sınavın dersleri (Geri → 1)
+  3. Konu + zorluk + üretim (Geri → 2; YDT'de → 1)
+- **YDT kısayolu:** tek ders (İngilizce) → ders adımı otomatik atlanır,
+  sınav seçince doğrudan konu adımı
+- **Yakalanan kendi hatam:** kartlarda ders sayısı önce DERSLER.length
+  (anlık sınavın listesi) → üç kart da aynı sayıyı basacaktı;
+  getSubjects(tur).length ile düzeltildi (9/7/İngilizce doğru basar)
+
+## 28 Eylül 2026 - Pazartesi (Zorluk Analizi filtresi: ders+tür bileşik)
+
+### 🧗‍♀️ Dropdown'a da tür kırılımı (commit 0dea909)
+- getDifficultyStats ders anahtarı → "ders (exam_type)" bileşik:
+  dropdown'da "Matematik (TYT)" / "Matematik (AYT)" ayrı seçenekler;
+  "Genel" tüm sınavların toplamı
+- İki aşamalı hata zinciri kendim yakaladım: ① cast tipine exam_type eklenmemişti
+  (TS build hatası) ② SELECT'e exam_type eklenmemişti — build geçerdi ama
+  runtime'da "undefined (TYT)" anahtarı oluşacaktı; select düzeltildi.
+  Ders: embed select'i ve cast tipi AYNI ANDA güncellenmeli
+
+## [28 Eylül 2026] - Pazar (Zorluk Analizi: sınav önce + tüm müfredat dersleri)
+
+### 🎯 İstek
+- "İlk burada da sınav seçimi yaptırsak, daha sonra dersler sıralansa — soru çözmemiş bile olsak yine de gözükseler"
+
+### ✅ Yapılanlar (01d4c11)
+- **getDifficultyStats 3 katmanlı veri:** `genel` (tümü) + `sinav` (sınav→zorluk) + `dersBazli` (sınav→ders→zorluk) iç içe Record yapısı; eski birleşik string anahtarlar ("Matematik (TYT)") kaldırıldı
+- **İki kademeli filtre UI:** önce sınav dropdown'ı (Genel/TYT/AYT/YDT), TYT-AYT'de ikinci dropdown: "Tüm dersler" + **müfredattaki TÜM dersler** (`getSubjects(seciliSinav)` — çözülmemişler dahil, %0 bar ile)
+- **YDT:** tek ders İngilizce → sınav seçilince otomatik seçilir, ders dropdown'ı gizlenir
+- **Koç yorumu öneki:** kapsam seçimine göre "Genel olarak" / "TYT genelinde" / "TYT Matematik dersinde"; veri yoksa çöz-bekle mesajı
+- Ders listesi syllabus'tan geldiği için gelecekte ders eklenirse dropdown otomatik güncellenir
+
+### 📌 Ders
+- Embed select + cast tipi birlikte değişmeli kuralı yine geçerliydi; bu kez 0dea909'daki dersle baştan ikisi de güncel yazıldı
+
+### Session Bitişi
+- Commit: 01d4c11 (push → Vercel deploy izlenecek)
