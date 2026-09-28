@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Bugünün Hedefleri — etkileşimli günlük to-do listesi.
-// Bilinçli olarak basit tutuldu (useState, kalıcılık yok): sayfa yenilenince
-// liste sıfırlanır; DB'ye bağlama isteğe bağlı gelecek iş.
+// Kalıcılık: localStorage (cihaz bazlı, hesaptan bağımsız). DB bağlama
+// (tüm cihazlarda aynı liste) istenirse sonraki iş.
+
+const STORAGE_KEY = 'algora_daily_goals';
 
 interface Goal {
   id: number;
@@ -15,6 +17,46 @@ interface Goal {
 export function DailyGoals() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [input, setInput] = useState('');
+  // İlk client render'ı tamamlanıp localStorage okunduktan sonra true —
+  // o noktaya dek yazma effect'i boş listeyi ezmesin diye bekler.
+  const [hydrated, setHydrated] = useState(false);
+
+  // Yükleme (SSR-safe: server'da window yok; boş liste ile başlayıp
+  // client'ta dolduğu için hydration uyuşmazlığı da oluşmaz)
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setGoals(
+            parsed
+              .filter(
+                (g): g is Goal =>
+                  !!g &&
+                  typeof g === 'object' &&
+                  typeof (g as Goal).text === 'string' &&
+                  typeof (g as Goal).done === 'boolean'
+              )
+              .map((g, i) => ({ id: typeof g.id === 'number' ? g.id : i, text: g.text, done: g.done }))
+          );
+        }
+      }
+    } catch {
+      // Bozuk JSON / erişilemeyen storage → sessizce boş listeyle devam
+    }
+    setHydrated(true);
+  }, []);
+
+  // Kaydetme (yalnızca hydrate sonrası; aksi halde boş liste üzerine yazar)
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(goals));
+    } catch {
+      // Kota dolu / gizli pencere → kaydedilemedi, liste oturumluk kalır
+    }
+  }, [goals, hydrated]);
 
   const addGoal = () => {
     const text = input.trim();
