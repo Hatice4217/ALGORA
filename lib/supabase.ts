@@ -93,9 +93,26 @@ export const authHelpers = {
           };
         }
 
+        // Boş/"{}" gibi bilgi vermeyen mesajları yakala: sunucu 500 dönerse
+        // (örn. SMTP bozuksa onay maili gönderilemez) supabase-js
+        // AuthRetryableFetchError fırlatır ve message boş/kod-objesi olur.
+        // Kullanıcıya ham teknık değer yerine anlaşılır Türkçe uyarı göster.
+        const hamMesaj = (error.message || '').trim();
+        const mesajBilgiVeriyor =
+          hamMesaj !== '' && hamMesaj !== '{}' && !hamMesaj.includes('fetch');
+        if (!mesajBilgiVeriyor) {
+          return {
+            data: null,
+            error: {
+              message:
+                'Kayıt sırasında beklenmeyen bir sorun oluştu. Lütfen birkaç dakika sonra tekrar deneyin; sorun sürerse bize ulaşın.'
+            }
+          };
+        }
+
         return {
           data: null,
-          error: { message: error.message || 'Kayıt başarısız oldu' }
+          error: { message: error.message }
         };
       }
 
