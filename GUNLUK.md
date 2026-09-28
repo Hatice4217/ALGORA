@@ -2450,3 +2450,29 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Commit: c58a414 (push → Vercel deploy izlenecek)
+
+## [28 Eylül 2026] - Pazar (Masaüstü hamburger düzeltmesi + seri gerçek veri)
+
+### 🐛 Kullanıcı bildirimi
+- "Mobilde hamburger çok iyi çalışıyor ama masaüstünde hâlâ 3 çizgiyi görüyorum; kredi ve çıkış butonunu ortaya kaydırıyor, masaüstünde basınca hiçbir şey olmuyor"
+
+### 🔍 Kök neden — kendim kırmışım (ders!)
+- 25906b0 temizliğinde hamburger `md:!hidden` → `md:hidden` yapmıştım ("important gereksiz" demiştim)
+- **Yanlış:** `flex` + `md:hidden` cascade yarışında flex kazanıyor (media-query sıralaması garanti değil) → hamburger masaüstünde geri geldi
+- Ders: aynı display property'sine yazışan base + variant çiftinde Tailwind v4'te important'sız garanti YOK — `md:!hidden` (v4'ün ürettiği `display:none!important`) kalsındı
+- Masaüstünde basınca "hiçbir şey olmaması" doğruydu: panel `md:hidden`'dı, state açılıyordu ama görünmüyordu
+
+### ✅ Yapılanlar (0c35c55)
+- HamburgerButton → `md:!hidden` (kanıtlanmış !important üretimi) → masaüstü header'ı temiz: logo solda, kredi + çıkış sağda, 3 çizgi yok
+- **Günlük Seri gerçek veriye bağlandı (yer tutucu "3 Gün" emekli):**
+  - `dbHelpers.getAnswerDates(userId, 60)` — son 60 günün answered_at ISO listesi
+  - `lib/utils hesaplaGunlukSeri` — yerel tarih seti, bugün aktif değilse dünden devam, ilk boşlukta durur; `yerelTarihStr` (toISOString UTC tuzağına karşı)
+  - 6/6 birim testi (tsx) — kenar durumlar: bugün yok, dün boş, tamamen boş, uzun seriler
+  - Seri kartı cevap kaydedilince anında tazeleniyor (saveAnswer başarısı içinde)
+- ESLint prefer-const hatası: `imlec` mutate ediliyordu, yeniden atanmıyordu → const
+
+### 📌 Not
+- Seri penceresi 60 gün: daha uzun seriler kesilir (şimdilik yeterli; gerekirse RPC'ye taşınır)
+
+### Session Bitişi
+- Commit: 0c35c55 (push → Vercel deploy izlenecek)
