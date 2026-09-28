@@ -133,22 +133,32 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Genel Bakış karşılamasındaki motivasyon rozeti. DashboardPage provider DIŞINDA
-// render edildiğinden context'i kendisi okuyamaz — bu yüzden rozet provider içinde
-// ayrı bileşen. Üniversite+bölüm doluysa rozet; boşsa Ayarlar'a götüren buton.
+// Genel Bakış karşılamasındaki motivasyon kutusu — karşılama kartının SAĞINDA durur
+// (üstte üniversite, altta bölüm). DashboardPage provider DIŞINDA render edildiğinden
+// context'i kendisi okuyamaz — bu yüzden bileşen provider içinde tanımlı.
+// İki alan da boşsa Ayarlar > Sınav Hedefleri'ne götüren "Hedefini Belirle" butonu.
 export function HedefRozeti({ onHedefBelirle }: { onHedefBelirle: () => void }) {
   const { preferences } = useUserPreferences();
-  const metin = [preferences.hedefUniversite, preferences.hedefBolum].filter(Boolean).join(' - ');
-  const sinif =
-    'bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full font-medium inline-flex items-center gap-1.5 shadow-sm mt-2';
+  const { hedefUniversite: uni, hedefBolum: bolum } = preferences;
 
-  if (metin) {
-    return <span className={sinif}>🎓 {metin}</span>;
+  if (uni || bolum) {
+    return (
+      <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100 rounded-xl px-4 py-2.5 text-right shrink-0 max-w-[280px] shadow-sm">
+        {uni && (
+          <p className="text-sm font-bold text-purple-900 leading-snug">🎓 {uni}</p>
+        )}
+        {bolum && (
+          <p className={`text-xs text-purple-700 leading-snug ${uni ? 'mt-0.5' : 'font-semibold'}`}>
+            {bolum}
+          </p>
+        )}
+      </div>
+    );
   }
   return (
     <button
       onClick={onHedefBelirle}
-      className={`${sinif} hover:bg-purple-200 transition-colors cursor-pointer`}
+      className="shrink-0 inline-flex items-center gap-1.5 bg-purple-100 text-purple-800 text-sm px-4 py-2.5 rounded-xl font-medium shadow-sm hover:bg-purple-200 transition-colors cursor-pointer"
     >
       🎯 Hedefini Belirle
     </button>

@@ -633,16 +633,18 @@ export default function DashboardPage() {
         {/* Genel Bakış Sekmesi */}
         {activeTab === 'overview' && (
           <div className="space-y-4 h-full flex flex-col">
-            {/* Hoş Geldin Mesajı */}
-            <div className="bg-white rounded-2xl shadow-sm p-4">
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                {userName ? `Merhaba, ${userName}! 👋` : 'Yükleniyor...'}
-              </h1>
-              {/* Motivasyon rozeti — hedef üniversite/bölüm (Ayarlar > Sınav Hedefleri'nden); boşsa Ayarlar'a götürür */}
+            {/* Hoş Geldin Mesajı — solda karşılama, sağda hedef kutusu (üni üstte / bölüm altta) */}
+            <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-1">
+                  {userName ? `Merhaba, ${userName}! 👋` : 'Yükleniyor...'}
+                </h1>
+                <p className="text-gray-600 text-sm">
+                  Bugün sınav hazırlığına devam etmeye hazır mısın?
+                </p>
+              </div>
+              {/* Hedef kutusu — Ayarlar > Sınav Hedefleri'nden real-time; boşsa Ayarlar'a götürür */}
               <HedefRozeti onHedefBelirle={() => setActiveTab('settings')} />
-              <p className="text-gray-600 text-sm mt-2">
-                Bugün sınav hazırlığına devam etmeye hazır mısın?
-              </p>
             </div>
 
             {/* İstatistik Kartları */}

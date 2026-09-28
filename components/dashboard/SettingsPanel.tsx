@@ -361,16 +361,17 @@ export function SettingsPanel() {
   // If a section is active, show its form
   if (activeSection) {
     return (
-      // lg:h-full + kart lg:my-auto → masaüstünde form dikeyde ortalanır ve dış
-      // (ana) scrollbar çıkmaz; içerik sığmazsa my-auto 0'a düşer, kaydırma güvenli
-      <div className="max-w-4xl mx-auto lg:h-full lg:flex lg:flex-col">
+      // Masaüstünde ana scrollbar YOK: içerik lg yüksekliğine hapsedilir, taşarsa
+      // içindeki ince bar (thin-scrollbar) kaydırır; sığdığında kart lg:my-auto ile
+      // dikey ortalanır. (Paketim > Kullanım Geçmişi deseni)
+      <div className="max-w-4xl mx-auto lg:h-full lg:flex lg:flex-col lg:overflow-y-auto thin-scrollbar">
         <div className="lg:my-auto">
         {/* Back Button */}
         <Button
           variant="outline"
           size="sm"
           onClick={handleCancelSection}
-          className="mb-4"
+          className="mb-3"
         >
           ← Geri
         </Button>
