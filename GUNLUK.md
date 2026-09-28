@@ -2476,3 +2476,22 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Commit: 0c35c55 (push → Vercel deploy izlenecek)
+
+## [28 Eylül 2026] - Sınav Hedefleri: Global State + Motivasyon Rozeti (a8572b5)
+
+### 🎯 Görev (v2 revize spec — v1 çalışma sırasında kullanıcı değiştirdi)
+- v1: "Sınav Tarihi global state'e bağlı geri sayım" → v2: **Sınav Tarihi TAMAMEN silindi**, yerine Hedef Üniversite + Hedef Bölüm
+
+### ✅ Yapılanlar
+- **UserPreferencesProvider (yeni, Context API):** examType/targetScore/studyHoursPerDay + hedefUniversite/hedefBolum; GoalsProvider deseni (hydrated bayrağı, bozuk JSON toleransı). Sınav tipi/puan/saat → user_profiles (DB, cihazlar arası) + localStorage; **üniversite/bölüm DB kolonu YOK → yalnızca localStorage (cihaz-bazlı, bilinçli karar)**
+- **HedefRozeti (provider içinde export):** DashboardPage provider dışında olduğundan context okuyamaz → rozet ayrı bileşen. Doluysa `🎓 Üniversite - Bölüm` rozeti, boşsa `🎯 Hedefini Belirle` butonu (Ayarlar sekmesine götürür)
+- **Sayaç sabitleme:** ExamCountdown context'ten koparıldı → sabit `2027-06-19T10:15:00+03:00` (ÖSYM resmî 2027 YKS tahmini, ürün kararı)
+- **SettingsPanel exam bölümü:** savePreferences'a bağlandı (false → error toast); context→form prefill effect (`activeSection === 'exam'` guard'lı — açıkken kullanıcının yazdığına dokunmaz); loadUserData functional update ile hedef alanları korur (DB race'te localStorage değerleri silinmesin)
+- **Modern UI:** rounded-xl shadow-sm p-6/p-8 kart, purple bilgi şeridi ("rozetinde görünür"), grid md:grid-cols-3 (tip/puan/saat) + md:grid-cols-2 (üniversite 🎓/bölüm 📚 leftIcon'lu), gradient Kaydet butonu + spinner
+
+### ⚠️ Tuzağa dikkat
+- `react/no-unescaped-entities` — Türkçe metinde ASCII apostrof (`Genel Bakış'taki`) ESLint ERROR → `&apos;`
+- exam_date UI'dan çekildi ama DB kolonu + updateUserSettings patch tipi dursun (geri dönüş kolaylığı); validation.ts'den validateExamDate öksüzlüğe düştü → silindi
+
+### Session Bitişi
+- Commit: a8572b5 (push → Vercel deploy izlenecek)
