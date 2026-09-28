@@ -463,7 +463,7 @@ export const dbHelpers = {
 
   // Dashboard "Son Çözülenler" paneli: kullanıcının en son cevapladığı sorular
   // (RLS "Users can view own answers" ile kendi satırlarını görür; questions herkese açık)
-  getRecentAnswers: async (userId: string, limit: number = 5, client?: SupabaseClient) => {
+  getRecentAnswers: async (userId: string, limit: number = 20, client?: SupabaseClient) => {
     const db = client || supabase!;
     return withConnectionCheck(
       async () => {
