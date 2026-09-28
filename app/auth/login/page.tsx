@@ -25,7 +25,6 @@ export default function LoginPage() {
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [remainingTime, setRemainingTime] = useState<number>(0);
   const [registeredMessage, setRegisteredMessage] = useState<string | null>(null);
-  const [verifiedMessage, setVerifiedMessage] = useState<string | null>(null);
   const [resendBusy, setResendBusy] = useState(false);
   const [resendInfo, setResendInfo] = useState<string | null>(null);
 
@@ -34,18 +33,13 @@ export default function LoginPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const emailParam = urlParams.get('email');
     const registeredParam = urlParams.get('registered');
-    const verifiedParam = urlParams.get('verified');
 
     if (emailParam) {
       setFormData(prev => ({ ...prev, email: emailParam }));
     }
 
     if (registeredParam === 'true') {
-      setRegisteredMessage('Kayıt başarılı! Şimdi giriş yapabilirsiniz.');
-    }
-
-    if (verifiedParam === 'true') {
-      setVerifiedMessage('🎉 E-posta adresiniz başarıyla onaylandı! Şimdi giriş yapabilirsiniz.');
+      setRegisteredMessage('Hesabın oluşturuldu! E-postana gönderilen onay linkine tıkladıktan sonra giriş yapabilirsin.');
     }
   }, []);
 
@@ -163,26 +157,19 @@ export default function LoginPage() {
     }
   };
 
-  // Onay maili gelmedi veya süresi doldu → yeniden gönder
-  // (endpoint IP 5/10dk + e-posta 3/saat limitiyle korunur)
+  // Onay maili gelmedi veya süresi doldu → Supabase native resend ile yeniden gönder
+  // (Supabase tarafı saniye bazlı limit uygular; hata mesajı resendSignUp içinde Türkçeleştirilir)
   const handleResendVerification = async () => {
     if (!formData.email || resendBusy) return;
     setResendBusy(true);
     setResendInfo(null);
     try {
-      const response = await fetch('/api/auth/verify-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email }),
-      });
-      const data = await response.json().catch(() => ({}));
+      const { error } = await authHelpers.resendSignUp(formData.email);
       setResendInfo(
-        response.ok
-          ? 'Onay maili yeniden gönderildi. Kutunuzu (ve spam klasörünü) kontrol edin.'
-          : data.error || 'Mail gönderilemedi. Lütfen bir süre sonra tekrar deneyin.'
+        error
+          ? error
+          : 'Onay maili yeniden gönderildi. Kutunuzu (ve spam klasörünü) kontrol edin.'
       );
-    } catch {
-      setResendInfo('Sunucuya ulaşılamadı. Lütfen tekrar deneyin.');
     } finally {
       setResendBusy(false);
     }
@@ -268,18 +255,6 @@ export default function LoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <p className="text-sm text-green-800">{registeredMessage}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Email Verified Success Message */}
-          {verifiedMessage && (
-            <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <p className="text-sm text-green-800">{verifiedMessage}</p>
               </div>
             </div>
           )}

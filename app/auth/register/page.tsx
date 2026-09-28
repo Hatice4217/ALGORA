@@ -196,46 +196,15 @@ export default function RegisterPage() {
         return;
       }
 
-      // Show success message
+      // Onay mailini Supabase kendisi gönderir (Auth → "Confirm email" ON).
+      // data.session null gelir — kullanıcı linke tıklayana kadar oturum yoktur.
       setFormMessage({
         type: 'success',
-        text: '⏳ Kayıt başarılı! E-posta onay linki gönderiliyor...'
+        text: '🎉 Kayıt başarılı! E-posta adresine onay linki gönderdik. Kutunu (spam klasörünü de) kontrol et.'
       });
 
-      // Send verification email
-      try {
-        const emailResponse = await fetch('/api/auth/verify-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: formData.email,
-          }),
-        });
-
-        const emailData = await emailResponse.json();
-
-        if (emailData.success) {
-          setFormMessage({
-            type: 'success',
-            text: '🎉 Kayıt başarılı! Lütfen e-posta kutunuzu kontrol edin ve onay linkine tıklayın.'
-          });
-        } else {
-          setFormMessage({
-            type: 'success',
-            text: '🎉 Kayıt başarılı! E-posta gönderilirken bir sorun oluştu ama hesabınız oluşturuldu.'
-          });
-        }
-      } catch (emailError) {
-        console.error('Email sending error:', emailError);
-        setFormMessage({
-          type: 'success',
-          text: '🎉 Kayıt başarılı! Hesabınız oluşturuldu. E-posta onayı için daha sonra deneyebilirsiniz.'
-        });
-      }
-
-      // Redirect to login page after a delay
+      // Login sayfasına yönlendir; linke tıklamadan giriş denemesi net bir
+      // "onaylanmamış" uyarısı + yeniden gönderme seçeneğiyle karşılanır
       setTimeout(() => {
         router.push(`/auth/login?email=${encodeURIComponent(formData.email)}&registered=true`);
       }, 3000);

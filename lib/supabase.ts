@@ -64,8 +64,9 @@ export const authHelpers = {
           data: {
             name,
           },
-          // Email confirmation disabled for demo - auto confirm
-          emailRedirectTo: undefined,
+          // Onay linkine tıklayınca Supabase oturumu hash'le /auth/callback'e taşır
+          // (implicit flow; callback dashboard'a yönlendirir) — Google ile aynı desen
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
@@ -98,18 +99,13 @@ export const authHelpers = {
         };
       }
 
-      // 🚨 EMAIL ENUMERATION PROTECTION KONTROLÜ
-      // Supabase Email Enumeration Protection nedeniyle duplicate kontrolü
-      // Eğer user var ama identities boş ise, email zaten kayıtlı demektir
-      if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
-        console.error('🚨 Email Enumeration Protection: Email zaten kayıtlı');
-        return {
-          data: null,
-          error: { message: 'Bu e-posta adresi zaten kullanımda. Giriş yapmayı deneyin.' }
-        };
-      }
-
-      // Başarılı kayıt
+      // ⚠️ identities-tabanlı duplicate kontrolü BİLİNÇLİ YOK: "Confirm email"
+      // açıkken YENİ kullanıcının identities'i de boş gelir (kimlik onaylanınca
+      // bağlanır) — bunu "zaten kayıtlı" sanmak tüm yeni kayıtları bloklardı.
+      // Duplicate durumları: EEP kapalıyken error ('already registered' → yukarıda
+      // yakalanır); açıkken hatasız sahte-user yanıtı → kullanıcı "mailini kontrol
+      // et" mesajı görür, kayıt durumu sızdırılmaz.
+      // Başarılı kayıt — onay mailini Supabase kendisi gönderir, data.session null'dır
       console.log('✅ Kayıt başarılı!');
       return { data, error: null };
 
@@ -160,6 +156,27 @@ export const authHelpers = {
     } catch (error) {
       console.error('❌ SignIn exception:', error);
       return { data: null, error: 'Giriş işlemi başarısız' };
+    }
+  },
+
+  // Kayıt onay mailini yeniden gönder (Supabase native resend — tek mail kaynağı artık o)
+  resendSignUp: async (email: string): Promise<{ error: string | null }> => {
+    try {
+      if (!supabase) {
+        return { error: 'Supabase bağlantısı yok' };
+      }
+      const { error } = await supabase.auth.resend({ type: 'signup', email });
+      if (error) {
+        const msg = (error.message || '').toLowerCase();
+        // "You can request this after 55 seconds" gibi limit yanıtları
+        if (msg.includes('rate limit') || msg.includes('request this after') || msg.includes('too many')) {
+          return { error: 'Çok sık istek gönderildi. Bir dakika bekleyip tekrar deneyin.' };
+        }
+        return { error: 'Mail gönderilemedi. Lütfen bir süre sonra tekrar deneyin.' };
+      }
+      return { error: null };
+    } catch {
+      return { error: 'Sunucuya ulaşılamadı. Lütfen tekrar deneyin.' };
     }
   },
 
