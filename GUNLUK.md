@@ -2412,3 +2412,23 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Commit: 9529341 (push → Vercel deploy izlenecek)
+
+## [28 Eylül 2026] - Pazar (Mobil navigasyon takibi: canlı doğrulama + ölü class temizliği)
+
+### 🔍 Kullanıcı "olmamış" dedi — teşhis süreci
+- Canlı /dashboard HTML indirildi: `hidden md:flex` konteyneri + yeni tab sınıfları VAR, eski `px-6 py-3` YOK → deploy doğru
+- CSS chunk indirildi: `.hidden`, `.md\:flex`, `.md\:hidden`, `.lg\:px-6` kurallarının hepsi VAR (ilk grep'ler git-bash escape'inden yanlış alarm verdi — node ile doğrulandı)
+- Viewport meta doğru (`width=device-width, initial-scale=1, maximum-scale=5`), service worker YOK (önbellek şüphesi daraldı)
+- **Sonuç: canlı doğru; kullanıcının telefonunda eski sayfa önbellekten/ açık sekmeden geliyor**
+
+### 🐛 Tesadüfen yakalanan gerçek hata (25906b0)
+- `!md:hidden` (baştaki ünlem) Tailwind v4'te CSS ÜRETİLMİYOR → MobileMenu panel + backdrop md+ ekranlarda gizlenmiyordu
+- İlginç: v4 `md:!hidden` (SONdaki ünlem konumu v3'tekinin tersi ama ön-ekli biçim) formatını `.md\:\!hidden{display:none!important}` olarak ÜRETİYOR — yani v3'ten kalma iki farklı yazımdan biri ölü, biri canlı
+- Düzeltme: her ikisi de sade `md:hidden`'a çekildi (media-query kuralları base'den sonra geldiğinden important gereksiz) + tanımsız `md-hidden-force` silindi
+
+### 📌 Ders
+- Class'ın HTML'de görünmesi hiçbir şey kanıtlamaz — üretilen CSS'te seçici ara (kaçışlı biçimiyle: `md\:\!hidden`)
+- git-bash'te grep escape'leri güvenilmez; CSS analizini node script'le yap
+
+### Session Bitişi
+- Commit: 25906b0 (push → yeni build ID önbellek tazeleme etkisi de yapar)
