@@ -361,11 +361,13 @@ export function SettingsPanel() {
   // If a section is active, show its form
   if (activeSection) {
     return (
-      // Masaüstünde ana scrollbar YOK: içerik lg yüksekliğine hapsedilir, taşarsa
-      // içindeki ince bar (thin-scrollbar) kaydırır; sığdığında kart lg:my-auto ile
+      // Masaüstünde ana scrollbar YOK: içerik 480px'ten itibaren yüksekliğe hapsedilir,
+      // taşarsa içindeki ince bar (thin-scrollbar) kaydırır; sığdığında kart my-auto ile
       // dikey ortalanır. (Paketim > Kullanım Geçmişi deseni)
-      <div className="max-w-4xl mx-auto lg:h-full lg:flex lg:flex-col lg:overflow-y-auto thin-scrollbar">
-        <div className="lg:my-auto">
+      // Eşik min-[480px]: Windows %125-150 ölçeklemeli laptoplarda efektif viewport
+      // 500-650px — md/lg eşiklerinin altında kalır; HedefRozeti karşılamasıyla aynı eşik.
+      <div className="max-w-4xl mx-auto min-[480px]:h-full min-[480px]:flex min-[480px]:flex-col min-[480px]:overflow-y-auto thin-scrollbar">
+        <div className="min-[480px]:my-auto">
         {/* Back Button */}
         <Button
           variant="outline"
@@ -428,7 +430,7 @@ export function SettingsPanel() {
         )}
 
         {activeSection === 'exam' && (
-          <div className="bg-white rounded-xl shadow-sm p-6 lg:p-8 max-w-2xl mx-auto">
+          <div className="bg-white rounded-xl shadow-sm p-5 md:p-6 max-w-2xl mx-auto">
             <div className="mb-4">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
@@ -440,8 +442,8 @@ export function SettingsPanel() {
             </div>
 
             {/* Kayıt sonrası rozet bilgilendirmesi */}
-            <div className="bg-purple-50 border border-purple-100 rounded-xl px-4 py-2.5 mb-5">
-              <p className="text-sm text-purple-700">
+            <div className="bg-purple-50 border border-purple-100 rounded-xl px-3.5 py-2 mb-4">
+              <p className="text-xs text-purple-700">
                 💡 Kaydettiğinde hedefin, Genel Bakış&apos;taki karşılama kartında rozet olarak görünür.
               </p>
             </div>
@@ -485,7 +487,7 @@ export function SettingsPanel() {
             </div>
 
             {/* Hedef üniversite & bölüm — motivasyon rozetini besler */}
-            <div className="my-5 border-t border-gray-100" />
+            <div className="my-4 border-t border-gray-100" />
             <p className="text-sm font-semibold text-gray-700 mb-3">🎓 Hedefin</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
@@ -507,7 +509,7 @@ export function SettingsPanel() {
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+            <div className="flex flex-col sm:flex-row gap-3 mt-5">
               <button
                 onClick={() => handleSaveSection('exam')}
                 disabled={savingSection === 'exam'}

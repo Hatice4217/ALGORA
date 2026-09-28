@@ -17,7 +17,7 @@ export function DailyGoals() {
   const today = todayStr();
   const todays = goals.filter((g) => g.date === today);
   const open = todays.filter((g) => !g.isCompleted);
-  const completedToday = todays.length - open.length;
+  const completed = todays.filter((g) => g.isCompleted);
 
   const handleToggle = (id: string) => {
     if (exitingId) return; // animasyon sürerken çift tetikleme engeli
@@ -37,9 +37,15 @@ export function DailyGoals() {
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-gray-900">Bugünün Hedefleri 🎯</h3>
-        {completedToday > 0 && (
-          <span className="text-xs font-semibold text-green-600 bg-green-50 rounded-full px-2.5 py-1">
-            {completedToday} tamamlandı
+        {todays.length > 0 && (
+          <span
+            className={`text-xs font-semibold rounded-full px-2.5 py-1 ${
+              completed.length === todays.length
+                ? 'text-green-600 bg-green-50'
+                : 'text-gray-500 bg-gray-100'
+            }`}
+          >
+            {completed.length}/{todays.length} hedef
           </span>
         )}
       </div>
@@ -110,6 +116,27 @@ export function DailyGoals() {
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Tamamlananlar — bugün bitirilen hedefler üstü çizili görünür; neyin
+          bittiği listede kalmaya devam eder (arşivde ayrıca tarihsel kayıt tutulur) */}
+      {hydrated && completed.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-medium text-gray-400 mb-2">Tamamlananlar</p>
+          <ul className="flex flex-col gap-1.5">
+            {completed.map((goal) => (
+              <li
+                key={goal.id}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-green-50/60 border border-green-100"
+              >
+                <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="flex-1 text-sm text-gray-400 line-through break-words">{goal.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

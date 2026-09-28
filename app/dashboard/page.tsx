@@ -633,8 +633,10 @@ export default function DashboardPage() {
         {/* Genel Bakış Sekmesi */}
         {activeTab === 'overview' && (
           <div className="space-y-4 h-full flex flex-col">
-            {/* Hoş Geldin Mesajı — solda karşılama, sağda hedef kutusu (üni üstte / bölüm altta) */}
-            <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            {/* Hoş Geldin Mesajı — solda karşılama, sağda hedef kutusu (üni üstte / bölüm altta).
+                sm yerine min-[480px]: 640 altındaki laptop ekranları da (Windows %125-150 ölçekleme)
+                yan yana düzende görür; gerçek telefonlar (360-480px) alt alta kalır. */}
+            <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 flex flex-col min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between gap-3">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-1">
                   {userName ? `Merhaba, ${userName}! 👋` : 'Yükleniyor...'}
