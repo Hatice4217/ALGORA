@@ -2432,3 +2432,21 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Commit: 25906b0 (push → yeni build ID önbellek tazeleme etkisi de yapar)
+
+## [28 Eylül 2026] - Pazar (Günlük Seri kartı: Ortalama Süre'nin yerine)
+
+### 🎯 İstek
+- 4. metrik "Ortalama Süre" kaldırılıyor; yerine oyunlaştırma odaklı "Günlük Seri" — 🔥 ikon, turuncu/sarı enerji tonları, yer tutucu "3 Gün"
+
+### ✅ Yapılanlar (c58a414)
+- StatCard'a opsiyonel `stil` alanı: kart arka planını geçersiz kılmaya yarıyor; seri kartı `bg-gradient-to-br from-orange-50 to-amber-100 + border-orange-200/70`, başlık/değer orange-700/900 — 4'lü grid yapısı bozulmadı
+- **Yer tutucu UYARISI:** "3 Gün" statik (kullanıcının açık kararı); mock-data politikası gereği canlıda kalıcı olmamalı — seri hesabı (art arda aktif günler) aktivite/cevap verisinden hesaplanacak. Kod içine yorum olarak da işlendi
+- Ortalama Süre tamamen söküldü: kart + DashboardStatistics.ortalamaSüre + getUserStats seti + **ölü statisticCards dizisi** (page.tsx'te zaten hiç render edilmiyordu — lint 'never used' veriyordu) 
+- types/question.ts: öksüz Statistics / DailyProgress / SubjectStat interface'leri silindi (import'lar da temizlendi)
+- ESLint uyarıları 32 → 30
+
+### 📌 Not
+- Ortalama süre verisi hâlâ DB view'ında üretiliyor (user_stats.average_time_per_question) — UI'a bağlanmıyor artık; ileride "soru başına ortalama süre" farklı bir kartta dönebilir
+
+### Session Bitişi
+- Commit: c58a414 (push → Vercel deploy izlenecek)
