@@ -2513,3 +2513,17 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Commit: f5f83a7 (push → Vercel deploy izlenecek)
+
+## [28 Eylül 2026] - Hedef kutusu sağda + Settings iç scroll (00efb10)
+
+### 🎯 Kullanıcı geri bildirimi
+- Rozet ismin altında "ezilmiş/sönük" duruyor → kartın SAĞINA (üstte üni, altta bölüm)
+- Migration çalıştı, her şey çalışıyor AMA Sınav Hedefleri'ndeki ana scroll hâlâ duruyor
+
+### ✅ Yapılanlar
+- **HedefRozeti yeniden tasarlandı:** karşılama kartı `flex sm:justify-between` — solda Merhaba+soru, sağda mor degrade kutu (`text-right`, max-w-280): üst satır 🎓 Üniversite (bold), alt satır Bölüm; ikisi de boşsa `🎯 Hedefini Belirle` butonu
+- **Scroll neden yetişmemişti:** önceki my-auto ortalaması içerik ekrandan UZUNSA scrollbar'a dönüşüyordu — Windows %125-150 ölçeklemede efektif viewport 500-650px → kart sığmıyordu. Çözüm: section görünümü `lg:overflow-y-auto thin-scrollbar` iç scroll'a alındı (Paketim > Kullanım Geçmişi deseni) → ana scrollbar masaüstünde HER KOŞULDA yok; içerik taşarsa ince bar içeride
+- Geri butonu mb-4→mb-3
+
+### Session Bitişi
+- Commit: 00efb10 (push → Vercel deploy SUCCESS)
