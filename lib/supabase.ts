@@ -492,8 +492,9 @@ export const dbHelpers = {
     );
   },
 
-  // Analizler "Zorluk Analizi" kartı: kullanıcının tüm cevaplarını zorluk
-  // (ve ders) kırılımında toplar. Tipler: 'beginner' | 'intermediate' | 'advanced'.
+  // Analizler "Zorluk Analizi" kartı: kullanıcının tüm cevaplarını zorluk kırılımında,
+  // üstelik sınav ve ders bazında da toplar. Tipler: 'beginner' | 'intermediate' | 'advanced'.
+  // Dönüş: genel (tümü), sinav (sınav → zorluk), dersBazli (sınav → ders → zorluk).
   // (RLS "Users can view own answers" — istemci oturumuyla kendi satırlarını görür)
   getDifficultyStats: async (userId: string) => {
     return withConnectionCheck(
@@ -509,9 +510,11 @@ export const dbHelpers = {
             return { data: null, error: error.message };
           }
 
-          const bos = () => ({ toplam: 0, dogru: 0 });
-          const genel: Record<string, { toplam: number; dogru: number }> = {};
-          const dersBazli: Record<string, Record<string, { toplam: number; dogru: number }>> = {};
+          type Sayac = { toplam: number; dogru: number };
+          const bos = (): Sayac => ({ toplam: 0, dogru: 0 });
+          const genel: Record<string, Sayac> = {};
+          const sinav: Record<string, Record<string, Sayac>> = {};
+          const dersBazli: Record<string, Record<string, Record<string, Sayac>>> = {};
 
           for (const raw of (data || []) as unknown as Array<{
             is_correct: boolean;
@@ -519,20 +522,24 @@ export const dbHelpers = {
           }>) {
             const q = raw.question;
             if (!q) continue;
+
             genel[q.difficulty] ??= bos();
             genel[q.difficulty].toplam += 1;
             if (raw.is_correct) genel[q.difficulty].dogru += 1;
 
-            // Ders anahtarı sınav türüyle bileşik ("Matematik (TYT)" ≠ "Matematik (AYT)") —
-            // Analizler'in diğer kartlarıyla aynı kırılım
-            const dersAnahtari = `${q.subject} (${q.exam_type})`;
-            dersBazli[dersAnahtari] ??= {};
-            dersBazli[dersAnahtari][q.difficulty] ??= bos();
-            dersBazli[dersAnahtari][q.difficulty].toplam += 1;
-            if (raw.is_correct) dersBazli[dersAnahtari][q.difficulty].dogru += 1;
+            sinav[q.exam_type] ??= {};
+            sinav[q.exam_type][q.difficulty] ??= bos();
+            sinav[q.exam_type][q.difficulty].toplam += 1;
+            if (raw.is_correct) sinav[q.exam_type][q.difficulty].dogru += 1;
+
+            dersBazli[q.exam_type] ??= {};
+            dersBazli[q.exam_type][q.subject] ??= {};
+            dersBazli[q.exam_type][q.subject][q.difficulty] ??= bos();
+            dersBazli[q.exam_type][q.subject][q.difficulty].toplam += 1;
+            if (raw.is_correct) dersBazli[q.exam_type][q.subject][q.difficulty].dogru += 1;
           }
 
-          return { data: { genel, dersBazli }, error: null };
+          return { data: { genel, sinav, dersBazli }, error: null };
         } catch (error) {
           console.log('getDifficultyStats istisnası:', error);
           return { data: null, error: 'Zorluk istatistikleri alınamadı' };

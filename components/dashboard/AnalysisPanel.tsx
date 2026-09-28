@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { authHelpers, dbHelpers } from '../../lib/supabase';
+import { getSubjects } from '../../lib/constants/syllabus';
 import { useGoals, todayStr, type Goal } from './GoalsProvider';
 
 // 'YYYY-MM-DD' → "27 Eylül" (farklı yılsa yıl eklenir)
@@ -58,7 +59,8 @@ interface AnalysisPanelProps {
 type ZorlukSayaci = { toplam: number; dogru: number };
 interface ZorlukVerisi {
   genel: Record<string, ZorlukSayaci>;
-  dersBazli: Record<string, Record<string, ZorlukSayaci>>;
+  sinav: Record<string, Record<string, ZorlukSayaci>>;
+  dersBazli: Record<string, Record<string, Record<string, ZorlukSayaci>>>;
 }
 
 const ZORLUK_SATIRLARI = [
@@ -68,30 +70,31 @@ const ZORLUK_SATIRLARI = [
 ];
 
 // Gerçek yüzdelerden kural bazlı koç yorumu (sahte metin değil — canlı veriye bağlı)
-function zorlukYorumuUret(
-  kapsam: Record<string, ZorlukSayaci> | undefined,
-  seciliDers: string
-): string {
+function zorlukYorumuUret(kapsam: Record<string, ZorlukSayaci> | undefined, onek: string): string {
   if (!kapsam || Object.values(kapsam).reduce((t, s) => t + s.toplam, 0) === 0) {
-    return 'Koçun yorum yapabilmesi için önce birkaç soru çözmelisin 💪';
+    return 'Bu alanda henüz veri yok — koçun yorum yapabilmesi için önce birkaç soru çözmelisin 💪';
   }
   const yuzde = (s: ZorlukSayaci | undefined) =>
     s && s.toplam > 0 ? Math.round((s.dogru / s.toplam) * 100) : null;
   const i = yuzde(kapsam.advanced);
   const o = yuzde(kapsam.intermediate);
   const b = yuzde(kapsam.beginner);
-  const on = seciliDers === 'Genel' ? 'Genel olarak' : `${seciliDers} dersinde`;
 
-  if (i !== null && i >= 60) return `${on} İleri seviyede bile %${i} başarıdasın — bu tempoyu koru! 🚀`;
-  if (o !== null && o >= 60) return `${on} Orta seviyede konfor alanındasın (%${o}). Artık İleri seviye testlere geçmeye hazırsın!`;
-  if (b !== null && b >= 60) return `${on} Başlangıç seviyesinde %${b} başarıyla temellerin sağlam. Şimdi Orta seviye sorulara ağırlık vermelisin!`;
-  return `${on} biraz daha pratiğe ihtiyaç var — Başlangıç seviyesindeki sorularla devam etmeni öneririm.`;
+  if (i !== null && i >= 60) return `${onek} İleri seviyede bile %${i} başarıdasın — bu tempoyu koru! 🚀`;
+  if (o !== null && o >= 60) return `${onek} Orta seviyede konfor alanındasın (%${o}). Artık İleri seviye testlere geçmeye hazırsın!`;
+  if (b !== null && b >= 60) return `${onek} Başlangıç seviyesinde %${b} başarıyla temellerin sağlam. Şimdi Orta seviye sorulara ağırlık vermelisin!`;
+  return `${onek} biraz daha pratiğe ihtiyaç var — Başlangıç seviyesindeki sorularla devam etmeni öneririm.`;
 }
+
+const SECILEBILIR_SINAVLAR = ['Genel', 'TYT', 'AYT', 'YDT'] as const;
 
 function ZorlukAnaliziKarti() {
   const [veri, setVeri] = useState<ZorlukVerisi | null>(null);
   const [yukleniyor, setYukleniyor] = useState(true);
-  const [seciliDers, setSeciliDers] = useState('Genel');
+  // İki kademeli filtre: önce sınav, sonra ders (müfredattaki TÜM dersler listelenir —
+  // çözülmemişler de %0 ile görünür ki öğrenci boşluğu görsün)
+  const [seciliSinav, setSeciliSinav] = useState<'Genel' | 'TYT' | 'AYT' | 'YDT'>('Genel');
+  const [seciliDers, setSeciliDers] = useState(''); // '' = seçilen sınavın tümü
 
   useEffect(() => {
     let iptal = false;
@@ -112,31 +115,63 @@ function ZorlukAnaliziKarti() {
     };
   }, []);
 
-  // Filtre seçenekleri: Genel + kullanıcının çözdüğü ders+tür kombinasyonları
-  // ("Matematik (TYT)", "Matematik (AYT)" ayrı seçenekler)
-  const dersler = veri ? Object.keys(veri.dersBazli).sort((a, b) => a.localeCompare(b, 'tr')) : [];
-  const kapsam = veri ? (seciliDers === 'Genel' ? veri.genel : veri.dersBazli[seciliDers]) : undefined;
+  // YDT tek ders (İngilizce): dropdown yerine otomatik seçilir
+  const sinavDegistir = (sinav: 'Genel' | 'TYT' | 'AYT' | 'YDT') => {
+    setSeciliSinav(sinav);
+    setSeciliDers(sinav === 'YDT' ? 'İngilizce' : '');
+  };
+
+  const kapsam = !veri
+    ? undefined
+    : seciliSinav === 'Genel'
+      ? veri.genel
+      : seciliDers === ''
+        ? veri.sinav[seciliSinav]
+        : veri.dersBazli[seciliSinav]?.[seciliDers];
+
+  const yorumOneki =
+    seciliSinav === 'Genel'
+      ? 'Genel olarak'
+      : seciliDers === ''
+        ? `${seciliSinav} genelinde`
+        : `${seciliSinav} ${seciliDers} dersinde`;
+
   const yuzde = (s: ZorlukSayaci | undefined) =>
     s && s.toplam > 0 ? Math.round((s.dogru / s.toplam) * 100) : null;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col">
-      {/* Header: başlık + ders filtresi */}
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <h2 className="font-semibold text-gray-900">Zorluk Analizi 🧗‍♀️</h2>
+      <h2 className="font-semibold text-gray-900 mb-3">Zorluk Analizi 🧗‍♀️</h2>
+
+      {/* Filtre satırı: sınav + ders (YDT'de tek ders olduğundan ders seçici gizlenir) */}
+      <div className="flex gap-2 mb-4">
         <select
-          value={seciliDers}
-          onChange={(e) => setSeciliDers(e.target.value)}
-          aria-label="Zorluk analizi ders filtresi"
-          className="px-3 py-1.5 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer"
+          value={seciliSinav}
+          onChange={(e) => sinavDegistir(e.target.value as 'Genel' | 'TYT' | 'AYT' | 'YDT')}
+          aria-label="Zorluk analizi sınav filtresi"
+          className="flex-1 px-3 py-1.5 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer"
         >
-          <option value="Genel">Genel</option>
-          {dersler.map((d) => (
-            <option key={d} value={d}>
-              {d}
+          {SECILEBILIR_SINAVLAR.map((s) => (
+            <option key={s} value={s}>
+              {s === 'Genel' ? 'Genel' : `${s} sınavı`}
             </option>
           ))}
         </select>
+        {seciliSinav !== 'Genel' && seciliSinav !== 'YDT' && (
+          <select
+            value={seciliDers}
+            onChange={(e) => setSeciliDers(e.target.value)}
+            aria-label="Zorluk analizi ders filtresi"
+            className="flex-1 px-3 py-1.5 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer"
+          >
+            <option value="">Tüm dersler</option>
+            {getSubjects(seciliSinav).map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Zorluk barları */}
@@ -171,7 +206,7 @@ function ZorlukAnaliziKarti() {
         <span className="flex-shrink-0">💡</span>
         <span>
           <span className="font-semibold">AI Koç Yorumu:</span>{' '}
-          {yukleniyor ? 'Yükleniyor...' : zorlukYorumuUret(kapsam, seciliDers)}
+          {yukleniyor ? 'Yükleniyor...' : zorlukYorumuUret(kapsam, yorumOneki)}
         </span>
       </div>
     </div>
