@@ -2620,3 +2620,31 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Commit: 200b34e + b7f8974 + dabba40 (push → Vercel deploy SUCCESS)
+
+## 28 Eylül 2026 - Pazartesi — 5 Agent'lı Güvenlik Taraması: bugünün işleri + canlı saldırı simülasyonu
+
+### 🎯 Talep
+- "Bugün baya bir şey yaptık — agentlar ile detaylı tarama; en önemlisi bugün güncellediğimiz kısımları detayca araştırsınlar, pozitif/negatif yönleri bulsunlar. İstersen siber saldırı da yap — açıkları bulup fazları güncelleyelim"
+- 5 paralel agent: 3 salt-okunur denetim (DB/RLS kodu · auth kodu · istemci/config) + 2 **canlı saldırı simülasyonu** (RLS çapraz-hesap · auth akışı). Tüm saldırılar `audit-probe-*@test-local.com` sahte hesaplarla; temizlik kanıtı şart koşuldu
+
+### ✅ Ana sonuç: KRİTİK bulgu 0 — savunan her operasyonda kazandı
+- **RLS saldırısı (canlı):** A kullanıcısının token'ıyla B'nin hedefleri/profili → 0 satır; B adına INSERT → **403 RLS reddi**; self-premium INSERT/UPDATE → reddedildi/0 satır; delete-account sonrası user_goals **FK CASCADE ile temiz** (KVKK orphan yok — canlı kanıt)
+- **Auth saldırısı (canlı):** signIn enumeration sızdırmıyor (var-olmayan vs yanlış-şifre birebir aynı mesaj), resend enumeration sessiz, callback XSS/açık-redirect yok, silinen verify-email yolları canlıda 404, `mailer_autoconfirm:false` doğrulandı (kodun dayandığı varsayım canlıda geçerli)
+- Silinen verify-email altyapısı repo'da 0 referans bırakmış; güvenlik header'ları tam; SessionGuard/Goals/UserPreferences sağlam desen çıktısı
+
+### 🔍 Bulgular (tam liste: SECURITY_AUDIT_TEST_PLAN.md Bölüm 9)
+- **S1 ORTA (canlı kanıt):** `user_profiles.user_id` UNIQUE DEĞİL — probe 2 art arda INSERT ile **çift profil satırı üretti** (yetki deliği değil, veri bütünlüğü: yarışta satırlar sessizce çoğalır)
+- **S2 ORTA (canlı kanıt):** login brute-force'a sunucu-taraflı rate limit YOK — istemci limiter F12 ile bypass; tek savunma Supabase platform limiti
+- **YÜKSEK:** `.env.example` bayat (SERVICE_ROLE/ADMIN_SECRET/GEMINI eksik, ölü OPENAI duruyor)
+- **ORTA:** userName localStorage anahtarı userId-prefix'siz + SessionGuard temizlemiyor (hesap değişince isim flash'ı) · signUp ham İngilizce mesajlar · Supabase min şifre 6 ↔ uygulama 8 boşluğu · callback setTimeout cleanup · savePreferences rollback yok
+- **DÜŞÜK:** identities.length API-düzeyi enumeration (UI sızmıyor), algora_active_tab prefix'siz, signIn e-posta console.log, şifrede `<`/`>` kullanılamıyor
+
+### 📌 Faz 0.9 önerisi (Bölüm 9.6)
+- SQL: `user_profiles_unique.sql` (dedupe + UNIQUE constraint) — kullanıcı çalıştıracak
+- Kullanıcı: Supabase Dashboard → min password 8 + Auth Rate Limits sıkılaştırma
+- Kod: userName prefix · signUp Türkçe eşleme · callback cleanup · savePreferences rollback · .env.example
+- Temizlik (karar bekliyor): ölü dep ×5, logo-preview-old, webpack hack, backend-test.ts
+
+### Session Bitişi
+- Dokümantasyon: SECURITY_AUDIT_TEST_PLAN.md Bölüm 9 (saldırı tablosu + S1-S3 delikleri + O1-O7 + Faz 0.9) + bu günlük kaydı
+- Tüm probe kullanıcıları/satırları/scriptler temizlendi — `audit-probe` kalıntısı 0 (listUsers taramasıyla doğrulandı)

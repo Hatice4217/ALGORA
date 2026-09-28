@@ -309,3 +309,78 @@ F1 forgot-password (önce stub gerçek `resetPasswordForEmail`'e bağlanacak) ·
 ## 8.4 Sonuç
 
 Faz 0 + A/B/C sonrası sistemde **kritik açık kalmadı**; kalanlar tutarlılaştırma (F1-F4, F7), ölçek/kalite (F9, düşük maddeler) ve savunma-derinlik yatırımları (F8, F10). Önerilen kapanış sırası: hızlı düzeltme paketi (F1-F7 + 8.2'deki tek-satırlıklar) → savunma hazırlık dosyası.
+
+# 9. 5 Agent'lı Tarama — Bugünkü İşlerin Denetimi (28 Eylül 2026)
+
+> Yöntem: 3 salt-okunur denetim agent'ı (DB/RLS kodu · auth kodu · istemci/config) + 2 **canlı saldırı simülasyonu** (RLS çapraz-hesap · auth akışı). Kapsam: e-posta onayı zorunlu kılma (Supabase Confirm email ON + eski verify-email altyapısının silinmesi), user_goals + RLS, SessionGuard, updateUserSettings INSERT fallback, Goals/UserPreferences provider'ları, dashboard turları.
+> **Ana sonuç: KRİTİK bulgu 0.** Saldırı simülasyonlarında savunan HER operasyonda kazandı (çapraz okuma 0 satır, çapraz INSERT 403, self-premium reddi, delete-account orphan yok). Yalnız 1 YÜKSEK (env hijyeni) + birkaç ORTA veri-bütünlüğü/istemi bulgusu. Canlı simülasyonlar `audit-probe-*@test-local.com` sahte kullanıcılarla yapıldı; tüm izler (satırlar + auth kayıtları + .tmp scriptler) temizlendi, `audit-probe` kalıntısı 0 olarak listUsers-taramasıyla doğrulandı.
+
+## 9.1 Canlı Saldırı Simülasyonu — Savunanın Kazandığı Yerler (kanıtlı)
+
+| Saldırı | Beklenti | Gerçekleşen | Sonuç |
+|---|---|---|---|
+| A'nın token'ıyla B'nin `user_goals` satırlarını okuma (`?user_id=eq.<B>`) | 0 satır | `[]` — RLS sessiz filtre | ✅ |
+| A → B'nin hedefine UPDATE/DELETE | 0 satır | 0 satır; service-role ile B'nin verisi DOKUNULMAMIŞ doğrulandı | ✅ |
+| A → `user_id=<B_id>` ile `user_goals` INSERT sahteciliği | 403 | **403 "new row violates row-level security policy"** — WITH CHECK kanıtlı | ✅ |
+| A → B'nin `user_profiles` satırını UPDATE (name='HACKED') | 0 satır | 0 satır; B'nin adı değişmedi | ✅ |
+| A → `user_id=<B_id>` ile `user_profiles` INSERT (fallback taklidi) | 403 | 403 RLS reddi | ✅ |
+| A → `subscriptions` self-premium (INSERT plan='premium' / UPDATE kendi satırı) | RED / 0 satır | INSERT RLS reddi (politikası yok); UPDATE 0 satır, plan 'free' kaldı | ✅ |
+| `deduct_credit`/`refund_credit`/`rollover_subscription`'ı authenticated token'la RPC olarak çağırma | permission denied | (28 Eyl taramasında RLS agent'ı kapsamda; EXECUTE üçlü-revoke Bölüm 8'de zaten kanıtlı) | ✅ |
+| Hesap silme sonrası orphan `user_goals` (KVKK) | cascade temizliği | FK `ON DELETE CASCADE` canlı kanıtlandı: delete-account 200 → user_goals 0 satır + auth kaydı silinmiş | ✅ |
+| signIn enumeration (var-olmayan vs yanlış-şifre) | birebir aynı mesaj | İkisi de `Invalid login credentials` 400 — jenerik Türkçe'ye çevriliyor | ✅ |
+| resend enumeration (var-olan vs var-olmayan e-posta) | sessiz yutma | İkisi de hatasız; helper jenerik mesaj sarmalıyor — varlık sızması yok | ✅ |
+| `/auth/callback?error_description=...<script>` XSS | text-node render | `<script>` HTML'de 0 kez; `dangerouslySetInnerHTML` yok — açık-redirect de yok | ✅ |
+| Silinen verify-email yolları | 404 | POST `/api/auth/verify-email` + GET `/confirm?token=x` + `/auth/verify-email` → hepsi 404 | ✅ |
+| Confirm-email-ON davranış varsayımı | session=null | Canlıda `mailer_autoconfirm: false` + signUp → user VAR, session NULL, identities 1 | ✅ |
+
+## 9.2 Saldırı simülasyonunun KAYBettiği yerler (delikler)
+
+| # | Şiddet | Delik | Kanıt | Etki | Öneri |
+|---|---|---|---|---|---|
+| S1 | **ORTA (canlı kanıt)** | `user_profiles.user_id` UNIQUE DEĞİL → INSERT fallback ile **aynı hesap için çift profil satırı üretildi** (probe: 2 art arda INSERT başarılı — TYT'li + AYT'li satır) | RLS agent'ı canlıda kanıtladı; `lib/supabase.ts:706-723` fallback | Yetki yükseltme DEĞİL; ama yarış durumunda (paralel sekme) satırlar sessizce çoğalır → dashboard/Settings hangi satırı okuduğuna göre tutarsız veri | Migration: canlıda dedupe → `ADD CONSTRAINT user_profiles_user_id_key UNIQUE (user_id)`; schema.sql baseline'a ekle |
+| S2 | **ORTA (canlı kanıt)** | **Login brute-force'a sunucu-taraflı rate limit YOK** — `loginRateLimiter` bellek-içi istemci singleton'ı (`lib/security.ts:206`), F12 ile veya doğrudan Supabase REST'e gidilerek bypass | Auth saldırı agent'ı: login API route değil, doğrudan Supabase `token?grant_type=password` | Tek savunma Supabase platform limiti (bilinçli ayar değil) | Kısa vade: Supabase Dashboard → Auth → Rate Limits sıkılaştır (kullanıcı adımı). Orta vade: sunucu login proxy + `lib/rate-limit.ts` deseni |
+| S3 | DÜŞÜK (canlı kanıt) | EEP açıkken API-düzeyi ince enumeration: kayıtlı e-postada `identities.length=1`, kayıtsızda 0 (UI bu alanı KULLANMIYOR — sızmıyor; yalnız doğrudan REST sorgusuyla ölçülebilir) | Auth saldırı agent'ı probe | UI etkisi yok; Supabase standart davranışı | Kabul edilebilir; Dashboard'da EEP "hidden identity" modunda olduğundan emin olunmalı |
+
+## 9.3 ORTA bulgular (kod/istemci denetimi)
+
+| # | Bulgu | Konum | Not |
+|---|---|---|---|
+| O1 | **`userName` localStorage anahtarı userId-prefix'siz** + SessionGuard kilit yönlendirmesi ve logout-dışı akışlar bu anahtarı temizlemiyor → çıkış-yapmadan-hesap-değiştirmede önceki hesabın ADI yeni hesabın ekranında flash olarak görünüyor (SessionGuard'ın kendi amacını kısmen yenen senaryo) | `app/dashboard/page.tsx:104,191,216,227,725`; `SessionGuard.tsx:53` | `algora_prefs_v1:<userId>` deseniyle hizala veya kilit/login akışına removeItem |
+| O2 | signUp ham İngilizce Supabase mesajları register'a aynen basılıyor (örn. "Password should be at least 6 characters") | `lib/supabase.ts` signUp normalizasyonu | Türkçe eşleme tablosu (şifre uzunluğu, duplicate e-posta, geçersiz e-posta) |
+| O3 | Supabase min şifre 6 ↔ uygulama 8 eşiği boşluğu → 6-7 karakterli şifre Supabase'de geçerli, UI'da reddedilir (ve tersi senaryo Dashboard'dan değişince) | Supabase Auth ayarı + `lib/security.ts` | Dashboard'dan Minimum password length = 8 (kullanıcı adımı) |
+| O4 | Callback setTimeout'lu redirect'lerde cleanup yok + sabit 1sn oturum-bekleme yarışı (yavaş ağda hash işlenmeden redirect) | `app/auth/callback/page.tsx:27,45,52,56,61` | clearTimeout + oturum polling'i üst sınırlı yeniden deneme |
+| O5 | `savePreferences` iyimser güncelleme DB hatasında geri alınmıyor → rozet/sayaç DB'de olmayan değerle render (yenilemede düzelir) | `UserPreferencesProvider.tsx:121-142` | GoalsProvider'daki rollback deseni (`GoalsProvider.tsx:111-113`) aynen uygulanabilir |
+| O6 | `user_profiles` name/target_university/target_major length sınırı yok (UI maxLength var ama API-düzeyi yok → 23514 değil sessiz uzun değer) | `lib/supabase.ts` updateUserSettings | DB CHECK veya helper kırpma |
+| O7 | `.env.example` bayat: SUPABASE_SERVICE_ROLE_KEY, ADMIN_SECRET_KEY, GEMINI_API_KEY eksik; ölü OPENAI_API_KEY duruyor (8.3'ten beri açık — yükseltildi) | `.env.example` | Yeni kurulum Gemini'siz 502 alıyor — üç satır ekle, OPENAI'ı sil |
+
+## 9.4 DÜŞÜK bulgular
+
+- `algora_active_tab` userId-prefix'siz → hesap değişince diğer hesabın son sekmesi açılır (hassas değil) — `dashboard/page.tsx:117,138`
+- signIn'de e-posta console.log'u (PII hijyeni) — `lib/supabase.ts:159` çevresi
+- Şifrede `<`/`>` karakterleri `sanitizeInput` yüzünden kullanılamıyor (fonksiyonellik, güvenlik değil) — login/register handleChange
+- goalId UUID ön-doğrulaması yok; addGoal hatası sessiz revert (toast yok); getGoals tarih filtresi yok — hedefler modülü
+- Legacy `algora_prefs_v1` anahtarının silinmesi user bulunduğunda yapılıyor (pratikte sorun yok)
+- Kilit modalı klavye odağını trap'lemiyor (içerik zaten görünmez + handler guard'ları var)
+- `tests/setup.ts:10` ölü `OPENAI_API_KEY` set ediyor
+
+## 9.5 Pozitif bulgular (bugünün işinin kalitesi)
+
+- **RLS savunması canlı saldırıda kusursuz:** user_goals 4/4 operasyon, user_profiles çapraz-yazım, self-premium — hepsi reddedildi (9.1 tablosu)
+- **Silinen verify-email altyapısı iz bırakmamış:** repo genelinde `verify-email|email-token|BREVO` grep'i 0 sonuç; canlıda eski yollar 404; testlerde kırık referans 0. Eski kritik bulgular (F8 auth'suz relay, base64 token) tek hamlede ve tamamen kapandı
+- **SessionGuard mantığı sağlam:** SIGNED_OUT → bilinen-id sıfırlaması (çık-gir kilit tetiklemiyor), signOut bilinçli çağrılmıyor (ortak oturum deposu korunuyor), opak kilit + sayaç
+- **Goals/UserPreferences hesaba-bağlılık prensibi tutarlı:** `algora_prefs_v1:<userId>` + legacy anahtar SİLİNEREK (taşınmayarak) çapraz-hesap karışması kökten çözülmiş; GoalsProvider'da iyimser yazım + rollback + temp-id değişimi örnek desen
+- **Güvenlik header'ları tam ve eksiksiz** (CSP, XFO DENY, nosniff, Referrer-Policy, Permissions-Policy) — bugünkü değişikliklerden etkilenmemiş
+- ** Türkçe mesaj disiplini:** bugün eklenen tüm kullanıcı-mesajlarında İngilizce kalıntı 0; SessionGuard/DailyGoals/HedefRozeti tamamen Türkçe
+- **signIn/resend enumeration sızdırmıyor** (canlı kanıt) — EEP + jenerik mesaj sarmalama birlikte çalışıyor
+- `hesaplaGunlukSeri` + `yerelTarihStr` UTC-tuzağından arınmış; `getSubjectColor` YDT-uyumlu
+
+## 9.6 Önerilen Faz 0.9 — kapanış adımları
+
+1. **SQL migration** (`database/user_profiles_unique.sql`): canlıda çift-satır dedupe (varsa) → `user_profiles.user_id` UNIQUE constraint → schema.sql baseline eşitle. *(Kullanıcı SQL Editor'de çalıştırır — 28 Eyl alışkanlık)*
+2. **Kullanıcı Supabase Dashboard adımları:** Minimum password length = 8 (O3) + Auth Rate Limits sıkılaştırma (S2 kısa-vade savunması)
+3. **İstemci paketi:** userName anahtarını `algora_name_v1:<userId>` yap veya SessionGuard+login akışına removeItem (O1) · callback clearTimeout (O4) · savePreferences rollback (O5)
+4. **Mesaj paketi:** signUp İngilizce→Türkçe eşleme tablosu (O2)
+5. **Config:** .env.example güncelle (O7) — üç eksik anahtar + OPENAI satırını sil
+6. **Kullanıcı kararı bekleyen temizlik** (9.4 + 8.3'ten): ölü dep ×5, `app/logo-preview-old`, webpack console-hack, `lib/backend-test.ts`, kök dizin test kalıntıları
+
+Sıra önerisi: 1+2 (DB/ayar, kullanıcıya ait) paralel → 3+4 tek commit → 5 tek commit → 6 ayrı temizlik turu.
