@@ -56,8 +56,10 @@ const DIFFICULTIES = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  // Giriş yapan kullanıcı doğrudan Soru Laboratuvarı'nda başlar (onboarding kaldırıldı)
+  // Giriş yapan kullanıcı doğrudan Soru Laboratuvarı'nda başlar (onboarding kaldırıldı);
+  // son aktif sekme localStorage'dan geri yüklenir (refresh sonrası sekme kaybolmasın)
   const [activeTab, setActiveTab] = useState<'overview' | 'practiceRoom' | 'analysis' | 'package' | 'settings'>('practiceRoom');
+  const [tabRestored, setTabRestored] = useState(false);
   const [statistics, setStatistics] = useState<DashboardStatistics>({
     toplamSoru: 0,
     dogruCevap: 0,
@@ -102,6 +104,39 @@ export default function DashboardPage() {
       }
     }
   }, []);
+
+  // Son aktif sekmeyi geri yükle (refresh'te Genel Bakış/Paketim vb. kaybolmasın).
+  // Aşağıdaki ?tab=package URL yönlendirmesi bu restore'u EZER — bilinçli yönlendirme
+  // önceliklidir (bu effect URL effect'inden ÖNCE tanımlı; aynı batch'te son çağrı kazanır).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem('algora_active_tab');
+      if (
+        saved === 'overview' ||
+        saved === 'practiceRoom' ||
+        saved === 'analysis' ||
+        saved === 'package' ||
+        saved === 'settings'
+      ) {
+        setActiveTab(saved);
+      }
+    } catch {
+      // storage erişilemez → varsayılan sekmeyle devam
+    }
+    setTabRestored(true);
+  }, []);
+
+  // Aktif sekme değişince kaydet — yalnızca restore tamamlandıktan sonra
+  // (aksi halde mount anında varsayılan 'practiceRoom' kayıtlı sekmeyi ezer)
+  useEffect(() => {
+    if (!tabRestored || typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('algora_active_tab', activeTab);
+    } catch {
+      // yazılamadı → sorun değil, sekme yalnızca oturumluk hatırlanır
+    }
+  }, [activeTab, tabRestored]);
 
   // Pricing sayfası yönlendirmesi: /dashboard?tab=package&upgrade=pro|premium
   useEffect(() => {
