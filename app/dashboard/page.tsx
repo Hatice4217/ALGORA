@@ -22,7 +22,7 @@ import { getSubjects, getTopics } from '../../lib/constants/syllabus';
 
 import type { SubscriptionSummary, PaidPlanId } from '../../types/subscription';
 
-import type { Question, Statistics, RecentAnswer } from '../../types/question';
+import type { Question, RecentAnswer } from '../../types/question';
 
 // Type definitions for dashboard
 interface SubjectStat {
@@ -43,7 +43,6 @@ interface DashboardStatistics {
   toplamSoru: number;
   dogruCevap: number;
   basariOrani: number;
-  ortalamaSüre: number;
   dersler: SubjectStat[];
   haftalıkIlerleme: DailyProgress[];
   gelisimGerekenler: string[];
@@ -66,7 +65,6 @@ export default function DashboardPage() {
     toplamSoru: 0,
     dogruCevap: 0,
     basariOrani: 0,
-    ortalamaSüre: 0,
     dersler: [],
     haftalıkIlerleme: [],
     gelisimGerekenler: [],
@@ -229,7 +227,6 @@ export default function DashboardPage() {
                 basariOrani: stats.total_questions_answered > 0
                   ? Math.round((stats.correct_answers / stats.total_questions_answered) * 100)
                   : 0,
-                ortalamaSüre: Math.round(stats.average_time_per_question || 0),
                 dersler: [],
                 haftalıkIlerleme: [],
                 gelisimGerekenler: [],
@@ -474,33 +471,6 @@ export default function DashboardPage() {
 
     setStatistics(updatedStatistics);
   };
-
-  const statisticCards = [
-    {
-      title: 'Toplam Soru',
-      value: statistics.toplamSoru,
-      icon: '📝',
-      color: 'bg-blue-500',
-    },
-    {
-      title: 'Doğru Cevap',
-      value: statistics.dogruCevap,
-      icon: '✅',
-      color: 'bg-green-500',
-    },
-    {
-      title: 'Başarı Oranı',
-      value: `%${statistics.basariOrani}`,
-      icon: '🎯',
-      color: 'bg-purple-500',
-    },
-    {
-      title: 'Ortalama Süre',
-      value: `${statistics.ortalamaSüre}s`,
-      icon: '⏱️',
-      color: 'bg-orange-500',
-    },
-  ];
 
   const tabs = [
     { id: 'overview' as const, label: 'Genel Bakış' },

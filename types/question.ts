@@ -13,30 +13,6 @@ export interface Question {
   correct_answer?: number;
 }
 
-export interface SubjectStat {
-  ders: string;
-  toplam: number;
-  dogru: number;
-  basari: number;
-}
-
-export interface Statistics {
-  toplamSoru: number;
-  dogruCevap: number;
-  basariOrani: number;
-  ortalamaSüre: number;
-  dersler: SubjectStat[];
-  haftalıkIlerleme: DailyProgress[];
-  gelisimGerekenler: string[];
-  gucluAlanlar: string[];
-}
-
-export interface DailyProgress {
-  tarih: string;
-  sorular: number;
-  basari: number;
-}
-
 // Dashboard "Son Çözülenler" panel kaydı (answers JOIN questions, en yeniden eskiye)
 export interface RecentAnswer {
   id: string;
