@@ -516,7 +516,7 @@ export default function DashboardPage() {
       {/* Üst Bar */}
       <header className="bg-white border-b border-gray-200">
         <div className="w-full px-4 md:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between md:mb-4">
             <div className="flex items-center gap-3">
               <Link href="/">
                 <Logo size="lg" />
@@ -549,13 +549,13 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* Sekmeler - Üst Barın Altında */}
-          <div className="flex gap-2 border-t border-gray-100 pt-4">
+          {/* Sekmeler — yalnızca tablet/masaüstünde; mobilde hamburger menüden erişilir */}
+          <div className="hidden md:flex gap-2 border-t border-gray-100 pt-4">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-3 font-medium transition-all relative rounded-t-lg ${
+                className={`px-3 py-2.5 lg:px-6 lg:py-3 text-sm lg:text-base font-medium transition-all relative rounded-t-lg whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'text-purple-600 bg-purple-50'
                     : 'text-gray-600 hover:text-purple-600 hover:bg-gray-50'
@@ -577,6 +577,36 @@ export default function DashboardPage() {
         onClose={() => setIsMobileMenuOpen(false)}
       >
         <nav className="flex-1 px-6 py-8">
+          {/* Sekmeler — yatay sekme barı mobilde gizli olduğundan gezinme buradan yapılır */}
+          <ul className="space-y-2">
+            {tabs.map((tab) => (
+              <li key={tab.id}>
+                <button
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  aria-current={activeTab === tab.id ? 'page' : undefined}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-all font-medium flex items-center justify-between ${
+                    activeTab === tab.id
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'text-gray-700 hover:text-purple-600 hover:bg-purple-50'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  {activeTab === tab.id && (
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {/* Divider — sekmelerden hesap işlemlerine */}
+          <div className="my-6 border-t border-gray-200" />
+
           <ul className="space-y-2">
             {subscriptionSummary?.subscription && (
               <li>
