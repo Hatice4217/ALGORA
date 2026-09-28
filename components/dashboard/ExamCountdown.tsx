@@ -24,6 +24,7 @@ export function ExamCountdown() {
     { label: 'Gün', value: remaining === null ? '—' : String(Math.floor(remaining / 86_400_000)) },
     { label: 'Saat', value: remaining === null ? '—' : pad(Math.floor((remaining % 86_400_000) / 3_600_000)) },
     { label: 'Dakika', value: remaining === null ? '—' : pad(Math.floor((remaining % 3_600_000) / 60_000)) },
+    { label: 'Saniye', value: remaining === null ? '—' : pad(Math.floor((remaining % 60_000) / 1000)) },
   ];
 
   return (
@@ -33,10 +34,10 @@ export function ExamCountdown() {
         <span className="text-xs font-medium text-purple-200">TYT · 19 Haziran 2027</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
         {boxes.map((b) => (
           <div key={b.label} className="bg-white/15 rounded-xl py-4 text-center">
-            <p className="text-3xl font-black text-white tabular-nums">{b.value}</p>
+            <p className="text-2xl sm:text-3xl font-black text-white tabular-nums">{b.value}</p>
             <p className="text-xs font-medium text-purple-200 mt-1">{b.label}</p>
           </div>
         ))}
