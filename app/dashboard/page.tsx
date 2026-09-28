@@ -299,6 +299,10 @@ export default function DashboardPage() {
       explanation: kayit.question.explanation,
       subject: kayit.question.subject,
       topic: kayit.question.topic,
+      // İnceleme modunda gerçek meta: kayıttaki zorluk + sınav türü (seçicideki
+      // anlık değer değil — TYT Coğrafya kaydı AYT seçicideyken yanlış basılmasın)
+      difficulty: kayit.question.difficulty,
+      exam_type: kayit.question.exam_type,
     });
     setSelectedAnswer(kayit.selected_answer);
     setShowAnswer(true);

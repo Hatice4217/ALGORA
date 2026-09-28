@@ -47,6 +47,7 @@ export interface RecentAnswer {
     subject: string;
     topic: string;
     difficulty: string; // beginner | intermediate | advanced
+    exam_type: string; // TYT | AYT | YDT
     question_text: string;
     choices: string[];
     correct_answer: number;

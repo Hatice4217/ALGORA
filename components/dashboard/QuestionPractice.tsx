@@ -7,10 +7,11 @@ interface Question {
   choices: string[];
   correctAnswer: number;
   explanation: string;
-  // "Son Çözülenler" kaydından incelenirken dolar (rozet doğru ders/zorluğu göstersin)
+  // "Son Çözülenler" kaydından incelenirken dolar (rozetler doğru dersi/zorluğu/türü göstersin)
   subject?: string;
   difficulty?: string;
   topic?: string;
+  exam_type?: string; // TYT | AYT | YDT (paylaşılan Question tipiyle aynı alan adı)
 }
 
 interface Difficulty {
@@ -332,7 +333,10 @@ export function QuestionPractice({
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="px-2 py-0.5 rounded text-xs font-bold bg-purple-100 text-purple-700">
+                              {kayit.question.exam_type}
+                            </span>
                             <span className={`px-2 py-0.5 rounded text-xs font-medium ${getSubjectColor(kayit.question.subject)} text-white`}>
                               {kayit.question.subject}
                             </span>
@@ -370,7 +374,10 @@ export function QuestionPractice({
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-3 py-1 rounded-lg text-sm font-bold bg-purple-100 text-purple-700">
+                  {mevcutSoru.exam_type || examType}
+                </span>
                 <span className={`px-3 py-1 rounded-lg text-sm font-medium ${getSubjectColor(mevcutSoru.subject || seciliDers)} text-white`}>
                   {mevcutSoru.subject || seciliDers}
                 </span>

@@ -471,7 +471,7 @@ export const dbHelpers = {
           const { data, error } = await db
             .from('answers')
             .select(
-              'id, answered_at, selected_answer, question:questions(id, subject, topic, difficulty, question_text, choices, correct_answer, explanation)'
+              'id, answered_at, selected_answer, question:questions(id, subject, topic, difficulty, exam_type, question_text, choices, correct_answer, explanation)'
             )
             .eq('user_id', userId)
             .order('answered_at', { ascending: false })
