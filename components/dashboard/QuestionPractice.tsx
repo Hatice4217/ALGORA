@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getSubjectColor } from '../../lib/utils';
+import { getSubjects } from '../../lib/constants/syllabus';
 import type { RecentAnswer } from '../../types/question';
 
 interface Question {
@@ -66,6 +67,13 @@ function gecmisZamaniEtiketi(isoTarih: string): string {
 
 const SINAV_TURLERI: Array<'TYT' | 'AYT' | 'YDT'> = ['TYT', 'AYT', 'YDT'];
 
+// 1. adım kartları: sınav adı + açıklama (ders sayısı getSubjects'tan dinamik)
+const SINAV_KARTLARI: Record<'TYT' | 'AYT' | 'YDT', { ikon: string; aciklama: string }> = {
+  TYT: { ikon: '📘', aciklama: 'Temel Yeterlilik Testi' },
+  AYT: { ikon: '📙', aciklama: 'Alan Yeterlilik Testi' },
+  YDT: { ikon: '🌐', aciklama: 'Yabancı Dil Testi' },
+};
+
 export function QuestionPractice({
   examType,
   setExamType,
@@ -88,8 +96,9 @@ export function QuestionPractice({
   kayitIncele,
   modalKapat,
 }: QuestionPracticeProps) {
-  // 2 adımlı akış: 1 = sınav türü + ders, 2 = konu + zorluk + üretim
-  const [step, setStep] = useState<1 | 2>(1);
+  // 3 adımlı akış: 1 = sınav türü, 2 = ders, 3 = konu + zorluk + üretim.
+  // YDT'de tek ders (İngilizce) olduğu için 2. adım otomatik atlanır.
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   // Üretim beklenirken geçen süre (saniye) — kullanıcının bekleyiş hissini yönetir
   const [beklemeSaniye, setBeklemeSaniye] = useState(0);
 
@@ -120,17 +129,17 @@ export function QuestionPractice({
     'İngilizce': '🌐',
   };
 
-  // Adım 1'de ders kartına basınca ders seçilir ve akış 2. adıma ilerler
+  // Adım 2'de ders kartına basınca ders seçilir ve akış 3. adıma ilerler
   const dersSec = (ders: string) => {
     setSeciliDers(ders); // parent konuyu sıfırlar
-    setStep(2);
+    setStep(3);
   };
 
-  // Sınav türü değişimi parent'ta ders + konu sıfırlamasını tetikler
+  // Sınav türü seçimi parent'ta ders + konu sıfırlamasını tetikler;
+  // YDT tek ders olduğundan ders adımı atlanıp doğrudan konu adımına gidilir
   const sinavTuruDegistir = (tur: 'TYT' | 'AYT' | 'YDT') => {
-    if (tur !== examType) {
-      setExamType(tur);
-    }
+    setExamType(tur);
+    setStep(tur === 'YDT' ? 3 : 2);
   };
 
   return (
@@ -143,69 +152,40 @@ export function QuestionPractice({
             <div className="p-8 h-full flex flex-col lg:min-h-0 lg:overflow-y-auto thin-scrollbar">
               {step === 1 ? (
                 <>
-                  {/* ══════════ ADIM 1: Sınav Türü + Ders ══════════ */}
+                  {/* ══════════ ADIM 1: Sınav Türü ══════════ */}
                   <h2 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">
                     Soru Çözmeye Başla
                   </h2>
                   <p className="text-slate-500 mb-8 text-sm">
-                    1. Adım: Sınav türünü ve çalışmak istediğin dersi seç
+                    1. Adım: Hangi sınav için soru üretmek istersin?
                   </p>
 
-                  <div className="space-y-8">
-                    {/* Sınav Türü - TYT | AYT Toggle */}
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-4">
-                        Sınav Türü
-                      </label>
-                      <div className="bg-slate-100 p-1.5 rounded-xl inline-flex w-full">
-                        {SINAV_TURLERI.map((tur) => (
-                          <button
-                            key={tur}
-                            onClick={() => sinavTuruDegistir(tur)}
-                            className={`
-                              flex-1 py-3 px-4 rounded-lg font-bold text-sm tracking-wide transition-all duration-200
-                              ${examType === tur
-                                ? 'bg-white text-purple-700 shadow-sm'
-                                : 'text-slate-600 hover:text-slate-800'
-                              }
-                            `}
-                          >
-                            {tur}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Ders Seçimi - Chips (seçim akışı 2. adıma taşır) */}
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-4">
-                        Ders Seç
-                      </label>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {DERSLER.map((ders) => (
-                          <button
-                            key={ders}
-                            onClick={() => dersSec(ders)}
-                            className={`
-                              px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200
-                              flex items-center justify-center gap-2
-                              ${seciliDers === ders
-                                ? 'bg-purple-600 text-white shadow-lg shadow-purple-200'
-                                : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-2 border-slate-200 hover:border-purple-300 hover:-translate-y-0.5'
-                              }
-                            `}
-                          >
-                            <span className="text-lg">{dersIkonlari[ders] || '📚'}</span>
-                            <span>{ders}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {SINAV_TURLERI.map((tur) => (
+                      <button
+                        key={tur}
+                        onClick={() => sinavTuruDegistir(tur)}
+                        className={`
+                          p-5 rounded-xl border-2 text-left transition-all duration-200 flex flex-col gap-1
+                          ${examType === tur
+                            ? 'border-purple-500 bg-purple-50 shadow-md shadow-purple-100'
+                            : 'border-slate-200 bg-slate-50 hover:border-purple-300 hover:-translate-y-0.5'
+                          }
+                        `}
+                      >
+                        <span className="text-2xl">{SINAV_KARTLARI[tur].ikon}</span>
+                        <span className="text-lg font-bold text-slate-800">{tur}</span>
+                        <span className="text-xs text-slate-500">{SINAV_KARTLARI[tur].aciklama}</span>
+                        <span className="text-xs font-medium text-purple-600 mt-1">
+                          {tur === 'YDT' ? 'İngilizce' : `${getSubjects(tur).length} ders`}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 </>
-              ) : (
+              ) : step === 2 ? (
                 <>
-                  {/* ══════════ ADIM 2: Konu + Zorluk + Üretim ══════════ */}
+                  {/* ══════════ ADIM 2: Ders Seçimi ══════════ */}
                   <div className="flex items-center gap-3 mb-2">
                     <button
                       onClick={() => setStep(1)}
@@ -218,10 +198,51 @@ export function QuestionPractice({
                     </button>
                   </div>
                   <h2 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">
+                    {examType} Dersleri
+                  </h2>
+                  <p className="text-slate-500 mb-8 text-sm">
+                    2. Adım: {examType} için çalışmak istediğin dersi seç
+                  </p>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {DERSLER.map((ders) => (
+                      <button
+                        key={ders}
+                        onClick={() => dersSec(ders)}
+                        className={`
+                          px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200
+                          flex items-center justify-center gap-2
+                          ${seciliDers === ders
+                            ? 'bg-purple-600 text-white shadow-lg shadow-purple-200'
+                            : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-2 border-slate-200 hover:border-purple-300 hover:-translate-y-0.5'
+                          }
+                        `}
+                      >
+                        <span className="text-lg">{dersIkonlari[ders] || '📚'}</span>
+                        <span>{ders}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* ══════════ ADIM 3: Konu + Zorluk + Üretim ══════════ */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <button
+                      onClick={() => setStep(examType === 'YDT' ? 1 : 2)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-purple-700 hover:bg-purple-50 transition-all"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Geri
+                    </button>
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">
                     {examType} - {seciliDers}
                   </h2>
                   <p className="text-slate-500 mb-8 text-sm">
-                    2. Adım: Konu ve zorluk seviyesini seç, sonra soru üret
+                    3. Adım: Konu ve zorluk seviyesini seç, sonra soru üret
                   </p>
 
                   <div className="space-y-8 flex-1">
