@@ -2586,3 +2586,31 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Commit: bu commit (push → Vercel deploy izlenecek)
+
+## [28 Eylül 2026] - E-posta onayı zorunlu (Supabase native "Confirm email")
+
+### 🎯 Kullanıcı bulgusu
+- "Kayıt olunca mail atıyoruz ya linke basmak için — ben o linke basmadan da sisteme giriş yapabiliyorum" → onay kozmetikti: Supabase "Confirm email" KAPALI (autoconfirm), bizim custom Brevo maili hiçbir kapıyı kilitlemiyordu
+
+### ✅ Yapılanlar
+- **Yakalanan tuzağın tuzağı:** `signUp`'taki `identities.length === 0` duplicate kontrolü Confirm email açıkken TÜM YENİ kullanıcıları bloklardı — açıkken yeni kullanıcının `identities`'i de boş gelir (kimlik onaylanınca bağlanır; EEP fake-user yanıtıyla karışır). Kontrol tamamen kaldırıldı
+- **signUp:** `emailRedirectTo = origin + '/auth/callback'` → onay linkine tıklayan oturumla dashboard'a düşer (implicit flow hash'i detectSessionInUrl otomatik işler; Google ile aynı desen)
+- **Tek mail kaynağı = Supabase:** register sayfasının kendi `/api/auth/verify-email` çağrısı kaldırıldı (çift-mail sorunu böyle çözüldü — kendi mailimizi değil, native'i seçtik)
+- **Login:** "Onay maili gelmedi mi? Yeniden gönder" butonu native `auth.resend({type:'signup'})`'a bağlandı (`authHelpers.resendSignUp`; limit hataları Türkçeleştirildi). `EMAIL_NOT_CONFIRMED` → Türkçe mesaj eşlemesi zaten mevcuttu (signIn helper'ında)
+- **-575 satır temizlik:** `/api/auth/verify-email` (Brevo gönderici), `/api/auth/verify-email/confirm` (HMAC doğrulayıcı), `lib/email-token.ts`, `/auth/verify-email` status sayfası silindi (dünya F8 bulgusu da böylece kapanmış oldu: token GET query'de + tek kullanımlık değildi)
+- Build ✓ + smoke: login/register/callback 200, eski verify-email sayfası 404
+
+### 📌 Kullanıcı yapacak (SIRA ÖNEMLİ — önce deploy, sonra ayar)
+- Supabase Dashboard → Authentication → Sign In / Providers → Email → **"Confirm email" ON** (Save)
+- Opsiyonel: Authentication → Emails → Templates → **Confirm Signup** şablonunu Türkçeleştir (`{{ .ConfirmationURL }}` linkini koru)
+- Not: mevcut kullanıcılar autoconfirm döneminde oluşturulduğu için hepsi onaylı — kilitlenme yok. Build-in mail göndericisi sınırı darsa (~2/saat) sonra Brevo SMTP bağlanır (Auth → SMTP)
+
+### ✅ Ayar ON — canlı teyit (aynı gün)
+- İlk Save denemesi "Failed to update settings: Failed to fetch (api.supabase.com)" ile başarısız — dashboard yönetim API'sine geçici ağ kopukluğu; ayar hatası değil. İkinci denemede geçti
+- **Sunucudan doğrulama:** `GET /auth/v1/settings` (anon key header'lı) → `mailer_autoconfirm: false` ✓ (public endpoint — "Confirm email" durumunu dashboard'sız sorgulamanın yolu)
+- Probe kanıtı (ayar öncesi): test hesapları oluşturulduktan ~0.02-0.04 sn sonra `email_confirmed_at` doluydu + `confirmation_sent_at` undefined → autoconfirm'de mail hiç gönderilmiyor (kullanıcının "mail gelmedi + onaysız giriş + resend olmadı" üçlüsünün açıklaması)
+- Bugünün 3 test hesabı temizlendi (2'si service-role probe ile — tablolar: answers/study_sessions/user_profiles/credit_transactions/payment_claims/subscriptions/user_goals + questions.created_by→NULL + deleteUser; haticesarlak135 kullanıcı tarafından zaten silinmiş). Kalan: 2 gerçek hesap (sarlakhatice2, sarlakhatice656)
+- **Yeni akış E2E beklemede:** kayıt → onay maili (Supabase native) → linke basmadan login "EMAIL_NOT_CONFIRMED" Türkçe uyarı → link → otomatik giriş → /dashboard
+
+### Session Bitişi
+- Commit: 200b34e + b7f8974 (push → Vercel deploy izlenecek)
