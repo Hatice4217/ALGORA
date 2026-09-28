@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { authHelpers, dbHelpers } from '../../lib/supabase';
 import { useGoals, todayStr, type Goal } from './GoalsProvider';
 
 // 'YYYY-MM-DD' → "27 Eylül" (farklı yılsa yıl eklenir)
@@ -52,6 +53,130 @@ interface AnalysisPanelProps {
   };
 }
 
+// ─── Zorluk Analizi kartı (gerçek cevap verisinden) ───
+
+type ZorlukSayaci = { toplam: number; dogru: number };
+interface ZorlukVerisi {
+  genel: Record<string, ZorlukSayaci>;
+  dersBazli: Record<string, Record<string, ZorlukSayaci>>;
+}
+
+const ZORLUK_SATIRLARI = [
+  { deger: 'beginner', etiket: 'Başlangıç', bar: 'bg-green-500', metin: 'text-green-600' },
+  { deger: 'intermediate', etiket: 'Orta', bar: 'bg-yellow-500', metin: 'text-yellow-600' },
+  { deger: 'advanced', etiket: 'İleri', bar: 'bg-purple-500', metin: 'text-purple-600' },
+];
+
+// Gerçek yüzdelerden kural bazlı koç yorumu (sahte metin değil — canlı veriye bağlı)
+function zorlukYorumuUret(
+  kapsam: Record<string, ZorlukSayaci> | undefined,
+  seciliDers: string
+): string {
+  if (!kapsam || Object.values(kapsam).reduce((t, s) => t + s.toplam, 0) === 0) {
+    return 'Koçun yorum yapabilmesi için önce birkaç soru çözmelisin 💪';
+  }
+  const yuzde = (s: ZorlukSayaci | undefined) =>
+    s && s.toplam > 0 ? Math.round((s.dogru / s.toplam) * 100) : null;
+  const i = yuzde(kapsam.advanced);
+  const o = yuzde(kapsam.intermediate);
+  const b = yuzde(kapsam.beginner);
+  const on = seciliDers === 'Genel' ? 'Genel olarak' : `${seciliDers} dersinde`;
+
+  if (i !== null && i >= 60) return `${on} İleri seviyede bile %${i} başarıdasın — bu tempoyu koru! 🚀`;
+  if (o !== null && o >= 60) return `${on} Orta seviyede konfor alanındasın (%${o}). Artık İleri seviye testlere geçmeye hazırsın!`;
+  if (b !== null && b >= 60) return `${on} Başlangıç seviyesinde %${b} başarıyla temellerin sağlam. Şimdi Orta seviye sorulara ağırlık vermelisin!`;
+  return `${on} biraz daha pratiğe ihtiyaç var — Başlangıç seviyesindeki sorularla devam etmeni öneririm.`;
+}
+
+function ZorlukAnaliziKarti() {
+  const [veri, setVeri] = useState<ZorlukVerisi | null>(null);
+  const [yukleniyor, setYukleniyor] = useState(true);
+  const [seciliDers, setSeciliDers] = useState('Genel');
+
+  useEffect(() => {
+    let iptal = false;
+    (async () => {
+      try {
+        const { user } = await authHelpers.getCurrentUser();
+        if (!user) return;
+        const sonuc = await dbHelpers.getDifficultyStats(user.id);
+        if (!iptal && sonuc.data) {
+          setVeri(sonuc.data as unknown as ZorlukVerisi);
+        }
+      } finally {
+        if (!iptal) setYukleniyor(false);
+      }
+    })();
+    return () => {
+      iptal = true;
+    };
+  }, []);
+
+  // Filtre seçenekleri: Genel + kullanıcının gerçekten çözdüğü dersler
+  const dersler = veri ? Object.keys(veri.dersBazli).sort((a, b) => a.localeCompare(b, 'tr')) : [];
+  const kapsam = veri ? (seciliDers === 'Genel' ? veri.genel : veri.dersBazli[seciliDers]) : undefined;
+  const yuzde = (s: ZorlukSayaci | undefined) =>
+    s && s.toplam > 0 ? Math.round((s.dogru / s.toplam) * 100) : null;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col">
+      {/* Header: başlık + ders filtresi */}
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <h2 className="font-semibold text-gray-900">Zorluk Analizi 🧗‍♀️</h2>
+        <select
+          value={seciliDers}
+          onChange={(e) => setSeciliDers(e.target.value)}
+          aria-label="Zorluk analizi ders filtresi"
+          className="px-3 py-1.5 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer"
+        >
+          <option value="Genel">Genel</option>
+          {dersler.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Zorluk barları */}
+      <div className="flex flex-col gap-4 flex-1 justify-center">
+        {ZORLUK_SATIRLARI.map((satir) => {
+          const s = kapsam?.[satir.deger];
+          const y = yuzde(s);
+          return (
+            <div key={satir.deger}>
+              <div className="flex items-center justify-between mb-1.5 text-sm">
+                <span className="font-medium text-gray-700">{satir.etiket}</span>
+                <span className={`font-medium ${satir.metin}`}>
+                  {y !== null ? `%${y}` : '—'}
+                  {s && s.toplam > 0 && (
+                    <span className="text-xs text-gray-400 ml-1">({s.dogru}/{s.toplam})</span>
+                  )}
+                </span>
+              </div>
+              <div className="bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all duration-500 ${satir.bar}`}
+                  style={{ width: `${y ?? 0}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Koç yorumu — gerçek yüzdelerden üretilir */}
+      <div className="mt-5 bg-purple-50 p-3 rounded-lg flex gap-2 text-sm text-purple-800">
+        <span className="flex-shrink-0">💡</span>
+        <span>
+          <span className="font-semibold">AI Koç Yorumu:</span>{' '}
+          {yukleniyor ? 'Yükleniyor...' : zorlukYorumuUret(kapsam, seciliDers)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
   const { goals, hydrated } = useGoals();
   // Arşivde gezinilen gün ('YYYY-MM-DD'); ileri ok bugün sınırında kilitli
@@ -68,11 +193,13 @@ export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
     : null;
 
   return (
-    // Masaüstünde sayfa kaydırması yok: 1. satır arşiv (auto), 2. satır performans kartı
-    // kalan yüksekliği doldurur — taşan içerik kartların içinde kayar
+    // Masaüstünde sayfa kaydırması yok: 1. satır üst blok (auto), 2. satır performans
+    // kartı kalan yüksekliği doldurur — taşan içerik kartların içinde kayar
     <div className="grid md:grid-cols-2 gap-6 lg:h-full lg:grid-rows-[auto_minmax(0,1fr)] lg:min-h-0">
-      {/* Hedef Arşivi — tarih gezinmeli kalıcı kayıt; liste kendi içinde kayar, sayfa uzamaz */}
-      <div className="md:col-span-2 bg-white rounded-2xl shadow-sm p-6">
+      {/* ÜST BLOK: arşiv + zorluk analizi yan yana (mobilde alt alta) */}
+      <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Hedef Arşivi — tarih gezinmeli kalıcı kayıt; liste kendi içinde kayar, sayfa uzamaz */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <h2 className="font-semibold text-gray-900">Hedef Arşivi 📚</h2>
           <div className="flex items-center gap-2">
@@ -115,6 +242,10 @@ export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
             </ul>
           </div>
         )}
+        </div>
+
+        {/* Zorluk Analizi — gerçek cevap verisinden zorluk kırılımı + koç yorumu */}
+        <ZorlukAnaliziKarti />
       </div>
 
       {/* Ders Performans Analizi — rozetler + progress bar ızgarası tek kartta */}

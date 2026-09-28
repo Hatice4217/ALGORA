@@ -492,6 +492,54 @@ export const dbHelpers = {
     );
   },
 
+  // Analizler "Zorluk Analizi" kartı: kullanıcının tüm cevaplarını zorluk
+  // (ve ders) kırılımında toplar. Tipler: 'beginner' | 'intermediate' | 'advanced'.
+  // (RLS "Users can view own answers" — istemci oturumuyla kendi satırlarını görür)
+  getDifficultyStats: async (userId: string) => {
+    return withConnectionCheck(
+      async () => {
+        try {
+          const { data, error } = await supabase!
+            .from('answers')
+            .select('is_correct, question:questions(subject, difficulty)')
+            .eq('user_id', userId);
+
+          if (error) {
+            console.log('getDifficultyStats hatası:', error.message);
+            return { data: null, error: error.message };
+          }
+
+          const bos = () => ({ toplam: 0, dogru: 0 });
+          const genel: Record<string, { toplam: number; dogru: number }> = {};
+          const dersBazli: Record<string, Record<string, { toplam: number; dogru: number }>> = {};
+
+          for (const raw of (data || []) as unknown as Array<{
+            is_correct: boolean;
+            question: { subject: string; difficulty: string } | null;
+          }>) {
+            const q = raw.question;
+            if (!q) continue;
+            genel[q.difficulty] ??= bos();
+            genel[q.difficulty].toplam += 1;
+            if (raw.is_correct) genel[q.difficulty].dogru += 1;
+
+            dersBazli[q.subject] ??= {};
+            dersBazli[q.subject][q.difficulty] ??= bos();
+            dersBazli[q.subject][q.difficulty].toplam += 1;
+            if (raw.is_correct) dersBazli[q.subject][q.difficulty].dogru += 1;
+          }
+
+          return { data: { genel, dersBazli }, error: null };
+        } catch (error) {
+          console.log('getDifficultyStats istisnası:', error);
+          return { data: null, error: 'Zorluk istatistikleri alınamadı' };
+        }
+      },
+      { data: null, error: 'Bağlantı yok' },
+      'getDifficultyStats'
+    );
+  },
+
   getUserStats: async (userId: string, client?: SupabaseClient) => {
     const db = client || supabase!;
     return withConnectionCheck(
