@@ -23,17 +23,57 @@
 CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  name TEXT,
   exam_type TEXT NOT NULL CHECK (exam_type IN ('TYT', 'AYT', 'YDT')),
   target_score INTEGER NOT NULL CHECK (target_score >= 0 AND target_score <= 500),
   subjects TEXT[] NOT NULL,
   -- NUMERIC: form 0.5 adım vaat ediyor (INTEGER 0.5'i düşürür → 400)
   study_hours_per_day NUMERIC NOT NULL CHECK (study_hours_per_day >= 0 AND study_hours_per_day <= 24),
   exam_date DATE,
+  -- Hedef üniversite/bölüm — motivasyon rozetini besler (Sınav Hedefleri bölümü)
+  target_university TEXT NOT NULL DEFAULT '',
+  target_major TEXT NOT NULL DEFAULT '',
   current_streak INTEGER DEFAULT 0,
   total_study_time INTEGER DEFAULT 0, -- in minutes
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- User Goals Table
+-- "Bugünün Hedefleri" — hesaba bağlı (RLS: yalnız kendi satırları);
+-- canlıya kurulum: database/user_goals_ve_hedefler.sql
+CREATE TABLE IF NOT EXISTS user_goals (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  goal_text TEXT NOT NULL CHECK (char_length(goal_text) <= 200),
+  is_completed BOOLEAN NOT NULL DEFAULT false,
+  date DATE NOT NULL, -- yerel 'YYYY-MM-DD'
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE user_goals ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS user_goals_select_own ON user_goals;
+DROP POLICY IF EXISTS user_goals_insert_own ON user_goals;
+DROP POLICY IF EXISTS user_goals_update_own ON user_goals;
+DROP POLICY IF EXISTS user_goals_delete_own ON user_goals;
+
+CREATE POLICY user_goals_select_own ON user_goals
+  FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
+
+CREATE POLICY user_goals_insert_own ON user_goals
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY user_goals_update_own ON user_goals
+  FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY user_goals_delete_own ON user_goals
+  FOR DELETE TO authenticated
+  USING (auth.uid() = user_id);
 
 -- Questions Table
 -- Stores AI-generated and manually created questions
@@ -137,6 +177,7 @@ CREATE INDEX IF NOT EXISTS idx_answers_user_id ON answers(user_id);
 CREATE INDEX IF NOT EXISTS idx_answers_question_id ON answers(question_id);
 CREATE INDEX IF NOT EXISTS idx_study_sessions_user_id ON study_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_answers_created_at ON answers(answered_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_goals_user_id_date ON user_goals (user_id, date);
 
 -- ===================================
 -- ROW LEVEL SECURITY (RLS)

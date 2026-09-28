@@ -117,27 +117,6 @@ export function DailyGoals() {
           ))}
         </ul>
       )}
-
-      {/* Tamamlananlar — bugün bitirilen hedefler üstü çizili görünür; neyin
-          bittiği listede kalmaya devam eder (arşivde ayrıca tarihsel kayıt tutulur) */}
-      {hydrated && completed.length > 0 && (
-        <div className="mt-4">
-          <p className="text-xs font-medium text-gray-400 mb-2">Tamamlananlar</p>
-          <ul className="flex flex-col gap-1.5">
-            {completed.map((goal) => (
-              <li
-                key={goal.id}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-green-50/60 border border-green-100"
-              >
-                <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="flex-1 text-sm text-gray-400 line-through break-words">{goal.text}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }

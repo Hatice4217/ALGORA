@@ -2,13 +2,14 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { authHelpers, dbHelpers } from '../../lib/supabase';
+import type { GoalRow } from '../../lib/supabase';
 
-// Hedefler — global state (Context API) + localStorage kalıcılığı.
-// Genel Bakış (yalnız bugünün tamamlanmamışları) ve Analizler (tarihsel arşiv)
-// aynı provider'ı okur; tek kaynak üzerinden senkron çalışır.
-// Veri yapısı: { id, text, isCompleted, date } — date yerel 'YYYY-MM-DD'.
-// Not: cihaz bazlı (hesaptan bağımsız); Supabase'e taşımak istenirse yalnızca
-// yükleme/yazma effect'leri değişir, arayüz aynı kalır.
+// Hedefler — HESABA BAĞLI (user_goals tablosu; RLS yalnız kendi satırlarına izin verir).
+// Önceden localStorage'daydı: aynı tarayıcıda hesap değiştiren kullanıcı başkasının
+// hedeflerini görüyordu → DB'ye taşındı (cihazlar arası senkron da sağlanır).
+// Genel Bakış (bugünün hedefleri) ve Analizler (Hedef Arşivi) aynı provider'ı okur.
+// Yazmalar iyimserdir: state anında güncellenir, DB yazımı hata verirse geri alınır.
 
 export interface Goal {
   id: string;
@@ -17,8 +18,9 @@ export interface Goal {
   date: string; // yerel 'YYYY-MM-DD'
 }
 
-const STORAGE_KEY = 'algora_goals_v1';
-const LEGACY_KEY = 'algora_daily_goals'; // eski şema: { id, text, done }
+function satirdanHedef(satir: GoalRow): Goal {
+  return { id: satir.id, text: satir.goal_text, isCompleted: satir.is_completed, date: satir.date };
+}
 
 // UTC değil YEREL tarih: toISOString() TR akşamları dünü verirdi
 export const todayStr = (): string => {
@@ -45,76 +47,56 @@ export function useGoals(): GoalsContextValue {
 export function GoalsProvider({ children }: { children: ReactNode }) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Yükleme: yeni şema + eski algora_daily_goals şemasının migrasyonu
+  // Yükleme: DB'den hedefler. Eski localStorage anahtarları SİLİNİR — asla DB'ye
+  // taşınmaz (farklı hesabın hedefi yanlış hesaba kopyalanmasın; karışma zaten bug'dı)
   useEffect(() => {
-    try {
-      let loaded: Goal[] = [];
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed: unknown = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          loaded = parsed
-            .filter(
-              (g): g is Goal =>
-                !!g &&
-                typeof g === 'object' &&
-                typeof (g as Goal).text === 'string' &&
-                typeof (g as Goal).isCompleted === 'boolean' &&
-                typeof (g as Goal).date === 'string'
-            )
-            .map((g) => ({ id: String(g.id), text: g.text, isCompleted: g.isCompleted, date: g.date }));
-        }
-      } else {
-        const legacyRaw = localStorage.getItem(LEGACY_KEY);
-        if (legacyRaw) {
-          const legacy: unknown = JSON.parse(legacyRaw);
-          if (Array.isArray(legacy)) {
-            loaded = legacy
-              .filter((g): g is { id: unknown; text: string; done: unknown } => {
-                return !!g && typeof g === 'object' && typeof (g as { text?: unknown }).text === 'string';
-              })
-              .map((g, i) => ({
-                id: String(g.id ?? i),
-                text: g.text,
-                isCompleted: Boolean(g.done),
-                date: todayStr(),
-              }));
-          }
-        }
+    let iptal = false;
+    (async () => {
+      try {
+        localStorage.removeItem('algora_goals_v1');
+        localStorage.removeItem('algora_daily_goals');
+      } catch {
+        // storage erişilemez → sorun değil
       }
-      setGoals(loaded);
-    } catch {
-      // bozuk JSON / erişilemeyen storage → boş listeyle devam
-    }
-    setHydrated(true);
+      try {
+        const { user } = await authHelpers.getCurrentUser();
+        if (!user) return;
+        const { data } = await dbHelpers.getGoals(user.id);
+        if (iptal) return;
+        setUserId(user.id);
+        if (data) {
+          setGoals((data as unknown as GoalRow[]).map(satirdanHedef));
+        }
+      } catch {
+        // bağlantı yok → boş listeyle devam
+      } finally {
+        if (!iptal) setHydrated(true);
+      }
+    })();
+    return () => {
+      iptal = true;
+    };
   }, []);
-
-  // Kaydetme — hydrate'e dek yazma (boş liste ezmesi yok; DailyGoals deseni)
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(goals));
-    } catch {
-      // kota dolu / gizli pencere → liste oturumluk kalır
-    }
-  }, [goals, hydrated]);
 
   const addGoal = useCallback((text: string) => {
     const trimmed = text.trim();
-    if (!trimmed) return;
-    setGoals((prev) => [
-      ...prev,
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        text: trimmed,
-        isCompleted: false,
-        date: todayStr(),
-      },
-    ]);
-  }, []);
+    if (!trimmed || !userId) return;
+    // İyimser ekleme: geçici id ile anında listede, DB onayınca gerçek id ile değişir
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setGoals((prev) => [...prev, { id: tempId, text: trimmed, isCompleted: false, date: todayStr() }]);
+    (async () => {
+      const { data, error } = await dbHelpers.addGoalDb(userId, trimmed, todayStr());
+      if (error || !data) {
+        setGoals((prev) => prev.filter((g) => g.id !== tempId));
+        return;
+      }
+      setGoals((prev) => prev.map((g) => (g.id === tempId ? satirdanHedef(data as GoalRow) : g)));
+    })();
+  }, [userId]);
 
   const completeGoal = useCallback((id: string) => {
     setGoals((prev) => prev.map((g) => (g.id === id ? { ...g, isCompleted: true } : g)));
@@ -122,11 +104,28 @@ export function GoalsProvider({ children }: { children: ReactNode }) {
     setToastVisible(true);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToastVisible(false), 4500);
-  }, []);
+
+    if (!userId) return;
+    (async () => {
+      const { error } = await dbHelpers.setGoalCompleted(userId, id, true);
+      if (error) {
+        setGoals((prev) => prev.map((g) => (g.id === id ? { ...g, isCompleted: false } : g)));
+      }
+    })();
+  }, [userId]);
 
   const deleteGoal = useCallback((id: string) => {
     setGoals((prev) => prev.filter((g) => g.id !== id));
-  }, []);
+    if (!userId) return;
+    (async () => {
+      const { error } = await dbHelpers.deleteGoalDb(userId, id);
+      if (error) {
+        // Silme başarısız: listeyi DB'den yeniden kur (hedefi yerine koyar, sıra korunur)
+        const { data } = await dbHelpers.getGoals(userId);
+        if (data) setGoals((data as unknown as GoalRow[]).map(satirdanHedef));
+      }
+    })();
+  }, [userId]);
 
   useEffect(
     () => () => {

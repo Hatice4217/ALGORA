@@ -41,6 +41,9 @@ export interface UserProfile {
   target_score: number;
   exam_date?: string;
   study_hours_per_day: number;
+  // Hedef üniversite/bölüm — motivasyon rozetini besler (Sınav Hedefleri bölümü)
+  target_university?: string;
+  target_major?: string;
   email_notifications: boolean;
   theme: 'light' | 'dark';
   language: 'tr' | 'en';
@@ -56,8 +59,8 @@ export interface SettingsFormState {
   exam_type: 'TYT' | 'AYT' | 'YDT';
   target_score: string;
   study_hours_per_day: string;
-  hedef_universite: string; // motivasyon rozeti — DB kolonu yok, UserPreferencesProvider localStorage'ında
-  hedef_bolum: string;
+  hedef_universite: string; // user_profiles.target_university (DB, hesaba bağlı)
+  hedef_bolum: string; // user_profiles.target_major (DB, hesaba bağlı)
   // Notifications section
   email_notifications: boolean;
   theme: 'light' | 'dark';

@@ -2527,3 +2527,33 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Commit: 00efb10 (push → Vercel deploy SUCCESS)
+
+## [28 Eylül 2026] - Responsive min-[480px] + Hedefler hesaba bağlandı (aa0ae76 + devamı)
+
+### 🎯 Kullanıcı istekleri / bulguları
+- Hedef kutusu yine "ismin altında ezik", Settings'te ana scroll hâlâ var → ikisinin de kökü: kullanıcı masaüstünde efektif viewport 500-650px (Windows ölçekleme) → sm/md/lg eşikleri TETİKLENMİYORDU
+- DailyGoals "3 tamamlandı" yerine "3 hedef" + neyin bittiği belli olsun
+- ⚠️ "Hedefler bir kullanıcıya girince DİĞER hesaplarda da görünüyor — büyük açık" (localStorage cihaz-bazlıydı)
+- ⚠️ "Ayardan ismi değiştirdim, çık-gir'de eski isim döndü"
+- Tamamlananlar bölümü geri alındı (Analizler'de zaten arşiv var, kartı şişiriyordu)
+
+### ✅ Yapılanlar (aa0ae76 — CANLIDA, deploy SUCCESS)
+- **min-[480px] eşiği:** Hedef kutusu karşılaması (sm:flex-row yerine) + Settings iç scroll (lg→md→min-[480px]) → kullanıcının ekranında sonunda düzeldi; CSS chunk node-probe ile doğrulandı
+- Exam kartı kompaktlaştırıldı (p-5 md:p-6, bilgi kutusu text-xs)
+- DailyGoals: rozet "k/n hedef" (0 gri, hepsi bitince yeşil)
+
+### ✅ Hedefler hesaba bağlandı (devam commit'i)
+- **Kök neden ① (hedefler):** GoalsProvider + hedef üniversite/bölüm localStorage'daydı → aynı tarayıcıda hesap karışıyordu
+- **Kök neden ② (isim):** updateUserSettings `name`'i user_profiles'a YAZMIYOR, yalnız auth metadata'ya yazıyordu; dashboard ismi profilden okuyunca eski isim eziyordu
+- `user_goals` tablosu (RLS 4 politika: select/insert/update/delete auth.uid()=user_id; goal_text ≤200) — dbHelpers'a getGoals/addGoalDb/setGoalCompleted/deleteGoalDb (dönüş tipleri açık — withConnectionCheck<T> generic'i fallback'i T ile eşitliyor, union çıkarımı type error veriyor)
+- GoalsProvider DB'ye taşındı (iyimser yazım + hata revert; eski localStorage anahtarları açılışta SİLİNİR — asla DB'ye taşınmaz, yanlış hesaba kopyalanmasın)
+- UserPreferencesProvider: target_university/target_major DB; cache anahtarı `algora_prefs_v1:<userId>` (eski userId'siz anahtar silinir)
+- İsim: profileData'ya name + SettingsPanel onNameChanged → dashboard karşılama anında tazelenir
+- **Migration: `database/user_goals_ve_hedefler.sql` (KULLANICI ÇALIŞTIRACAK)** — user_goals + user_profiles'a target_university/target_major/name IF NOT EXISTS; idempotent + doğrulama sorguları
+
+### 📌 Not
+- Migration öncesi: hedef ekleme/tamamlama DB hatası verir (iyimser state revert eder, sessiz console). Migration sonrası tam çalışır
+- Kullanıcının localStorage'daki eski hedefleri ve hedef üniversite/bölüm değeri silinir → yeniden girmesi gerekir (bilinçli: karışan verinin taşınması bug'ı yeniden üretirdi)
+
+### Session Bitişi
+- Commit: devam commit'i (push → Vercel deploy izlenecek)

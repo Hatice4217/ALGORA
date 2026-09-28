@@ -63,7 +63,7 @@ const SECTIONS = [
   },
 ];
 
-export function SettingsPanel() {
+export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) => void }) {
   const { toast, showToast, hideToast } = useToast();
   // Global sınav tercihleri (UserPreferencesProvider) — Sınav Hedefleri formu buraya yazar,
   // Genel Bakış'taki rozet anında okur
@@ -126,8 +126,9 @@ export function SettingsPanel() {
             exam_type: profileData.exam_type || 'TYT',
             target_score: profileData.target_score?.toString() || '',
             study_hours_per_day: profileData.study_hours_per_day?.toString() || '',
-            hedef_universite: '',
-            hedef_bolum: '',
+            // Hedef üniversite/bölüm artık DB'de (user_profiles.target_university/major)
+            hedef_universite: profileData.target_university || '',
+            hedef_bolum: profileData.target_major || '',
             email_notifications: profileData.email_notifications ?? true,
             theme: profileData.theme || 'light',
             language: profileData.language || 'tr',
@@ -136,13 +137,7 @@ export function SettingsPanel() {
             confirm_password: '',
           };
 
-          // Hedef üniversite/bölüm DB'de olmadığından context ön-doldurmasının yazdığı
-          // localStorage değerleri korunur (effect sırası ne olursa olsun)
-          setFormData((prev) => ({
-            ...newFormData,
-            hedef_universite: prev.hedef_universite,
-            hedef_bolum: prev.hedef_bolum,
-          }));
+          setFormData(newFormData);
           setOriginalData(newFormData);
         }
       } catch (error) {
@@ -214,6 +209,8 @@ export function SettingsPanel() {
             name: formData.name,
           });
           setOriginalData((prev) => ({ ...prev, name: formData.name }));
+          // Karşılama/header'daki isim anında tazelensin (çık-gir beklemeden)
+          onNameChanged?.(formData.name);
           showToast('Profil güncellendi', 'success');
           setActiveSection(null);
           break;

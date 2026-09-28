@@ -227,6 +227,15 @@ export const authHelpers = {
 };
 
 // Database Helpers
+// user_goals satırı (Bugünün Hedefleri — hesaba bağlı)
+export interface GoalRow {
+  id: string;
+  goal_text: string;
+  is_completed: boolean;
+  date: string; // yerel 'YYYY-MM-DD'
+  created_at?: string;
+}
+
 export const dbHelpers = {
   // User Profile
   getUserProfile: async (userId: string) => {
@@ -615,6 +624,9 @@ export const dbHelpers = {
     target_score?: number;
     exam_date?: string;
     study_hours_per_day?: number;
+    // Hedef üniversite/bölüm — motivasyon rozetini besler (hesaba bağlı)
+    target_university?: string;
+    target_major?: string;
     email_notifications?: boolean;
     theme?: string;
     language?: string;
@@ -629,10 +641,15 @@ export const dbHelpers = {
         updated_at: new Date().toISOString(),
       };
 
+      // name user_profiles'a da yazılır — dashboard ismi profilden okur; yalnız
+      // auth metadata'ya yazsaydı çık-gir'de profildeki eski isim geri dönerdi
+      if (settings.name !== undefined) profileData.name = settings.name;
       if (settings.exam_type !== undefined) profileData.exam_type = settings.exam_type;
       if (settings.target_score !== undefined) profileData.target_score = settings.target_score;
       if (settings.exam_date !== undefined) profileData.exam_date = settings.exam_date;
       if (settings.study_hours_per_day !== undefined) profileData.study_hours_per_day = settings.study_hours_per_day;
+      if (settings.target_university !== undefined) profileData.target_university = settings.target_university;
+      if (settings.target_major !== undefined) profileData.target_major = settings.target_major;
       if (settings.email_notifications !== undefined) profileData.email_notifications = settings.email_notifications;
       if (settings.theme !== undefined) profileData.theme = settings.theme;
       if (settings.language !== undefined) profileData.language = settings.language;
@@ -686,6 +703,116 @@ export const dbHelpers = {
       console.error('updateUserSettings error:', error);
       return { data: null, error: 'Ayarlar güncellenirken bir hata oluştu' };
     }
+  },
+
+  // ===== Bugünün Hedefleri (user_goals — hesaba bağlı; RLS yalnız kendi satırlarına izin verir) =====
+
+  // Kullanıcının tüm hedefleri; bugüne düşenleri client'ta date'e göre filtrelenir
+  getGoals: async (userId: string): Promise<{ data: GoalRow[] | null; error: string | null }> => {
+    if (!supabase) {
+      return { data: null, error: 'Supabase bağlantısı yok' };
+    }
+    return withConnectionCheck(
+      async (): Promise<{ data: GoalRow[] | null; error: string | null }> => {
+        try {
+          const { data, error } = await supabase!
+            .from('user_goals')
+            .select('id, goal_text, is_completed, date, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: true });
+          if (error) {
+            return { data: null, error: error.message };
+          }
+          return { data, error: null };
+        } catch (error) {
+          console.log('getGoals istisnası:', error);
+          return { data: null, error: 'Hedefler alınamadı' };
+        }
+      },
+      { data: null, error: null },
+      'getGoals'
+    );
+  },
+
+  addGoalDb: async (userId: string, goalText: string, date: string): Promise<{ data: GoalRow | null; error: string | null }> => {
+    if (!supabase) {
+      return { data: null, error: 'Supabase bağlantısı yok' };
+    }
+    return withConnectionCheck(
+      async (): Promise<{ data: GoalRow | null; error: string | null }> => {
+        try {
+          const { data, error } = await supabase!
+            .from('user_goals')
+            .insert({ user_id: userId, goal_text: goalText, date })
+            .select('id, goal_text, is_completed, date, created_at')
+            .single();
+          if (error) {
+            return { data: null, error: error.message };
+          }
+          return { data, error: null };
+        } catch (error) {
+          console.log('addGoalDb istisnası:', error);
+          return { data: null, error: 'Hedef eklenemedi' };
+        }
+      },
+      { data: null, error: null },
+      'addGoalDb'
+    );
+  },
+
+  // Derin savunma: sorguya da user_id filtresi (RLS zaten kısıtlar)
+  setGoalCompleted: async (userId: string, goalId: string, isCompleted: boolean): Promise<{ data: GoalRow | null; error: string | null }> => {
+    if (!supabase) {
+      return { data: null, error: 'Supabase bağlantısı yok' };
+    }
+    return withConnectionCheck(
+      async (): Promise<{ data: GoalRow | null; error: string | null }> => {
+        try {
+          const { data, error } = await supabase!
+            .from('user_goals')
+            .update({ is_completed: isCompleted })
+            .eq('id', goalId)
+            .eq('user_id', userId)
+            .select('id, goal_text, is_completed, date, created_at')
+            .maybeSingle();
+          if (error) {
+            return { data: null, error: error.message };
+          }
+          return { data, error: null };
+        } catch (error) {
+          console.log('setGoalCompleted istisnası:', error);
+          return { data: null, error: 'Hedef güncellenemedi' };
+        }
+      },
+      { data: null, error: null },
+      'setGoalCompleted'
+    );
+  },
+
+  deleteGoalDb: async (userId: string, goalId: string): Promise<{ data: null; error: string | null }> => {
+    if (!supabase) {
+      return { data: null, error: 'Supabase bağlantısı yok' };
+    }
+    return withConnectionCheck(
+      async (): Promise<{ data: null; error: string | null }> => {
+        try {
+          const { error } = await supabase!
+            .from('user_goals')
+            .delete()
+            .eq('id', goalId)
+            .eq('user_id', userId);
+          if (error) {
+            return { data: null, error: error.message };
+          }
+          return { data: null, error: null };
+        } catch (error) {
+          console.log('deleteGoalDb istisnası:', error);
+          return { data: null, error: 'Hedef silinemedi' };
+        }
+      },
+      { data: null, error: null },
+      'deleteGoalDb'
+    );
   },
 
   changePassword: async (currentPassword: string, newPassword: string) => {

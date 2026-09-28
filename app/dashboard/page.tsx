@@ -712,8 +712,19 @@ export default function DashboardPage() {
           />
         )}
 
-        {/* Ayarlar Sekmesi */}
-        {activeTab === 'settings' && <SettingsPanel />}
+        {/* Ayarlar Sekmesi — isim değişince karşılama anında tazelenir */}
+        {activeTab === 'settings' && (
+          <SettingsPanel
+            onNameChanged={(ad) => {
+              setUserName(ad);
+              try {
+                localStorage.setItem('userName', ad);
+              } catch {
+                // storage yazılamadı → oturumluk kalır
+              }
+            }}
+          />
+        )}
       </main>
 
       {/* Yükseltme Modalı (kota bitişi veya Paketim'den açılır) */}
