@@ -325,7 +325,7 @@ Faz 0 + A/B/C sonrası sistemde **kritik açık kalmadı**; kalanlar tutarlıla�
 | A → B'nin `user_profiles` satırını UPDATE (name='HACKED') | 0 satır | 0 satır; B'nin adı değişmedi | ✅ |
 | A → `user_id=<B_id>` ile `user_profiles` INSERT (fallback taklidi) | 403 | 403 RLS reddi | ✅ |
 | A → `subscriptions` self-premium (INSERT plan='premium' / UPDATE kendi satırı) | RED / 0 satır | INSERT RLS reddi (politikası yok); UPDATE 0 satır, plan 'free' kaldı | ✅ |
-| `deduct_credit`/`refund_credit`/`rollover_subscription`'ı authenticated token'la RPC olarak çağırma | permission denied | (28 Eyl taramasında RLS agent'ı kapsamda; EXECUTE üçlü-revoke Bölüm 8'de zaten kanıtlı) | ✅ |
+| `deduct_credit`/`refund_credit`/`rollover_subscription`'ı authenticated token'la RPC olarak çağırma | permission denied | 9.7 Probe ① ile canlıda doğrudan kanıtlandı: 5/5 `42501 permission denied` (kendi+kurban user_id, anon dahil), kredi/tx değişmedi | ✅ |
 | Hesap silme sonrası orphan `user_goals` (KVKK) | cascade temizliği | FK `ON DELETE CASCADE` canlı kanıtlandı: delete-account 200 → user_goals 0 satır + auth kaydı silinmiş | ✅ |
 | signIn enumeration (var-olmayan vs yanlış-şifre) | birebir aynı mesaj | İkisi de `Invalid login credentials` 400 — jenerik Türkçe'ye çevriliyor | ✅ |
 | resend enumeration (var-olan vs var-olmayan e-posta) | sessiz yutma | İkisi de hatasız; helper jenerik mesaj sarmalıyor — varlık sızması yok | ✅ |
@@ -382,5 +382,31 @@ Faz 0 + A/B/C sonrası sistemde **kritik açık kalmadı**; kalanlar tutarlıla�
 4. **Mesaj paketi:** signUp İngilizce→Türkçe eşleme tablosu (O2)
 5. **Config:** .env.example güncelle (O7) — üç eksik anahtar + OPENAI satırını sil
 6. **Kullanıcı kararı bekleyen temizlik** (9.4 + 8.3'ten): ölü dep ×5, `app/logo-preview-old`, webpack console-hack, `lib/backend-test.ts`, kök dizin test kalıntıları
+7. **F12 fix (9.7):** generate route'da `!(difficulty in difficultyMap)` → `!Object.hasOwn(difficultyMap, difficulty)` (tek satır, kod değişikliği)
 
-Sıra önerisi: 1+2 (DB/ayar, kullanıcıya ait) paralel → 3+4 tek commit → 5 tek commit → 6 ayrı temizlik turu.
+Sıra önerisi: 1+2 (DB/ayar, kullanıcıya ait) paralel → 3+4 tek commit → 5+7 tek commit → 6 ayrı temizlik turu.
+
+## 9.7 Probe Tamamlama Turu — Kalan 3 Vektörün Canlı Kapanışı (28 Eylül 2026)
+
+> Yöntem: kod değişikliği YOK; 3 geçici probe script'i (çalıştırıldı, sonra silindi) + her probe için ayrı test kullanıcısı (tam temizlik: 6 tablo + auth). Hedef sistem: Vercel prod (`algora-sigma.vercel.app`) + canlı Supabase. Amaç: 9.1-9.2'de "statik/yeterli" sayılan üç kalemi gerçek kanıtla kapatmak.
+
+| Probe | Beklenti | Gerçekleşen | Sonuç |
+|---|---|---|---|
+| ① Gerçek JWT ile `/rest/v1/rpc/deduct_credit` — saldırgan→kurban `p_user_id` | permission denied | **403 `42501 permission denied for function deduct_credit`** | ✅ PASS |
+| ① Aynı RPC — saldırgan→kendi user_id | permission denied | 403 `42501` | ✅ PASS |
+| ① Aynı RPC — anon (Bearer'sız, yalnız anon key) → kurban | permission denied | 401 + `42501` (Postgres seviyesi, PostgREST maskesi değil) | ✅ PASS |
+| ① `refund_credit` — saldırgan→kurbana kredi basma | permission denied | 403 `42501` | ✅ PASS |
+| ① `rollover_subscription` — saldırgan→kurbanın dönemini zorla yenileme | permission denied | 403 `42501` | ✅ PASS |
+| ① Etki doğrulaması | kredi/tx dokunulmamış | attack 20→20, victim 20→20; credit_transactions 0/0 | ✅ PASS |
+| ② `difficulty:"toString"` (string) canlı `/api/questions/generate` | 400 | **HTTP 200** (34.6 sn = gerçek Gemini çağrısı), kredi -1 (`generation` tx) → **F12 YENİ BULGU** | ❌ BYPASS |
+| ② `difficulty:{toString:'orta'}` (object) | 400 | 400 — `typeof` guard'ı sağlam, Gemini'ye gitmedi | ✅ PASS |
+| ③ period_end 1 dk geçmişe + credits 5'e çekildi → **10 paralel** GET `/api/subscription` | tam 1 rollover | 10/10 HTTP 200, **hepsi credits=20 gördü** (bayat 5 kimseye görünmedi); period_start/end tam +1.00 gün; `monthly_reset` tx **TAM 1** (amount 20); çift yükleme 0 — `UPDATE ... WHERE period_end < NOW()` yarış koruması canlıda kanıtlandı | ✅ PASS |
+
+### F12 (YENİ — DÜŞÜK): difficulty whitelist `in` operatörüyle bypass ediliyor
+
+- **Kök neden:** `app/api/questions/generate/route.ts:200` — `!(difficulty in difficultyMap)`; JS `in` operatörü **prototype chain'i de tarar** (`'toString' in {}` → true). Düz obje literali olan `difficultyMap` (route.ts:60) kendi anahtarlarını (`baslangic/orta/ileri`) Object.prototype mirasından ayıramıyor.
+- **Canlı kanıt:** `difficulty:"toString"` → 200 + kredi düşüşü; `difficultyMap['toString']` native fonksiyon olduğundan prompt'a zorluk metni olarak fonksiyon kaynağı gider (`difficultyMap[difficulty] || difficulty`, route.ts:235).
+- **Etki sınırı:** yalnızca ~13 sabit `Object.prototype` üye adı geçebilir (`toString`, `constructor`, `valueOf`, `__proto__`...) — keyfi metin enjeksiyonu YOK; kullanıcı kendi kredisiyle saçma-zorluklu soru üretir; JSON şema validasyonu çıktı yapısını korur. Gizlilik/bütünlük etkisi yok → DÜŞÜK, ama whitelist'in sözleşmesi bozuk.
+- **Fix (Faz 0.9 madde 7):** `Object.hasOwn(difficultyMap, difficulty)` — tek satır.
+
+> Not: probe ②'nin ilk denemesi `.env.local`'deki `NEXT_PUBLIC_APP_URL=http://localhost:3000` yüzünden lokale gitti (ECONNREFUSED) — canlı hedefli probe script'leri sabit canlı URL kullanmalı. Path notu: generate route `/api/generate` değil `/api/questions/generate`.

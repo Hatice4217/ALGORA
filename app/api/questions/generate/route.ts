@@ -193,11 +193,15 @@ export async function POST(request: Request) {
     }
 
     // 2.5 Girdi doğrulaması (Faz 0.8): tip + whitelist + uzunluk sınırları
+    // NOT (F12 fix): `difficulty in difficultyMap` prototype chain'i taradığından
+    // 'toString'/'constructor' vb. Object.prototype anahtarları whitelist'i geçiyordu
+    // (canlıda kanıtlandı: 200 + kredi düşüşü). Object.hasOwn yalnızca KENDİ
+    // anahtarlarına bakar (baslangic/orta/ileri).
     if (
       typeof subject !== 'string' ||
       typeof difficulty !== 'string' ||
       !VALID_SUBJECTS.includes(subject) ||
-      !(difficulty in difficultyMap)
+      !Object.hasOwn(difficultyMap, difficulty)
     ) {
       return NextResponse.json(
         { error: 'Geçersiz ders veya zorluk seviyesi.' },
@@ -355,6 +359,14 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const attemptStartedAt = Date.now();
+      // Self-timeout (dayanıklılık Test 1 fix): Gemini asılı kalırsa platform
+      // maxDuration kill'i fonksiyonu CATCH'SİZ öldürür ve düşülen kredi iadesiz
+      // kalır (local SIGKILL simülasyonuyla kanıtlandı). Kendi limitimizi platform
+      // limitinin ALTINDA tutarsak timeout AbortError'ı catch bloğuna düşer ve
+      // refund_credit çalışır. 90 sn: gözlemlenen en yavaş canlı üretim 60.2 sn + pay;
+      // 2 deneme × 90 sn = 180 sn < Fluid varsayılan limiti (300 sn).
+      // Test/probe override: GEMINI_TIMEOUT_MS env.
+      const geminiTimeoutMs = Number(process.env.GEMINI_TIMEOUT_MS || 90_000);
       // API key URL query param yerine header ile gönderilir
       // (key, loglarda/proxy kayıtlarında URL içinde görünmez)
       const response = await fetch(apiUrl, {
@@ -363,6 +375,7 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
           'Content-Type': 'application/json',
           'x-goog-api-key': apiKey,
         },
+        signal: AbortSignal.timeout(geminiTimeoutMs),
         body: JSON.stringify({
           contents: [{
             role: 'user',
@@ -461,10 +474,21 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
         }
       }
 
-      // Şema kontrolü: soru metni + tam 4 seçenek yoksa bu üretim elenir
+      // Şema kontrolü: soru metni + tam 5 seçenek + geçerli doğru-cevap indeksi
       const secenekler = parsedQuestion?.secenekler || parsedQuestion?.choices || [];
       const metinVar = Boolean(parsedQuestion?.soruMetni || parsedQuestion?.question);
-      if (!parsedQuestion || !metinVar || secenekler.length !== 5) {
+      // Doğru-cevap indeksi denetimi (dayanıklılık Test 4-B fix): tamsayı ve 0-4
+      // aralığında OLMALI. Eski davranış Math.min/Math.max clamp'iydi → Gemini
+      // index 9 gibi sınır-dışı değer üretirse sessizce 4'e kırpılıp bozuk soru
+      // DB'ye yazılıyor ve öğrenciye dönüyordu. Artık aralık dışı / non-integer
+      // (string, NaN dahil) → şema dışı sayılır ve retry tetiklenir. Alan TAMAMEN
+      // eksikse eski davranış korunur (aşağıda varsayılan 0).
+      const hamIndex: unknown = parsedQuestion?.dogruCevapIndex ?? parsedQuestion?.correctAnswer;
+      const indexGecerli =
+        hamIndex === undefined ||
+        hamIndex === null ||
+        (typeof hamIndex === 'number' && Number.isInteger(hamIndex) && hamIndex >= 0 && hamIndex <= 4);
+      if (!parsedQuestion || !metinVar || secenekler.length !== 5 || !indexGecerli) {
         console.error(
           `generate: şema dışı üretim elendi (deneme ${attempt}/${MAX_ATTEMPTS}), ham yanıt (ilk 300 karakter):`,
           aiResponse.substring(0, 300)
@@ -490,7 +514,9 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
       id: `gemini_${Date.now()}`, // Aşağıda DB insert başarılıysa gerçek UUID ile değiştirilir
       question: cleanMathText(parsedQuestion.soruMetni || parsedQuestion.question || 'Soru metni bulunamadı'),
       choices: (parsedQuestion.secenekler || parsedQuestion.choices || []).map((choice: string) => cleanMathText(choice)),
-      correctAnswer: Math.min(4, Math.max(0, parsedQuestion.dogruCevapIndex ?? parsedQuestion.correctAnswer ?? 0)),
+      // Aralık/tip denetimi yukarıdaki şema kontrolünde yapıldı (0-4 tamsayı ya
+      // da eksik → 0); clamp artık ölü koruma değil, yalnızca varsayılan
+      correctAnswer: parsedQuestion.dogruCevapIndex ?? parsedQuestion.correctAnswer ?? 0,
       explanation: cleanMathText(parsedQuestion.aciklama || parsedQuestion.explanation || 'Açıklama bulunamadı'),
       // İstemcide rozet/başlık gösterimi için meta (DB'ye de aynı değerler yazılır)
       subject,

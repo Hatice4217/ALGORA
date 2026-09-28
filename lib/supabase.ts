@@ -49,6 +49,26 @@ const handleDbError = (error: DbError | unknown, context: string) => {
   };
 };
 
+// O2 fix: duplicate/boş-mesaj dallarına düşmeyen ham İngilizce Supabase mesajlarını
+// Türkçe'ye eşler. Bilinmeyen mesajlar ayrıntı kaybı olmadan genel Türkçe uyarıya
+// iner (ham mesaj zaten yukarıda console.error ile loglanıyor — kullanıcıya sızmaz).
+export function signUpMesajEsle(ham: string): string {
+  const m = (ham || '').toLowerCase();
+  const az = m.match(/password should be at least (\d+)/);
+  if (az) return `Şifre en az ${az[1]} karakter olmalıdır.`;
+  const cok = m.match(/password should be at most (\d+)/);
+  if (cok) return `Şifre en fazla ${cok[1]} karakter olabilir.`;
+  if (m.includes('invalid format') || (m.includes('email') && m.includes('invalid'))) {
+    return 'Geçerli bir e-posta adresi girin (Türkçe karakter kullanmadan, örn. ornek@gmail.com).';
+  }
+  if (m.includes('password')) return 'Geçerli bir şifre girin.';
+  if (m.includes('rate limit') || m.includes('too many')) {
+    return 'Çok fazla deneme yaptınız. Lütfen birkaç dakika sonra tekrar deneyin.';
+  }
+  if (m.includes('captcha')) return 'Güvenlik doğrulaması başarısız oldu. Sayfayı yenileyip tekrar deneyin.';
+  return 'Kayıt tamamlanamadı. Lütfen bilgileri kontrol edip tekrar deneyin.';
+}
+
 // Auth Helpers
 export const authHelpers = {
   signUp: async (email: string, password: string, name: string) => {
@@ -112,7 +132,7 @@ export const authHelpers = {
 
         return {
           data: null,
-          error: { message: error.message }
+          error: { message: signUpMesajEsle(error.message || error.toString()) }
         };
       }
 

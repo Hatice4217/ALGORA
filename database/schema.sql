@@ -22,7 +22,9 @@
 -- Stores additional user information beyond auth.users
 CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  -- UNIQUE (S1 fix, database/user_profiles_unique.sql): INSERT fallback'in
+  -- yarış durumunda çift satır üretmesini engeller
+  user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT,
   exam_type TEXT NOT NULL CHECK (exam_type IN ('TYT', 'AYT', 'YDT')),
   target_score INTEGER NOT NULL CHECK (target_score >= 0 AND target_score <= 500),

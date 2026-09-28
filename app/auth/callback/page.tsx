@@ -11,6 +11,15 @@ export default function AuthCallbackPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
+    // O4 fix: tüm setTimeout'lar kayıt altında — bileşenUnmount olursa temizlenir
+    // (ölü bileşen üstünde push/state uyarısı olmasın) ve sabit 1 sn oturum-bekleme
+    // yerine SINIRLI POLLING yapılır (yavaş ağda hash işlenmeden hata vermesein)
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const later = (fn: () => void, ms: number) => {
+      timers.push(setTimeout(fn, ms));
+    };
+    let iptal = false;
+
     const handleCallback = async () => {
       try {
         // Get the URL parameters
@@ -24,7 +33,7 @@ export default function AuthCallbackPage() {
           const errorMsg = errorDescription || error || 'Google ile giriş işlemi başarısız oldu';
           setErrorMessage(`${errorMsg} (Hata kodu: ${error})`);
           console.error('Google OAuth Error:', { error, errorDescription });
-          setTimeout(() => router.push('/auth/login'), 5000);
+          later(() => router.push('/auth/login'), 5000);
           return;
         }
 
@@ -33,35 +42,46 @@ export default function AuthCallbackPage() {
         const accessToken = hashParams.get('access_token');
 
         if (accessToken || code) {
-          // Supabase will handle the session automatically
-          // Wait for the session to be established
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Supabase hash'i otomatik işler (detectSessionInUrl); oturum yerel depoya
+          // yazılana kadar 350 ms aralıklarla, en çok ~5 sn (15 deneme) beklenir
+          let user = null as null | { id: string };
+          for (let deneme = 0; deneme < 15; deneme++) {
+            const r = await authHelpers.getCurrentUser();
+            if (!r.error && r.user) {
+              user = r.user;
+              break;
+            }
+            if (iptal) return;
+            await new Promise((res) => setTimeout(res, 350));
+          }
 
-          const { user, error: sessionError } = await authHelpers.getCurrentUser();
-
-          if (sessionError || !user) {
+          if (!user) {
             setStatus('error');
             setErrorMessage('Oturum oluşturulamadı. Lütfen tekrar deneyin.');
-            setTimeout(() => router.push('/auth/login'), 3000);
+            later(() => router.push('/auth/login'), 3000);
             return;
           }
 
           setStatus('success');
           // Google kullanıcısı dahil herkes doğrudan Dinamik Soru Bankası'na (onboarding kaldırıldı)
-          setTimeout(() => router.push('/dashboard'), 1000);
+          later(() => router.push('/dashboard'), 1000);
         } else {
           setStatus('error');
           setErrorMessage('Geçersiz OAuth callback');
-          setTimeout(() => router.push('/auth/login'), 3000);
+          later(() => router.push('/auth/login'), 3000);
         }
       } catch (error) {
         setStatus('error');
         setErrorMessage('Bir hata oluştu. Lütfen tekrar deneyin.');
-        setTimeout(() => router.push('/auth/login'), 3000);
+        later(() => router.push('/auth/login'), 3000);
       }
     };
 
     handleCallback();
+    return () => {
+      iptal = true;
+      timers.forEach(clearTimeout);
+    };
   }, [router]);
 
   return (

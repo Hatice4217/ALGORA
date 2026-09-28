@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { authHelpers, dbHelpers } from '../../lib/supabase';
 
@@ -118,8 +118,17 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // savePreferences rollback'i için güncel tercihlere referans (stale closure olmasın)
+  const preferencesRef = useRef(preferences);
+  useEffect(() => {
+    preferencesRef.current = preferences;
+  }, [preferences]);
+
   const savePreferences = useCallback(async (p: UserPreferences): Promise<boolean> => {
-    // İyimser güncelleme: rozet DB beklemeden anında tazelenir
+    // İyimser güncelleme: rozet DB beklemeden anında tazelenir. DB başarısızsa
+    // ÖNCEKİ değerlere geri alınır (GoalsProvider deseni, O5 fix) — aksi halde
+    // rozet/form DB'de olmayan değerle render kalırdı (yenilemede düzelir ama yanıltır).
+    const onceki = preferencesRef.current;
     setPreferences(p);
     if (userId) {
       try {
@@ -129,8 +138,22 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    const geriAl = () => {
+      setPreferences(onceki);
+      if (userId) {
+        try {
+          localStorage.setItem(`${STORAGE_PREFIX}:${userId}`, JSON.stringify(onceki));
+        } catch {
+          // kota dolu → oturumluk kalır
+        }
+      }
+    };
+
     const { user } = await authHelpers.getCurrentUser();
-    if (!user) return false;
+    if (!user) {
+      geriAl();
+      return false;
+    }
     const sonuc = await dbHelpers.updateUserSettings(user.id, {
       exam_type: p.examType,
       target_score: parseFloat(p.targetScore) || 0,
@@ -138,7 +161,11 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       target_university: p.hedefUniversite,
       target_major: p.hedefBolum,
     });
-    return !sonuc.error;
+    if (sonuc.error) {
+      geriAl();
+      return false;
+    }
+    return true;
   }, [userId]);
 
   return (

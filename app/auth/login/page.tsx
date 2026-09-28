@@ -43,6 +43,17 @@ export default function LoginPage() {
     }
   }, []);
 
+  // O1 hijyeni: giriş sayfası eski oturuma ait isim önbelleğini temizler —
+  // aynı tarayıcıda hesap değiştirdiğinde dashboard açılışında önceki hesabın
+  // adı flash etmesin (önbellek yalnızca aktif oturum boyunca yaşamalı)
+  useEffect(() => {
+    try {
+      localStorage.removeItem('userName');
+    } catch {
+      // storage erişilemez → sorun değil
+    }
+  }, []);
+
   // Form message
   const [formMessage, setFormMessage] = useState<{
     type: 'success' | 'error' | null;

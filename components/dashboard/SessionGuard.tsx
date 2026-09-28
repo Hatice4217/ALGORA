@@ -36,6 +36,9 @@ export function SessionGuard() {
       setBilinenId((onceki) => {
         if (!onceki) return yeniId; // ilk tespit (açılış) — kilit yok
         if (onceki !== yeniId) {
+          // O1: devralan yeni hesap için eski hesabın isim önbelleğini temizle —
+          // kilitleme sonrası açılan ekranda önceki hesabın adı flash etmesin
+          try { localStorage.removeItem('userName'); } catch { /* storage kapalıysa sorun değil */ }
           setSaniye(3);
           setKilit({ eposta: session.user.email ?? 'başka bir hesap' });
         }
