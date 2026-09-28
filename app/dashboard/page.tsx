@@ -27,6 +27,7 @@ import type { Question, Statistics, RecentAnswer } from '../../types/question';
 // Type definitions for dashboard
 interface SubjectStat {
   ders: string;
+  examType: string; // TYT | AYT | YDT — aynı ders tür başına ayrı satır
   toplam: number;
   dogru: number;
   basari: number;
@@ -246,9 +247,10 @@ export default function DashboardPage() {
           try {
             const subjectData = await dbHelpers.getSubjectBreakdown(user.id);
             if (subjectData.data && subjectData.data.length > 0) {
-              // subject_breakdown view sütunları: subject, total_questions, correct_answers
-              const subjectBreakdown = subjectData.data.map((subject: { subject: string; total_questions: number; correct_answers: number }) => ({
+              // subject_breakdown view sütunları: subject, exam_type, total_questions, correct_answers
+              const subjectBreakdown = subjectData.data.map((subject: { subject: string; exam_type: string; total_questions: number; correct_answers: number }) => ({
                 ders: subject.subject,
+                examType: subject.exam_type,
                 toplam: subject.total_questions || 0,
                 dogru: subject.correct_answers || 0,
                 basari: subject.total_questions > 0
@@ -447,8 +449,9 @@ export default function DashboardPage() {
       });
     }
 
-    // Update subject-based statistics
-    const subjectStat = updatedStatistics.dersler.find(d => d.ders === selectedSubject);
+    // Update subject-based statistics (ders + sınav türü birlikte anahtar —
+    // TYT Coğrafya ile AYT Coğrafya ayrı satırlarda tutulur)
+    const subjectStat = updatedStatistics.dersler.find(d => d.ders === selectedSubject && d.examType === examType);
     if (subjectStat) {
       subjectStat.toplam += 1;
       if (isCorrect) {
@@ -458,6 +461,7 @@ export default function DashboardPage() {
     } else {
       updatedStatistics.dersler.push({
         ders: selectedSubject,
+        examType: examType,
         toplam: 1,
         dogru: isCorrect ? 1 : 0,
         basari: isCorrect ? 100 : 0

@@ -40,6 +40,7 @@ function ArsivSatir({ goal }: { goal: Goal }) {
 
 interface SubjectStat {
   ders: string;
+  examType: string; // TYT | AYT | YDT — aynı ders tür başına ayrı satır
   toplam: number;
   dogru: number;
   basari: number;
@@ -67,7 +68,9 @@ export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
     : null;
 
   return (
-    <div className="grid md:grid-cols-2 gap-6">
+    // Masaüstünde sayfa kaydırması yok: 1. satır arşiv (auto), 2. satır performans kartı
+    // kalan yüksekliği doldurur — taşan içerik kartların içinde kayar
+    <div className="grid md:grid-cols-2 gap-6 lg:h-full lg:grid-rows-[auto_minmax(0,1fr)] lg:min-h-0">
       {/* Hedef Arşivi — tarih gezinmeli kalıcı kayıt; liste kendi içinde kayar, sayfa uzamaz */}
       <div className="md:col-span-2 bg-white rounded-2xl shadow-sm p-6">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
@@ -116,30 +119,32 @@ export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
 
       {/* Ders Performans Analizi — rozetler + progress bar ızgarası tek kartta */}
       {istatistikler.dersler.length > 0 ? (
-        <div className="md:col-span-2 bg-white rounded-2xl shadow-sm p-6">
+        <div className="md:col-span-2 bg-white rounded-2xl shadow-sm p-6 lg:min-h-0 lg:flex lg:flex-col">
           {/* Header: başlık + dinamik özet rozetleri */}
-          <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+          <div className="flex items-center justify-between gap-3 mb-5 flex-wrap lg:shrink-0">
             <h2 className="font-semibold text-gray-900">Ders Performans Analizi</h2>
             <div className="flex items-center gap-2 flex-wrap">
               {enBasarili && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 border border-green-200 text-sm font-medium text-green-700">
-                  🏆 En Başarılı: {enBasarili.ders}
+                  🏆 En Başarılı: {enBasarili.ders} ({enBasarili.examType})
                 </span>
               )}
               {odaklanilacak && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-sm font-medium text-orange-700">
-                  📈 Odaklanılmalı: {odaklanilacak.ders}
+                  📈 Odaklanılmalı: {odaklanilacak.ders} ({odaklanilacak.examType})
                 </span>
               )}
             </div>
           </div>
 
-          {/* Body: ders kartları yan yana; ders sayısı artarsa ızgara kendi içinde kayar */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto thin-scrollbar pr-2">
+          {/* Body: ders kartları yan yana (xl'de 5 sütun); ders sayısı artarsa ızgara kendi içinde kayar */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 max-h-[300px] overflow-y-auto thin-scrollbar pr-2 lg:flex-1 lg:min-h-0">
             {istatistikler.dersler.map((ders) => (
-              <div key={ders.ders} className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-gray-900">{ders.ders}</span>
+              <div key={`${ders.ders}-${ders.examType}`} className="p-4 border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="font-medium text-gray-900">
+                    {ders.ders} <span className="text-xs font-normal text-gray-500">({ders.examType})</span>
+                  </span>
                   <span className={`text-sm font-medium ${
                     ders.basari >= 80 ? 'text-green-600' :
                     ders.basari >= 60 ? 'text-yellow-600' :

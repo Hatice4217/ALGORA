@@ -105,12 +105,14 @@ LEFT JOIN user_profiles up ON up.user_id = a.user_id
 GROUP BY a.user_id, up.exam_type, up.target_score, up.subjects, up.current_streak, up.total_study_time, up.exam_date;
 
 -- Subject Breakdown View
--- User performance by subject
+-- User performance by subject, broken down by exam type (TYT/AYT/YDT) —
+-- aynı ders farklı sınav türlerinde ayrı satır (ör. "Coğrafya (TYT)" / "Coğrafya (AYT)")
 -- security_invoker = true (gerekçe yukarıda, user_stats yorumunda)
 CREATE OR REPLACE VIEW subject_breakdown WITH (security_invoker = true) AS
 SELECT
   a.user_id,
   q.subject,
+  q.exam_type,
   COUNT(DISTINCT a.id) as total_questions,
   SUM(CASE WHEN a.is_correct THEN 1 ELSE 0 END) as correct_answers,
   ROUND(
@@ -119,7 +121,7 @@ SELECT
   ) as accuracy_rate
 FROM answers a
 JOIN questions q ON a.question_id = q.id
-GROUP BY a.user_id, q.subject;
+GROUP BY a.user_id, q.subject, q.exam_type;
 
 -- ===================================
 -- INDEXES
