@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { getSubjectColor } from '../../lib/utils';
 import { useGoals, todayStr, type Goal } from './GoalsProvider';
 
 // 'YYYY-MM-DD' → "27 Eylül" (farklı yılsa yıl eklenir)
@@ -46,14 +45,10 @@ interface SubjectStat {
   basari: number;
 }
 
-interface Statistics {
-  gucluAlanlar: string[];
-  gelisimGerekenler: string[];
-  dersler: SubjectStat[];
-}
-
 interface AnalysisPanelProps {
-  istatistikler: Statistics;
+  istatistikler: {
+    dersler: SubjectStat[];
+  };
 }
 
 export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
@@ -63,9 +58,17 @@ export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
   const bugun = todayStr();
   const gununHedefleri = goals.filter((g) => g.date === seciliTarih);
 
+  // Rozetler gerçek ders verisinden türetilir; tek derste yalnız 🏆 gösterilir
+  const enBasarili = istatistikler.dersler.length > 0
+    ? istatistikler.dersler.reduce((a, b) => (b.basari > a.basari ? b : a))
+    : null;
+  const odaklanilacak = istatistikler.dersler.length > 1
+    ? istatistikler.dersler.reduce((a, b) => (b.basari < a.basari ? b : a))
+    : null;
+
   return (
     <div className="grid md:grid-cols-2 gap-6">
-      {/* Hedef Arşivi — tarih gezinmeli kalıcı kayıt */}
+      {/* Hedef Arşivi — tarih gezinmeli kalıcı kayıt; liste kendi içinde kayar, sayfa uzamaz */}
       <div className="md:col-span-2 bg-white rounded-2xl shadow-sm p-6">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <h2 className="font-semibold text-gray-900">Hedef Arşivi 📚</h2>
@@ -101,85 +104,38 @@ export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
             Bu tarihte kayıtlı hedef yok.
           </p>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {gununHedefleri.map((g) => (
-              <ArsivSatir key={g.id} goal={g} />
-            ))}
-          </ul>
+          <div className="max-h-64 overflow-y-auto thin-scrollbar pr-2">
+            <ul className="flex flex-col gap-2">
+              {gununHedefleri.map((g) => (
+                <ArsivSatir key={g.id} goal={g} />
+              ))}
+            </ul>
+          </div>
         )}
       </div>
 
-      {/* Güçlü Olduğun Alanlar */}
-      {istatistikler.gucluAlanlar.length > 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <span className="text-lg">💪</span>
-            </div>
-            <h2 className="font-semibold text-gray-900">Güçlü Olduğun Alanlar</h2>
-          </div>
-          <div className="space-y-3">
-            {istatistikler.gucluAlanlar.map((alan) => (
-              <div key={alan} className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                <div className={`w-3 h-3 rounded-full ${getSubjectColor(alan)}`}></div>
-                <span className="text-gray-700 font-medium">{alan}</span>
-                <span className="ml-auto text-green-600 text-sm font-medium">İyi</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
-          <div className="text-slate-400 mb-3">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h2 className="font-semibold text-gray-900 mb-2">Güçlü alanların belirlenmedi</h2>
-          <p className="text-gray-600 text-sm">
-            Soru çözmeye başladığında güçlü olduğunu alanların burada görünecek
-          </p>
-        </div>
-      )}
-
-      {/* Gelişim Gereken Alanlar */}
-      {istatistikler.gelisimGerekenler.length > 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <span className="text-lg">📈</span>
-            </div>
-            <h2 className="font-semibold text-gray-900">Gelişim Gereken Alanlar</h2>
-          </div>
-          <div className="space-y-3">
-            {istatistikler.gelisimGerekenler.map((alan) => (
-              <div key={alan} className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
-                <div className={`w-3 h-3 rounded-full ${getSubjectColor(alan)}`}></div>
-                <span className="text-gray-700 font-medium">{alan}</span>
-                <span className="ml-auto text-orange-600 text-sm font-medium">Çalışma gerekli</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
-          <div className="text-slate-400 mb-3">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-          </div>
-          <h2 className="font-semibold text-gray-900 mb-2">Gelişim alanların belirlenmedi</h2>
-          <p className="text-gray-600 text-sm">
-            Soru çözmeye başladığında gelişim gerektiren alanların burada görünecek
-          </p>
-        </div>
-      )}
-
-      {/* Ders Bazlı Detaylı İstatistikler */}
+      {/* Ders Performans Analizi — rozetler + progress bar ızgarası tek kartta */}
       {istatistikler.dersler.length > 0 ? (
         <div className="md:col-span-2 bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Ders Bazlı Performans</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Header: başlık + dinamik özet rozetleri */}
+          <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+            <h2 className="font-semibold text-gray-900">Ders Performans Analizi</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              {enBasarili && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 border border-green-200 text-sm font-medium text-green-700">
+                  🏆 En Başarılı: {enBasarili.ders}
+                </span>
+              )}
+              {odaklanilacak && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-sm font-medium text-orange-700">
+                  📈 Odaklanılmalı: {odaklanilacak.ders}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Body: ders kartları yan yana; ders sayısı artarsa ızgara kendi içinde kayar */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto thin-scrollbar pr-2">
             {istatistikler.dersler.map((ders) => (
               <div key={ders.ders} className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
