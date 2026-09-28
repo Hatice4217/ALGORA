@@ -18,6 +18,7 @@ import { DailyGoals } from '../../components/dashboard/DailyGoals';
 import { ExamCountdown } from '../../components/dashboard/ExamCountdown';
 import { GoalsProvider } from '../../components/dashboard/GoalsProvider';
 import { UserPreferencesProvider, HedefRozeti } from '../../components/dashboard/UserPreferencesProvider';
+import { SessionGuard } from '../../components/dashboard/SessionGuard';
 import { authFetch } from '../../lib/api';
 import { getSubjects, getTopics } from '../../lib/constants/syllabus';
 
@@ -502,6 +503,9 @@ export default function DashboardPage() {
   return (
     <GoalsProvider>
     <UserPreferencesProvider>
+    {/* Çift-oturum koruması: başka hesap bu sekmenin oturumunu devralırsa
+        opak kilit + "Oturumunuz kapatıldı" + landing'e yönlendirme */}
+    <SessionGuard />
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
       {/* Üst Bar */}
       <header className="bg-white border-b border-gray-200">

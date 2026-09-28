@@ -2556,4 +2556,20 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 - Kullanıcının localStorage'daki eski hedefleri ve hedef üniversite/bölüm değeri silinir → yeniden girmesi gerekir (bilinçli: karışan verinin taşınması bug'ı yeniden üretirdi)
 
 ### Session Bitişi
-- Commit: devam commit'i (push → Vercel deploy izlenecek)
+- Commit: 5638c7f (push → Vercel deploy SUCCESS)
+
+## [28 Eylül 2026] - Çift-oturum koruması: SessionGuard
+
+### 🎯 Kullanıcı bulgusu
+- "İki sekmede iki farklı Google hesabıyla giriş yaptım; A'nın sekmesi refresh'te B'nin verisini gösteriyor" → bug değil: oturum anahtarı (sb-<ref>-auth-token) orijin başına TEK; ikinci giriş ilkini ezer (Supabase tasarımı)
+
+### ✅ Yapılanlar
+- **SessionGuard bileşeni** (dashboard'a eklendi): `onAuthStateChange` ile SIGNED_IN'de userId değişimi yakalanır
+  - Tam-ekran OPAK kilit — yeni hesabın verisi eski sekmede görünmez
+  - "Oturumunuz kapatıldı" mesajı + 3 sn geri sayım → `window.location.href = '/'` (landing'e tam yükleme; eski hesabın client state'i ölür; router.push yerine location bilinçli)
+  - SIGNED_OUT'ta bilinen kimlik sıfırlanır → aynı sekmede çık-gir normal akış, kilit TETİKLENMEZ
+  - signOut ÇAĞRILMAZ: oturum deposu ortak → yeni hesabın oturumu da düşerdi
+- İlk kullanıcı teklifi window.close() idi; tarayıcı script'le açılmayan sekmeyi kapatamadığından "oturum kapatıldı + landing'e at" davranışına evrildi (kullanıcının netleştirmesi)
+
+### Session Bitişi
+- Commit: bu commit (push → Vercel deploy izlenecek)
