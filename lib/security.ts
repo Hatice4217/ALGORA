@@ -12,6 +12,13 @@ export function sanitizeInput(input: string): string {
     .slice(0, 500); // Limit length
 }
 
+// Türkçe harf → ASCII eşlemesi: öneri üretiminde kullanılır
+// (e-posta adresleri yalnızca ASCII karakter içerebilir — RFC 5321)
+const turkceHarfEsleme: Record<string, string> = {
+  'ı': 'i', 'İ': 'i', 'ğ': 'g', 'Ğ': 'g', 'ü': 'u', 'Ü': 'u',
+  'ş': 's', 'Ş': 's', 'ö': 'o', 'Ö': 'o', 'ç': 'c', 'Ç': 'c',
+};
+
 /**
  * Enhanced email validation with stricter rules
  */
@@ -20,6 +27,23 @@ export function validateEmail(email: string): { isValid: boolean; error?: string
 
   if (!sanitized) {
     return { isValid: false, error: 'E-posta adresinizi girmelisiniz' };
+  }
+
+  // Türkçe klavyeden gelen ı/ş/ğ/ü/ö/ç harfleri sık hata — jenerik "geçersiz
+  // format" yerine kullanıcının yazmak istediği adresi öneren anlaşılır uyarı
+  if (/[^\x00-\x7F]/.test(sanitized)) {
+    const tumunuDonusturebilir = [...sanitized].every(
+      (c) => !/[^\x00-\x7F]/.test(c) || turkceHarfEsleme[c] !== undefined
+    );
+    const oneri = tumunuDonusturebilir
+      ? [...sanitized].map((c) => turkceHarfEsleme[c] ?? c).join('')
+      : null;
+    return {
+      isValid: false,
+      error: oneri
+        ? `E-posta adreslerinde Türkçe karakter (ı, ş, ğ, ü, ö, ç) kullanılamaz. Şöyle mi yazmak istediniz: ${oneri}?`
+        : 'E-posta adreslerinde yalnızca İngilizce harfler, rakamlar ve . _ % + - kullanılabilir.',
+    };
   }
 
   // Stricter email regex

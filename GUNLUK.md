@@ -2573,3 +2573,16 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Commit: bu commit (push → Vercel deploy izlenecek)
+
+## [28 Eylül 2026] - Türkçe karakterli e-posta için anlaşılır uyarı
+
+### 🎯 Kullanıcı bulgusu
+- `ahmetyılmaz11@gmail.com` ile kayıt olunca "Geçerli bir mail adresi girin" uyarısı — kullanıcı sorunu ANLAYAMIYORDU (mail ona göre normal; asıl sorun ı harfi: e-posta yalnızca ASCII, RFC 5321)
+
+### ✅ Yapılanlar
+- **Kök neden:** `lib/security.ts validateEmail` strict regex `/^[a-zA-Z0-9._%+-]+@...$/` `ı`'yı reddediyor ama mesaj jenerik ("Geçerli bir e-posta adresi formatı kullanın"). (lib/validation.ts'teki regex gevşekti ve GEÇİRİYORDU — ama login/register/forgot-password hepsi security.ts'teki strict'i kullanıyor)
+- **Çözüm:** validateEmail'e ASCII-dışı kontrolü regex'ten ÖNCE eklendi — Türkçe harf varsa kullanıcının adresini ASCII'ye çevirip öneren mesaj: *"E-posta adreslerinde Türkçe karakter (ı, ş, ğ, ü, ö, ç) kullanılamaz. Şöyle mi yazmak istediniz: ahmetyilmaz11@gmail.com?"* — tek noktadan 3 formu birden düzeltir (login + register + forgot-password)
+- Dönüştürülemeyen ASCII-dışı karakter varsa (emoji vb.) genel mesaj; tsx ile 4 senaryo test edildi (ı→i öneri ✓, normal mail geçerli ✓, bozuk format mevcut mesaj ✓)
+
+### Session Bitişi
+- Commit: bu commit (push → Vercel deploy izlenecek)
