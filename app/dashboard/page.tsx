@@ -16,6 +16,7 @@ import { PackagePanel, UpgradeModal } from '../../components/dashboard/PackagePa
 import { QuotaExhaustedModal } from '../../components/dashboard/QuotaExhaustedModal';
 import { DailyGoals } from '../../components/dashboard/DailyGoals';
 import { ExamCountdown } from '../../components/dashboard/ExamCountdown';
+import { GoalsProvider } from '../../components/dashboard/GoalsProvider';
 import { authFetch } from '../../lib/api';
 import { getSubjects, getTopics } from '../../lib/constants/syllabus';
 
@@ -502,6 +503,7 @@ export default function DashboardPage() {
   ];
 
   return (
+    <GoalsProvider>
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
       {/* Üst Bar */}
       <header className="bg-white border-b border-gray-200">
@@ -717,5 +719,6 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+    </GoalsProvider>
   );
 }

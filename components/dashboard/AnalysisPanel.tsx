@@ -1,4 +1,43 @@
+'use client';
+
+import { useState } from 'react';
 import { getSubjectColor } from '../../lib/utils';
+import { useGoals, todayStr, type Goal } from './GoalsProvider';
+
+// 'YYYY-MM-DD' → "27 Eylül" (farklı yılsa yıl eklenir)
+const formatGun = (dateStr: string): string => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const base = new Date(y, m - 1, d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+  return y !== new Date().getFullYear() ? `${base} ${y}` : base;
+};
+
+// Tarihi delta gün kaydırır (yerel, UTC kayması olmadan)
+const shiftDate = (dateStr: string, delta: number): string => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + delta);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+};
+
+// Arşiv satırı: tamamlananlar yeşil tikli + üstü çizili, tamamlanmayanlar normal
+function ArsivSatir({ goal }: { goal: Goal }) {
+  return (
+    <li className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
+      {goal.isCompleted ? (
+        <span className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+          <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+          </svg>
+        </span>
+      ) : (
+        <span className="w-5 h-5 rounded-full border-2 border-gray-300 flex-shrink-0" aria-hidden="true"></span>
+      )}
+      <span className={`flex-1 text-sm break-words ${goal.isCompleted ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+        {goal.text}
+      </span>
+      {goal.isCompleted && <span className="text-xs font-medium text-green-600 flex-shrink-0">Tamamlandı</span>}
+    </li>
+  );
+}
 
 interface SubjectStat {
   ders: string;
@@ -18,8 +57,58 @@ interface AnalysisPanelProps {
 }
 
 export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
+  const { goals, hydrated } = useGoals();
+  // Arşivde gezinilen gün ('YYYY-MM-DD'); ileri ok bugün sınırında kilitli
+  const [seciliTarih, setSeciliTarih] = useState(todayStr());
+  const bugun = todayStr();
+  const gununHedefleri = goals.filter((g) => g.date === seciliTarih);
+
   return (
     <div className="grid md:grid-cols-2 gap-6">
+      {/* Hedef Arşivi — tarih gezinmeli kalıcı kayıt */}
+      <div className="md:col-span-2 bg-white rounded-2xl shadow-sm p-6">
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <h2 className="font-semibold text-gray-900">Hedef Arşivi 📚</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSeciliTarih(shiftDate(seciliTarih, -1))}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-colors"
+              aria-label="Önceki gün"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span className="text-sm font-medium text-gray-700 min-w-[140px] text-center">
+              {formatGun(seciliTarih)}
+              {seciliTarih === bugun && <span className="text-purple-600"> (Bugün)</span>}
+            </span>
+            <button
+              onClick={() => setSeciliTarih(shiftDate(seciliTarih, 1))}
+              disabled={seciliTarih >= bugun}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-500"
+              aria-label="Sonraki gün"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {!hydrated ? null : gununHedefleri.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">
+            Bu tarihte kayıtlı hedef yok.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {gununHedefleri.map((g) => (
+              <ArsivSatir key={g.id} goal={g} />
+            ))}
+          </ul>
+        )}
+      </div>
+
       {/* Güçlü Olduğun Alanlar */}
       {istatistikler.gucluAlanlar.length > 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-6">

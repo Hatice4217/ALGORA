@@ -1,87 +1,45 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useGoals, todayStr } from './GoalsProvider';
 
-// Bugünün Hedefleri — etkileşimli günlük to-do listesi.
-// Kalıcılık: localStorage (cihaz bazlı, hesaptan bağımsız). DB bağlama
-// (tüm cihazlarda aynı liste) istenirse sonraki iş.
-
-const STORAGE_KEY = 'algora_daily_goals';
-
-interface Goal {
-  id: number;
-  text: string;
-  done: boolean;
-}
+// Bugünün Hedefleri — yalnızca BUGÜNE ait ve tamamlanmamış hedefler listelenir.
+// Checkbox'a basınca öğe ~1 sn'lik animasyonla solup listeden düşer (arşive geçer),
+// eşzamanlı başarı toast'ı GoalsProvider içinde tetiklenir.
+// Tamamlananlar silinmez — Analizler > Hedef Arşivi'nde tarihsel kayıt olarak yaşar.
 
 export function DailyGoals() {
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const { goals, hydrated, addGoal, completeGoal, deleteGoal } = useGoals();
   const [input, setInput] = useState('');
-  // İlk client render'ı tamamlanıp localStorage okunduktan sonra true —
-  // o noktaya dek yazma effect'i boş listeyi ezmesin diye bekler.
-  const [hydrated, setHydrated] = useState(false);
+  // Tamamlanma animasyonu oynayan öğe: DOM'da kalır, animasyon bitince listeden düşer
+  const [exitingId, setExitingId] = useState<string | null>(null);
 
-  // Yükleme (SSR-safe: server'da window yok; boş liste ile başlayıp
-  // client'ta dolduğu için hydration uyuşmazlığı da oluşmaz)
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed: unknown = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          setGoals(
-            parsed
-              .filter(
-                (g): g is Goal =>
-                  !!g &&
-                  typeof g === 'object' &&
-                  typeof (g as Goal).text === 'string' &&
-                  typeof (g as Goal).done === 'boolean'
-              )
-              .map((g, i) => ({ id: typeof g.id === 'number' ? g.id : i, text: g.text, done: g.done }))
-          );
-        }
-      }
-    } catch {
-      // Bozuk JSON / erişilemeyen storage → sessizce boş listeyle devam
-    }
-    setHydrated(true);
-  }, []);
+  const today = todayStr();
+  const todays = goals.filter((g) => g.date === today);
+  const open = todays.filter((g) => !g.isCompleted);
+  const completedToday = todays.length - open.length;
 
-  // Kaydetme (yalnızca hydrate sonrası; aksi halde boş liste üzerine yazar)
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(goals));
-    } catch {
-      // Kota dolu / gizli pencere → kaydedilemedi, liste oturumluk kalır
-    }
-  }, [goals, hydrated]);
+  const handleToggle = (id: string) => {
+    if (exitingId) return; // animasyon sürerken çift tetikleme engeli
+    setExitingId(id);
+    // Animasyon görünür şekilde bitince state'te tamamlandı işaretlenir:
+    // öğe filtreden düşer + başarı toast'ı ateşlenir
+    setTimeout(() => completeGoal(id), 900);
+  };
 
-  const addGoal = () => {
-    const text = input.trim();
-    if (!text) return;
-    setGoals((prev) => [...prev, { id: Date.now(), text, done: false }]);
+  const submit = () => {
+    if (!input.trim()) return;
+    addGoal(input);
     setInput('');
   };
-
-  const toggleGoal = (id: number) => {
-    setGoals((prev) => prev.map((g) => (g.id === id ? { ...g, done: !g.done } : g)));
-  };
-
-  const deleteGoal = (id: number) => {
-    setGoals((prev) => prev.filter((g) => g.id !== id));
-  };
-
-  const doneCount = goals.filter((g) => g.done).length;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-gray-900">Bugünün Hedefleri 🎯</h3>
-        {goals.length > 0 && (
-          <span className="text-xs font-semibold text-purple-600 bg-purple-50 rounded-full px-2.5 py-1">
-            {doneCount}/{goals.length} tamam
+        {completedToday > 0 && (
+          <span className="text-xs font-semibold text-green-600 bg-green-50 rounded-full px-2.5 py-1">
+            {completedToday} tamamlandı
           </span>
         )}
       </div>
@@ -93,14 +51,14 @@ export function DailyGoals() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') addGoal();
+            if (e.key === 'Enter') submit();
           }}
           placeholder="örn. Türevden 30 soru çöz"
           maxLength={200}
           className="flex-1 min-w-0 px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
         />
         <button
-          onClick={addGoal}
+          onClick={submit}
           disabled={!input.trim()}
           className="px-4 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
         >
@@ -108,28 +66,34 @@ export function DailyGoals() {
         </button>
       </div>
 
-      {/* Liste */}
-      {goals.length === 0 ? (
+      {/* Liste — yalnız bugünün tamamlanmamış hedefleri */}
+      {!hydrated ? null : open.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-6">
-          Henüz hedef yok — bugün ne başarmak istersin?
+          {todays.length > 0
+            ? 'Bugünün tüm hedeflerini tamamladın — harikasın! 🎉'
+            : 'Henüz hedef yok — bugün ne başarmak istersin?'}
         </p>
       ) : (
-        <ul className="space-y-2">
-          {goals.map((goal) => (
+        <ul className="flex flex-col gap-2">
+          {open.map((goal) => (
             <li
               key={goal.id}
-              className="group flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-100 hover:border-purple-200 hover:bg-purple-50/40 transition-colors"
+              className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-500 ease-out overflow-hidden ${
+                exitingId === goal.id
+                  ? 'opacity-0 -translate-x-8 max-h-0 py-0 border-transparent'
+                  : 'opacity-100 translate-x-0 max-h-24 border-gray-100 hover:border-purple-200 hover:bg-purple-50/40'
+              }`}
             >
               <input
                 type="checkbox"
-                checked={goal.done}
-                onChange={() => toggleGoal(goal.id)}
-                className="w-4 h-4 accent-purple-600 cursor-pointer flex-shrink-0"
+                checked={exitingId === goal.id}
+                onChange={() => handleToggle(goal.id)}
+                className="w-4 h-4 accent-green-600 cursor-pointer flex-shrink-0"
                 aria-label={`${goal.text} tamamlandı`}
               />
               <span
-                className={`flex-1 text-sm break-words ${
-                  goal.done ? 'line-through text-gray-400' : 'text-gray-700'
+                className={`flex-1 text-sm break-words transition-colors duration-300 ${
+                  exitingId === goal.id ? 'line-through text-gray-400' : 'text-gray-700'
                 }`}
               >
                 {goal.text}
