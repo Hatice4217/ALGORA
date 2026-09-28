@@ -37,7 +37,7 @@ export interface UserProfile {
   user_id?: string;
   name: string;
   email: string;
-  exam_type: 'TYT' | 'AYT';
+  exam_type: 'TYT' | 'AYT' | 'YDT';
   target_score: number;
   exam_date?: string;
   study_hours_per_day: number;
@@ -53,7 +53,7 @@ export interface SettingsFormState {
   name: string;
   email: string;
   // Exam targets section
-  exam_type: 'TYT' | 'AYT';
+  exam_type: 'TYT' | 'AYT' | 'YDT';
   target_score: string;
   study_hours_per_day: string;
   hedef_universite: string; // motivasyon rozeti — DB kolonu yok, UserPreferencesProvider localStorage'ında

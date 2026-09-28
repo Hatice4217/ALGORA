@@ -18,6 +18,7 @@ import type { SettingsFormState, SettingsValidationErrors } from '../../types/qu
 const EXAM_TYPES = [
   { value: 'TYT', label: 'TYT (Temel Yeterlilik Testi)' },
   { value: 'AYT', label: 'AYT (Alan Yeterlilik Testi)' },
+  { value: 'YDT', label: 'YDT (Yabancı Dil Testi)' },
 ];
 
 const THEMES = [
@@ -360,7 +361,10 @@ export function SettingsPanel() {
   // If a section is active, show its form
   if (activeSection) {
     return (
-      <div className="max-w-4xl mx-auto">
+      // lg:h-full + kart lg:my-auto → masaüstünde form dikeyde ortalanır ve dış
+      // (ana) scrollbar çıkmaz; içerik sığmazsa my-auto 0'a düşer, kaydırma güvenli
+      <div className="max-w-4xl mx-auto lg:h-full lg:flex lg:flex-col">
+        <div className="lg:my-auto">
         {/* Back Button */}
         <Button
           variant="outline"
@@ -423,8 +427,8 @@ export function SettingsPanel() {
         )}
 
         {activeSection === 'exam' && (
-          <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 max-w-2xl mx-auto">
-            <div className="mb-5">
+          <div className="bg-white rounded-xl shadow-sm p-6 lg:p-8 max-w-2xl mx-auto">
+            <div className="mb-4">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
                   🎯
@@ -435,7 +439,7 @@ export function SettingsPanel() {
             </div>
 
             {/* Kayıt sonrası rozet bilgilendirmesi */}
-            <div className="bg-purple-50 border border-purple-100 rounded-xl px-4 py-3 mb-6">
+            <div className="bg-purple-50 border border-purple-100 rounded-xl px-4 py-2.5 mb-5">
               <p className="text-sm text-purple-700">
                 💡 Kaydettiğinde hedefin, Genel Bakış&apos;taki karşılama kartında rozet olarak görünür.
               </p>
@@ -480,7 +484,7 @@ export function SettingsPanel() {
             </div>
 
             {/* Hedef üniversite & bölüm — motivasyon rozetini besler */}
-            <div className="my-6 border-t border-gray-100" />
+            <div className="my-5 border-t border-gray-100" />
             <p className="text-sm font-semibold text-gray-700 mb-3">🎓 Hedefin</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
@@ -502,11 +506,11 @@ export function SettingsPanel() {
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 mt-8">
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
               <button
                 onClick={() => handleSaveSection('exam')}
                 disabled={savingSection === 'exam'}
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold px-8 py-3 rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-md"
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold px-8 py-2.5 rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-md"
               >
                 {savingSection === 'exam' ? (
                   <>
@@ -764,6 +768,8 @@ export function SettingsPanel() {
             </Modal>
           </div>
         )}
+
+        </div>
 
         {/* Toast Notifications */}
         {toast && (

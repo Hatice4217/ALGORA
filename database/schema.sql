@@ -24,9 +24,10 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   exam_type TEXT NOT NULL CHECK (exam_type IN ('TYT', 'AYT', 'YDT')),
-  target_score INTEGER NOT NULL CHECK (target_score >= 100 AND target_score <= 500),
+  target_score INTEGER NOT NULL CHECK (target_score >= 0 AND target_score <= 500),
   subjects TEXT[] NOT NULL,
-  study_hours_per_day INTEGER NOT NULL CHECK (study_hours_per_day >= 1 AND study_hours_per_day <= 24),
+  -- NUMERIC: form 0.5 adım vaat ediyor (INTEGER 0.5'i düşürür → 400)
+  study_hours_per_day NUMERIC NOT NULL CHECK (study_hours_per_day >= 0 AND study_hours_per_day <= 24),
   exam_date DATE,
   current_streak INTEGER DEFAULT 0,
   total_study_time INTEGER DEFAULT 0, -- in minutes

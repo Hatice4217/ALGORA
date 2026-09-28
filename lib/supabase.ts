@@ -637,13 +637,39 @@ export const dbHelpers = {
       if (settings.theme !== undefined) profileData.theme = settings.theme;
       if (settings.language !== undefined) profileData.language = settings.language;
 
-      // Update profile
-      const { data: profileDataResult, error: profileError } = await supabase
+      // Update profile (RLS: kendi satırı). UPDATE 0 satır dönerse profil satırı yok
+      // demektir — onboarding kaldırıldığından yeni kullanıcıların user_profiles satırı
+      // hiç oluşmuyor; ilk kayıtta NOT NULL kolonlara varsayılanlarla oluşturulur.
+      const { data: updatedRows, error: profileError } = await supabase
         .from('user_profiles')
         .update(profileData)
         .eq('user_id', userId)
-        .select()
-        .maybeSingle();
+        .select();
+
+      if (profileError) {
+        return { data: null, error: profileError.message };
+      }
+
+      let sonucSatir = updatedRows && updatedRows.length > 0 ? updatedRows[0] : null;
+
+      if (!sonucSatir) {
+        const { data: insertedRow, error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: userId,
+            subjects: [] as string[],
+            exam_type: 'TYT',
+            target_score: 0,
+            study_hours_per_day: 0,
+            ...profileData,
+          })
+          .select()
+          .maybeSingle();
+        if (insertError) {
+          return { data: null, error: insertError.message };
+        }
+        sonucSatir = insertedRow;
+      }
 
       // Update user metadata name if provided
       if (settings.name && supabase.auth) {
@@ -655,11 +681,7 @@ export const dbHelpers = {
         }
       }
 
-      if (profileError) {
-        return { data: null, error: profileError.message };
-      }
-
-      return { data: profileDataResult, error: null };
+      return { data: sonucSatir, error: null };
     } catch (error) {
       console.error('updateUserSettings error:', error);
       return { data: null, error: 'Ayarlar güncellenirken bir hata oluştu' };

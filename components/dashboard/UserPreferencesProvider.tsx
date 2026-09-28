@@ -12,11 +12,16 @@ import { authHelpers, dbHelpers } from '../../lib/supabase';
 // Desen: GoalsProvider ile aynı (hydrated bayrağı → ilk render'da yanıp sönme yok).
 
 export interface UserPreferences {
-  examType: 'TYT' | 'AYT';
+  examType: 'TYT' | 'AYT' | 'YDT';
   targetScore: string; // form input değeri (string); sayıya kayıtta çevrilir
   studyHoursPerDay: string;
   hedefUniversite: string; // motivasyon rozeti — DB kolonu yok, localStorage
   hedefBolum: string;
+}
+
+// localStorage/DB'den gelen değeri 3'lü kümeye indirger (bozuk eski cache dahil)
+function gecerliTur(t: unknown): UserPreferences['examType'] {
+  return t === 'AYT' || t === 'YDT' ? t : 'TYT';
 }
 
 const STORAGE_KEY = 'algora_prefs_v1';
@@ -58,7 +63,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         setPreferences((prev) => ({
           ...prev,
           ...p,
-          examType: p.examType === 'AYT' ? 'AYT' : 'TYT',
+          examType: gecerliTur(p.examType),
         }));
       }
     } catch {
@@ -78,7 +83,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         const { data } = await dbHelpers.getUserProfile(user.id);
         if (iptal || !data) return;
         const dbTercihleri: Partial<UserPreferences> = {
-          examType: data.exam_type === 'AYT' ? 'AYT' : 'TYT',
+          examType: gecerliTur(data.exam_type),
           targetScore: data.target_score != null ? String(data.target_score) : '',
           studyHoursPerDay: data.study_hours_per_day != null ? String(data.study_hours_per_day) : '',
         };
