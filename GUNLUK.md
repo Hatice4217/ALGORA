@@ -2393,3 +2393,22 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Commit: 01d4c11 (push → Vercel deploy izlenecek)
+
+## [28 Eylül 2026] - Pazar (Dashboard mobil navigasyon düzeltmesi)
+
+### 🐛 Sorun
+- Yatay sekme satırı (Genel Bakış / Dinamik Soru Bankası / Analizler / Paketim / Ayarlar) TÜM ekran boyutlarında render ediliyordu → mobilde 5 sekme sağa taşıyor, kesiliyordu
+- Hamburger menü + isMobileMenuOpen state'i zaten vardı ama içerikte yalnızca Kredilerim + Çıkış Yap vardı — sekmeler yoktu
+
+### ✅ Yapılanlar (9529341)
+- Sekme satırı `hidden md:flex` → 768px altında hiç render edilmiyor, taşma kaynağı kurudu
+- Hamburger menüye 5 sekme dikey liste: aktif sekme mor zemin + tik ikonu (aria-current), tıklayınca setActiveTab + menü otomatik kapanır
+- md–lg aralığı sekme dolgusu px-3/text-sm + whitespace-nowrap (5 sekme 768px'e rahat sığar; lg'de eski boyut)
+- Mobilde üst satır md:mb-4 — sekme satırı gizliyken header alt boşluğu simetrik
+- overflow: kök div zaten overflow-hidden + main overflow-x-hidden; sekme satırı gizlenince taşma kaynağı tamamen kurudu
+
+### 📌 Not
+- MobileMenu bileşeni landing ile paylaşımlı; dashboard children mekanizmasıyla içerik enjekte ediliyor — yapı korundu
+
+### Session Bitişi
+- Commit: 9529341 (push → Vercel deploy izlenecek)
