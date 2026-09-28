@@ -134,11 +134,12 @@ export function QuestionPractice({
 
   return (
     <div className="h-full w-full">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full items-start">
+      {/* Masaüstünde sayfa kaydırması yok: tek satır ekranı doldurur, taşma kolon içinde kayar */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full items-start lg:grid-rows-[minmax(0,1fr)] lg:items-stretch">
         {/* Sol Kolon - Soru Üretimi (2 birim) */}
-        <div className="lg:col-span-8">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm h-full">
-            <div className="p-8 h-full flex flex-col">
+        <div className="lg:col-span-8 lg:min-h-0">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm h-full lg:min-h-0">
+            <div className="p-8 h-full flex flex-col lg:min-h-0 lg:overflow-y-auto thin-scrollbar">
               {step === 1 ? (
                 <>
                   {/* ══════════ ADIM 1: Sınav Türü + Ders ══════════ */}
@@ -303,19 +304,19 @@ export function QuestionPractice({
           </div>
         </div>
 
-        {/* Sağ Kolon - Son Çözülenler (1 birim) */}
-        <div className="lg:col-span-4">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm h-full">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-1 flex items-center gap-2">
+        {/* Sağ Kolon - Son Çözülenler (1 birim) — liste kendi içinde kayar, sayfa uzamaz */}
+        <div className="lg:col-span-4 lg:min-h-0">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm h-full lg:min-h-0">
+            <div className="p-6 lg:h-full lg:min-h-0 lg:flex lg:flex-col">
+              <h3 className="text-lg font-semibold text-slate-800 mb-1 flex items-center gap-2 lg:shrink-0">
                 <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Son Çözülenler
               </h3>
-              <p className="text-xs text-slate-500 mb-4">Geçmiş çalışma kayıtların</p>
+              <p className="text-xs text-slate-500 mb-4 lg:shrink-0">Geçmiş çalışma kayıtların</p>
 
-              <div className="space-y-3">
+              <div className="space-y-3 lg:flex-1 lg:min-h-0 lg:overflow-y-auto thin-scrollbar lg:pr-1">
                 {sonCozulenler.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center">
                     <p className="text-sm text-slate-500">Henüz çözülmüş soru yok.</p>
