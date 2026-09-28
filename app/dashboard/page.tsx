@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '../components/ui/Button';
 import { Logo } from '../components/ui/Logo';
 import { MobileMenu, HamburgerButton } from '../../components/MobileMenu';
-import { getSubjectColor } from '../../lib/utils';
+import { getSubjectColor, hesaplaGunlukSeri } from '../../lib/utils';
 import { authHelpers, dbHelpers } from '../../lib/supabase';
 import { StatisticsCards } from '../../components/dashboard/StatisticsCards';
 import { AnalysisPanel } from '../../components/dashboard/AnalysisPanel';
@@ -94,6 +94,7 @@ export default function DashboardPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   // "Son Çözülenler" paneli (gerçek answers verisi; mock değil)
   const [recentAnswers, setRecentAnswers] = useState<RecentAnswer[]>([]);
+  const [gunlukSeri, setGunlukSeri] = useState(0);
 
   // Initialize userName from localStorage immediately (prevents flash)
   useEffect(() => {
@@ -151,6 +152,18 @@ export default function DashboardPage() {
       setShowUpgradeModal(true);
     }
   }, []);
+
+  // Günlük seri kartı: son 60 gündeki cevap tarihlerinden art arda aktif gün sayısı
+  const guncelleGunlukSeri = async (userId: string) => {
+    try {
+      const tarihData = await dbHelpers.getAnswerDates(userId);
+      if (tarihData.data) {
+        setGunlukSeri(hesaplaGunlukSeri(tarihData.data as string[]));
+      }
+    } catch (seriError) {
+      console.log('Günlük seri alınamadı:', seriError);
+    }
+  };
 
   // Paket özeti (abonelik + kredi hareketleri + bekleyen talep)
   const fetchSubscription = async () => {
@@ -274,6 +287,9 @@ export default function DashboardPage() {
           } catch (recentError) {
             console.log('Son çözülenler alınamadı:', recentError);
           }
+
+          // Günlük seri
+          guncelleGunlukSeri(user.id);
 
           // Paket bilgisi
           fetchSubscription();
@@ -411,6 +427,8 @@ export default function DashboardPage() {
           } catch (recentError) {
             console.log('Son çözülenler tazelenemedi:', recentError);
           }
+          // Seri kartını da tazele (bugünün cevabı seriye anında işlensin)
+          guncelleGunlukSeri(user.id);
         }
       } catch (recordError) {
         console.log('Could not save answer, but updating statistics:', recordError);
@@ -624,7 +642,7 @@ export default function DashboardPage() {
             </div>
 
             {/* İstatistik Kartları */}
-            <StatisticsCards istatistikler={statistics} />
+            <StatisticsCards istatistikler={statistics} gunlukSeri={gunlukSeri} />
 
             {/* Hedefler + Geri Sayım — mobilde alt alta, lg'de yan yana */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">

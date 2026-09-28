@@ -111,3 +111,27 @@ export function getSubjectColor(subject: string): string {
   };
   return colors[subject] || 'bg-gray-500';
 }
+
+// Yerel saat diliminde 'YYYY-MM-DD' (toISOString UTC döndürür — TR gecesi yanlış güne düşmesin)
+export function yerelTarihStr(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// "Günlük Seri": art arda aktif gün sayısı (Duolingo tarzı).
+// answered_at ISO listesinden yerel günler seti kurulur; bugün aktif değilse dünden
+// başlanır (seri, bugünkü çözüm beklenirken kaybolmaz) ve ilk boşlukta durulur.
+export function hesaplaGunlukSeri(answeredAtListesi: string[]): number {
+  const gunler = new Set(answeredAtListesi.map((iso) => yerelTarihStr(new Date(iso))));
+
+  const imlec = new Date();
+  if (!gunler.has(yerelTarihStr(imlec))) {
+    imlec.setDate(imlec.getDate() - 1);
+  }
+
+  let seri = 0;
+  while (gunler.has(yerelTarihStr(imlec))) {
+    seri++;
+    imlec.setDate(imlec.getDate() - 1);
+  }
+  return seri;
+}

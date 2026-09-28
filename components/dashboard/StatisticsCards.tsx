@@ -12,9 +12,10 @@ interface StatisticsCardsProps {
     dogruCevap: number;
     basariOrani: number;
   };
+  gunlukSeri: number; // art arda aktif gün (page'te answers verisinden hesaplanır)
 }
 
-export function StatisticsCards({ istatistikler }: StatisticsCardsProps) {
+export function StatisticsCards({ istatistikler, gunlukSeri }: StatisticsCardsProps) {
   const istatistikKartlari: StatCard[] = [
     {
       baslik: 'Toplam Soru',
@@ -35,10 +36,9 @@ export function StatisticsCards({ istatistikler }: StatisticsCardsProps) {
       renk: 'bg-purple-500',
     },
     {
-      // YER TUTUCU (kullanıcı kararı): seri, art arda aktif gün sayısı olarak aktivite
-      // verisinden hesaplanacak — gerçek veriye bağlanmadan önce statik değerdir
+      // Gerçek veri: answers.answered_at günlerinden art arda aktif gün (lib/utils hesaplaGunlukSeri)
       baslik: 'Günlük Seri',
-      deger: '3 Gün',
+      deger: `${gunlukSeri} Gün`,
       ikon: '🔥',
       renk: 'bg-orange-500',
       stil: 'bg-gradient-to-br from-orange-50 to-amber-100 border border-orange-200/70',

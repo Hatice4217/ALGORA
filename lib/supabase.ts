@@ -492,6 +492,38 @@ export const dbHelpers = {
     );
   },
 
+  // "Günlük Seri" kartı: kullanıcının son N gündeki cevap zamanları (ISO string listesi).
+  // Seri hesabı istemcide yerel tarihe göre yapılır (lib/utils hesaplaGunlukSeri).
+  getAnswerDates: async (userId: string, sonGunSayisi: number = 60, client?: SupabaseClient) => {
+    const db = client || supabase!;
+    return withConnectionCheck(
+      async () => {
+        try {
+          const since = new Date();
+          since.setDate(since.getDate() - sonGunSayisi);
+          const { data, error } = await db
+            .from('answers')
+            .select('answered_at')
+            .eq('user_id', userId)
+            .gte('answered_at', since.toISOString())
+            .order('answered_at', { ascending: false });
+
+          if (error) {
+            console.log('getAnswerDates hatası:', error.message);
+            return { data: null, error: error.message };
+          }
+          const tarihler = ((data ?? []) as { answered_at: string }[]).map((r) => r.answered_at);
+          return { data: tarihler, error: null };
+        } catch (error) {
+          console.log('getAnswerDates istisnası:', error);
+          return { data: null, error: 'Cevap tarihleri alınamadı' };
+        }
+      },
+      { data: null, error: 'Bağlantı yok' },
+      'getAnswerDates'
+    );
+  },
+
   // Analizler "Zorluk Analizi" kartı: kullanıcının tüm cevaplarını zorluk kırılımında,
   // üstelik sınav ve ders bazında da toplar. Tipler: 'beginner' | 'intermediate' | 'advanced'.
   // Dönüş: genel (tümü), sinav (sınav → zorluk), dersBazli (sınav → ders → zorluk).
