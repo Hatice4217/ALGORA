@@ -17,6 +17,7 @@ import { QuotaExhaustedModal } from '../../components/dashboard/QuotaExhaustedMo
 import { DailyGoals } from '../../components/dashboard/DailyGoals';
 import { ExamCountdown } from '../../components/dashboard/ExamCountdown';
 import { GoalsProvider } from '../../components/dashboard/GoalsProvider';
+import { UserPreferencesProvider, HedefRozeti } from '../../components/dashboard/UserPreferencesProvider';
 import { authFetch } from '../../lib/api';
 import { getSubjects, getTopics } from '../../lib/constants/syllabus';
 
@@ -500,6 +501,7 @@ export default function DashboardPage() {
 
   return (
     <GoalsProvider>
+    <UserPreferencesProvider>
     <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
       {/* Üst Bar */}
       <header className="bg-white border-b border-gray-200">
@@ -636,7 +638,9 @@ export default function DashboardPage() {
               <h1 className="text-2xl font-bold text-gray-900 mb-1">
                 {userName ? `Merhaba, ${userName}! 👋` : 'Yükleniyor...'}
               </h1>
-              <p className="text-gray-600 text-sm">
+              {/* Motivasyon rozeti — hedef üniversite/bölüm (Ayarlar > Sınav Hedefleri'nden); boşsa Ayarlar'a götürür */}
+              <HedefRozeti onHedefBelirle={() => setActiveTab('settings')} />
+              <p className="text-gray-600 text-sm mt-2">
                 Bugün sınav hazırlığına devam etmeye hazır mısın?
               </p>
             </div>
@@ -745,6 +749,7 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+    </UserPreferencesProvider>
     </GoalsProvider>
   );
 }

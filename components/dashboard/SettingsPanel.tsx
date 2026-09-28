@@ -8,6 +8,7 @@ import { Toggle } from '../../app/components/ui/Toggle';
 import { Modal } from '../../app/components/ui/Modal';
 import { Toast, useToast } from '../../app/components/ui/Toast';
 import { authHelpers, dbHelpers } from '../../lib/supabase';
+import { useUserPreferences } from './UserPreferencesProvider';
 import {
   validateSettingsSection,
   hasSectionErrors,
@@ -63,6 +64,9 @@ const SECTIONS = [
 
 export function SettingsPanel() {
   const { toast, showToast, hideToast } = useToast();
+  // Global sınav tercihleri (UserPreferencesProvider) — Sınav Hedefleri formu buraya yazar,
+  // Genel Bakış'taki rozet anında okur
+  const { preferences, hydrated, savePreferences } = useUserPreferences();
 
   // Active section state
   const [activeSection, setActiveSection] = useState<'profile' | 'exam' | 'notifications' | 'account' | null>(null);
@@ -73,8 +77,9 @@ export function SettingsPanel() {
     email: '',
     exam_type: 'TYT',
     target_score: '',
-    exam_date: '',
     study_hours_per_day: '',
+    hedef_universite: '',
+    hedef_bolum: '',
     email_notifications: true,
     theme: 'light',
     language: 'tr',
@@ -119,8 +124,9 @@ export function SettingsPanel() {
             email,
             exam_type: profileData.exam_type || 'TYT',
             target_score: profileData.target_score?.toString() || '',
-            exam_date: profileData.exam_date || '',
             study_hours_per_day: profileData.study_hours_per_day?.toString() || '',
+            hedef_universite: '',
+            hedef_bolum: '',
             email_notifications: profileData.email_notifications ?? true,
             theme: profileData.theme || 'light',
             language: profileData.language || 'tr',
@@ -129,7 +135,13 @@ export function SettingsPanel() {
             confirm_password: '',
           };
 
-          setFormData(newFormData);
+          // Hedef üniversite/bölüm DB'de olmadığından context ön-doldurmasının yazdığı
+          // localStorage değerleri korunur (effect sırası ne olursa olsun)
+          setFormData((prev) => ({
+            ...newFormData,
+            hedef_universite: prev.hedef_universite,
+            hedef_bolum: prev.hedef_bolum,
+          }));
           setOriginalData(newFormData);
         }
       } catch (error) {
@@ -139,6 +151,20 @@ export function SettingsPanel() {
 
     loadUserData();
   }, []);
+
+  // Global state → form: context'teki güncel tercihler formu ön-doldurur (localStorage
+  // anında, DB sync'i ardından). Exam bölümü açıkken yazmaz — kullanıcının yazdığına dokunmaz.
+  useEffect(() => {
+    if (!hydrated || activeSection === 'exam') return;
+    setFormData((prev) => ({
+      ...prev,
+      exam_type: preferences.examType,
+      target_score: preferences.targetScore || prev.target_score,
+      study_hours_per_day: preferences.studyHoursPerDay || prev.study_hours_per_day,
+      hedef_universite: preferences.hedefUniversite || prev.hedef_universite,
+      hedef_bolum: preferences.hedefBolum || prev.hedef_bolum,
+    }));
+  }, [hydrated, preferences, activeSection]);
 
   const handleInputChange = (
     field: keyof SettingsFormState,
@@ -191,23 +217,32 @@ export function SettingsPanel() {
           setActiveSection(null);
           break;
 
-        case 'exam':
-          await dbHelpers.updateUserSettings(user.id, {
-            exam_type: formData.exam_type,
-            target_score: parseFloat(formData.target_score) || 0,
-            exam_date: formData.exam_date || undefined,
-            study_hours_per_day: parseFloat(formData.study_hours_per_day) || 0,
+        case 'exam': {
+          // savePreferences: context + localStorage'ı günceller (rozet anında tazelenir)
+          // ve sınav tipi/puan/saat'i user_profiles'a yazar; false = DB hatası
+          const basarili = await savePreferences({
+            examType: formData.exam_type,
+            targetScore: formData.target_score,
+            studyHoursPerDay: formData.study_hours_per_day,
+            hedefUniversite: formData.hedef_universite,
+            hedefBolum: formData.hedef_bolum,
           });
+          if (!basarili) {
+            showToast('Kaydedilemedi — lütfen tekrar deneyin', 'error');
+            return;
+          }
           setOriginalData((prev) => ({
             ...prev,
             exam_type: formData.exam_type,
             target_score: formData.target_score,
-            exam_date: formData.exam_date,
             study_hours_per_day: formData.study_hours_per_day,
+            hedef_universite: formData.hedef_universite,
+            hedef_bolum: formData.hedef_bolum,
           }));
           showToast('Sınav hedefleri güncellendi', 'success');
           setActiveSection(null);
           break;
+        }
 
         case 'notifications':
           await dbHelpers.updateUserSettings(user.id, {
@@ -388,18 +423,26 @@ export function SettingsPanel() {
         )}
 
         {activeSection === 'exam' && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 max-w-2xl mx-auto">
-            <div className="mb-6">
+          <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 max-w-2xl mx-auto">
+            <div className="mb-5">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-xl">
+                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
                   🎯
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900">Sınav Hedefleri</h2>
               </div>
-              <p className="text-gray-600">Sınav hedeflerinizi ve çalışma planınızı belirleyin</p>
+              <p className="text-gray-600 text-sm">Hedefini belirle, motivasyonun hiç düşmesin</p>
             </div>
 
-            <div className="space-y-4">
+            {/* Kayıt sonrası rozet bilgilendirmesi */}
+            <div className="bg-purple-50 border border-purple-100 rounded-xl px-4 py-3 mb-6">
+              <p className="text-sm text-purple-700">
+                💡 Kaydettiğinde hedefin, Genel Bakış&apos;taki karşılama kartında rozet olarak görünür.
+              </p>
+            </div>
+
+            {/* Sınav ayarları */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Select
                 label="Sınav Tipi"
                 options={EXAM_TYPES}
@@ -422,16 +465,6 @@ export function SettingsPanel() {
               />
 
               <Input
-                label="Sınav Tarihi"
-                type="date"
-                value={formData.exam_date}
-                onChange={(e) => handleInputChange('exam_date', e.target.value)}
-                onBlur={() => handleSectionBlur('exam')}
-                error={errors.exam_date}
-                min={new Date().toISOString().split('T')[0]}
-              />
-
-              <Input
                 label="Günlük Çalışma Saati"
                 type="number"
                 min="0"
@@ -446,14 +479,47 @@ export function SettingsPanel() {
               />
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <Button
-                variant="primary"
+            {/* Hedef üniversite & bölüm — motivasyon rozetini besler */}
+            <div className="my-6 border-t border-gray-100" />
+            <p className="text-sm font-semibold text-gray-700 mb-3">🎓 Hedefin</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Hedef Üniversite"
+                type="text"
+                value={formData.hedef_universite}
+                onChange={(e) => handleInputChange('hedef_universite', e.target.value)}
+                leftIcon={<span className="text-base">🎓</span>}
+                placeholder="Örn: Boğaziçi Üniversitesi"
+              />
+
+              <Input
+                label="Hedef Bölüm"
+                type="text"
+                value={formData.hedef_bolum}
+                onChange={(e) => handleInputChange('hedef_bolum', e.target.value)}
+                leftIcon={<span className="text-base">📚</span>}
+                placeholder="Örn: Bilgisayar Mühendisliği"
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 mt-8">
+              <button
                 onClick={() => handleSaveSection('exam')}
-                isLoading={savingSection === 'exam'}
+                disabled={savingSection === 'exam'}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold px-8 py-3 rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-md"
               >
-                Kaydet
-              </Button>
+                {savingSection === 'exam' ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Kaydediliyor...
+                  </>
+                ) : (
+                  'Kaydet'
+                )}
+              </button>
               <Button
                 variant="outline"
                 onClick={handleCancelSection}

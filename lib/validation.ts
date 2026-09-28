@@ -68,29 +68,6 @@ export const validatePassword = (password: string): string | null => {
 };
 
 /**
- * Validates exam date (must be in the future)
- */
-export const validateExamDate = (dateString: string): string | null => {
-  if (!dateString) {
-    return null; // Optional field
-  }
-
-  const examDate = new Date(dateString);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  if (isNaN(examDate.getTime())) {
-    return 'Geçerli bir tarih girin';
-  }
-
-  if (examDate <= today) {
-    return 'Sınav tarihi bugünden sonra olmalı';
-  }
-
-  return null;
-};
-
-/**
  * Validates complete settings form by section
  */
 export const validateSettingsSection = (
@@ -111,9 +88,6 @@ export const validateSettingsSection = (
     case 'exam':
       const scoreError = validateScore(formData.target_score);
       if (scoreError) errors.target_score = scoreError;
-
-      const dateError = validateExamDate(formData.exam_date);
-      if (dateError) errors.exam_date = dateError;
 
       const hoursError = validateStudyHours(formData.study_hours_per_day);
       if (hoursError) errors.study_hours_per_day = hoursError;
@@ -153,7 +127,7 @@ export const hasSectionErrors = (
     case 'profile':
       return !!(errors.name || errors.email);
     case 'exam':
-      return !!(errors.target_score || errors.exam_date || errors.study_hours_per_day);
+      return !!(errors.target_score || errors.study_hours_per_day);
     case 'notifications':
       return false;
     case 'account':

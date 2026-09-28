@@ -55,8 +55,9 @@ export interface SettingsFormState {
   // Exam targets section
   exam_type: 'TYT' | 'AYT';
   target_score: string;
-  exam_date: string;
   study_hours_per_day: string;
+  hedef_universite: string; // motivasyon rozeti — DB kolonu yok, UserPreferencesProvider localStorage'ında
+  hedef_bolum: string;
   // Notifications section
   email_notifications: boolean;
   theme: 'light' | 'dark';
@@ -71,7 +72,6 @@ export interface SettingsValidationErrors {
   name?: string;
   email?: string;
   target_score?: string;
-  exam_date?: string;
   study_hours_per_day?: string;
   current_password?: string;
   new_password?: string;
