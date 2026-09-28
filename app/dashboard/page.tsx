@@ -57,7 +57,7 @@ const DIFFICULTIES = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  // Giriş yapan kullanıcı doğrudan Soru Laboratuvarı'nda başlar (onboarding kaldırıldı);
+  // Giriş yapan kullanıcı doğrudan Dinamik Soru Bankası'nda başlar (onboarding kaldırıldı);
   // son aktif sekme localStorage'dan geri yüklenir (refresh sonrası sekme kaybolmasın)
   const [activeTab, setActiveTab] = useState<'overview' | 'practiceRoom' | 'analysis' | 'package' | 'settings'>('practiceRoom');
   const [tabRestored, setTabRestored] = useState(false);
@@ -496,7 +496,7 @@ export default function DashboardPage() {
 
   const tabs = [
     { id: 'overview' as const, label: 'Genel Bakış' },
-    { id: 'practiceRoom' as const, label: 'Soru Laboratuvarı' },
+    { id: 'practiceRoom' as const, label: 'Dinamik Soru Bankası' },
     { id: 'analysis' as const, label: 'Analizler' },
     { id: 'package' as const, label: 'Paketim' },
     { id: 'settings' as const, label: 'Ayarlar' },

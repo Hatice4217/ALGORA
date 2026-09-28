@@ -150,7 +150,7 @@ export default function LoginPage() {
           text: 'Giriş başarılı! Hoş geldiniz 👋'
         });
 
-        // Doğrudan Soru Laboratuvarı'na (onboarding kaldırıldı)
+        // Doğrudan Dinamik Soru Bankası'na (onboarding kaldırıldı)
         router.push('/dashboard');
       }
     } catch (error) {

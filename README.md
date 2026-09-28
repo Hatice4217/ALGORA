@@ -189,7 +189,7 @@ CREATE POLICY "Users can insert own answers" ON answers
 - ✅ Next.js 14 project with TypeScript and Tailwind CSS
 - ✅ Responsive landing page with hero, features, and pricing sections
 - ✅ User authentication (email + Google OAuth)
-- ✅ Soru Laboratuvarı: TYT/AYT seçimi + MEB müfredatına göre ders/konu seçimi
+- ✅ Dinamik Soru Bankası: TYT/AYT/YDT seçimi + MEB müfredatına göre ders/konu seçimi
 - ✅ Dashboard with user stats and progress tracking
 - ✅ AI-powered question generation using OpenAI GPT-4o-mini
 - ✅ User statistics API

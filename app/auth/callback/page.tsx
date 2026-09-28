@@ -47,7 +47,7 @@ export default function AuthCallbackPage() {
           }
 
           setStatus('success');
-          // Google kullanıcısı dahil herkes doğrudan Soru Laboratuvarı'na (onboarding kaldırıldı)
+          // Google kullanıcısı dahil herkes doğrudan Dinamik Soru Bankası'na (onboarding kaldırıldı)
           setTimeout(() => router.push('/dashboard'), 1000);
         } else {
           setStatus('error');
