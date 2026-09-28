@@ -410,3 +410,21 @@ Sıra önerisi: 1+2 (DB/ayar, kullanıcıya ait) paralel → 3+4 tek commit → 
 - **Fix (Faz 0.9 madde 7):** `Object.hasOwn(difficultyMap, difficulty)` — tek satır.
 
 > Not: probe ②'nin ilk denemesi `.env.local`'deki `NEXT_PUBLIC_APP_URL=http://localhost:3000` yüzünden lokale gitti (ECONNREFUSED) — canlı hedefli probe script'leri sabit canlı URL kullanmalı. Path notu: generate route `/api/generate` değil `/api/questions/generate`.
+
+## 9.8 Deploy Sonrası Re-Probe — Faz 0.9 Fix'lerinin Canlı Doğrulaması (28 Eylül 2026)
+
+Commit `359446a` Vercel deploy SUCCESS sonrası, taze probe kullanıcısıyla canlı (algora-sigma.vercel.app) doğrulama:
+
+| Probe | Beklenti | Gerçekleşen | Sonuç |
+|---|---|---|---|
+| Başlangıç kredisi (free seed) | 20 | `credits_remaining=20` | ✅ |
+| ② F12 — `difficulty:"toString"` canlı generate | 400, Gemini'ye gitmeden | **400** "Geçersiz ders veya zorluk seviyesi." | ✅ DÜZELDİ |
+| ② F12 — `difficulty:"valueOf"` | 400 | 400 | ✅ DÜZELDİ |
+| ② F12 — `difficulty:"hasOwnProperty"` | 400 | 400 | ✅ DÜZELDİ |
+| F12 sonrası etki | kredi/tx dokunulmamış | credits 20→20, credit_transactions 0 | ✅ |
+| Geçerli üretim (Matematik/Türev/orta/TYT) — AbortSignal.timeout regresyon kontrolü | 200 + 5 şık | **200**, 5 şık, doğruIndex=1, gerçek türev sorusu | ✅ |
+| Geçerli üretim kredi muhasebesi | tam -1 + tek tx | credits 20→**19**, tx `[{-1, "generation"}]` | ✅ |
+
+**Sonuç: 9/9 PASS.** F12 fix canlıda kapandı; self-timeout (Görev 7) ve correctAnswer doğrulaması (Görev 8) normal akışı bozmuyor (timeout'un asılı-upstream yolu canlı Gemini'de tetiklenemez — local mock kanıtı geçerli; burada yalnızca regresyon yok denetlendi). Probe kullanıcıları tam temizlikle (answers/questions anonim/tx/subscriptions/profiles/auth) silindi.
+
+> Şema notu (sonraki probe'lar için): `/api/subscription` → `{ data: { subscription: { credits_remaining, ... } } }`; generate başarı gövdesi → `{ success, data: { question, choices, correctAnswer, credits_remaining } }`; credit_transactions kolonları `amount`/`reason` (`transaction_type` DEĞİL).
