@@ -56,67 +56,9 @@ const nextConfig: NextConfig = {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react'],
   },
-  // Webpack optimizations for unused JavaScript removal
-  webpack: (config, { dev, isServer }) => {
-    // Production only optimizations
-    if (!dev && !isServer) {
-      // Remove development tools
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        '@next-devtools': false,
-      };
-
-      // Tree shaking optimizations
-      config.optimization = {
-        ...config.optimization,
-        usedExports: true,
-        sideEffects: true,
-      };
-
-      // Remove console.logs in production
-      config.optimization = {
-        ...config.optimization,
-        minimizer: [
-          ...((config.optimization?.minimizer as never[]) || []),
-          {
-            apply: (compiler: unknown) => {
-              const typedCompiler = compiler as {
-                hooks: {
-                  processAssets: {
-                    tap: (
-                      options: { name: string },
-                      callback: (assets: Record<string, string>) => void
-                    ) => void;
-                  };
-                };
-              };
-              typedCompiler.hooks.processAssets.tap(
-                { name: 'remove-console' },
-                (assets) => {
-                  for (const name in assets) {
-                    if (name.endsWith('.js')) {
-                      // Remove debug console logs but keep error logs for production debugging
-                      assets[name] = assets[name].replace(
-                        /console\.(log|warn|debug|info)\([^)]*\);?/g,
-                        '// Console removed for production'
-                      );
-                      // Keep error logs but minimize them
-                      assets[name] = assets[name].replace(
-                        /console\.error\([^)]*\);?/g,
-                        'console.error && console.error(...arguments);'
-                      );
-                    }
-                  }
-                }
-              );
-            },
-          },
-        ],
-      };
-    }
-
-    return config;
-  },
+  // NOT: Eski webpack console-silme bloğu silindi — Next 16 build'i Turbopack
+  // kullanır ve `webpack` bölümünü yok sayar (hiç çalışmıyordu; regex'li asset
+  // manipülasyonu zaten kırılgandı).
 };
 
 export default nextConfig;

@@ -51,10 +51,14 @@ export default function RegisterPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
-    // Name field için hafif işlem, diğerleri için sanitize
+    // Name field için hafif işlem; şifre alanları RAW (sanitizeInput < >
+    // karakterlerini siler → bu karakterleri içeren şifre seçilemezdi;
+    // React text-node render'da XSS riski yok), diğerleri sanitize
     const processed = name === 'name'
       ? value.replace(/[<>]/g, '').slice(0, 100) // Sadece XSS karakterlerini temizle
-      : sanitizeInput(value);
+      : name === 'password' || name === 'confirmPassword'
+        ? value
+        : sanitizeInput(value);
 
     setFormData((prev) => ({ ...prev, [name]: processed }));
 

@@ -2669,3 +2669,49 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Dokümantasyon: SECURITY_AUDIT_FINAL_REPORT.md (yeni) + bu günlük kaydı — aynı commit'te push; deploy durumu GitHub API ile izlenir
+
+## 28 Eylül 2026 - Pazartesi — Faz 0.9 Görev Döngüsü: S2 login proxy + F1 + O6 + DÜŞÜK paket + temizlik
+
+### 🎯 Bağlam
+- Kullanıcı talimatı: "her görev sonunda test et ve raporla, hata devam ediyorsa önce orayı çöz" — görev başına test+rapor döngüsü işletildi
+- 5 görev işlendi: A (F1) → B (S2 login proxy) → C (O6) → D (DÜŞÜK paket) → E (temizlik)
+
+### ✅ Görev A — F1: getClientIp XFF spoof fix (6/6 test)
+- `lib/rate-limit.ts` — XFF'nin İLK hop'u istemci-sahte'ydi; Vercel gerçek IP'yi SONA ekler, x-real-ip'yi platform yazar → yeni sıra: x-real-ip → XFF son hop → 'unknown'
+- Dikkat: getClientIp ölüydü (kullanan verify-email route'u silinmişti) — Görev B ilk tüketicisi oldu
+
+### ✅ Görev B — S2: Sunucu login proxy (7/7 test) — BUGÜNÜN ANA İŞİ
+- YENİ: `app/api/auth/login/route.ts` — şifreli giriş artık sunucudan geçer
+- 15 deneme / 5 dk / IP (in-memory sliding window); **başarılı giriş sayacı sıfırlar** (lockout success-reset) — NAT arkasındaki sınıf kilitlenmez, saldırgan başarı üretemediğinden reset yetkisi meşru kullanıcıda
+- Enumerasyon güvenli: hatalı kimlik tek-tip 401; EMAIL_NOT_CONFIRMED → 403; 429 + Retry-After
+- Girdi doğrulama sunucuda: validateEmail + şifre ≤128
+- Login sayfası: fetch('/api/auth/login') → supabase.auth.setSession(access+refresh) ile oturum kurulur (SIGNED_IN tetiklenir, SessionGuard çalışır)
+- **Ölüler kaldırıldı:** lib/supabase.ts signIn helper (console.log e-posta sızıntısı da öldü) · lib/api.ts'ten login/register/logout/getToken/getUserProfile/updateUserProfile/generateQuestion/submitAnswer/signInWithGoogle/isAuthenticated/getCurrentUser (yalnız authFetch kaldı — F5 "logout token temizlemiyor" bulgusu böylece öldü) · tests/api/auth-api.test.ts (canlı-DB'ye gerçek kullanıcı açan eski entegrasyon testi)
+- Test: 400 bozuk girdi · 401 tek-tip · 200+token · 15×401+1×429 Retry-After=297s · 429 penceresinde doğru şifre de 429 · EMAIL_NOT_CONFIRMED 403 (email_confirm:false probe)
+
+### ✅ Görev C — O6: user_profiles uzunluk sınırı
+- `database/user_profiles_uzunluk.sql` (yeni, idempotent): name ≤100, target_university ≤120, target_major ≤120 CHECK'leri isim-birebir DO bloğuyla — **KULLANICI ÇALIŞTIRACAK** (öncesinde uzun-satır sayım sorgusu içeride)
+- UI: SettingsPanel İsim/Hedef Üniversite/Hedef Bölüm maxLength (100/120/120)
+- schema.sql baseline eşitlendi
+
+### ✅ Görev D — DÜŞÜK paket
+- signIn console.log sızıntısı → helper silinince öldü (B)
+- algora_active_tab hesap-değiştirmede taşınıyordu → login + SessionGuard kilit dalında removeItem (userName ile aynı desen)
+- sanitizeInput şifrede < > siliyordu → login + register handleChange'inde şifre alanları RAW (React text-node render'da XSS riski yok)
+- SessionGuard kilit modalına focus-trap: Tab butona geri döndürülür + açılışta buton odaklı
+
+### 🧹 Görev E — Temizlik turu
+- Ölü dep ×5 package.json'dan: @google/generative-ai, @hookform/resolvers, react-hook-form, resend, zod (hepsi grep ile 0-kullanım teyitli; openai npm paketi zaten yoktu)
+- Silinen: app/logo-preview-old · lib/backend-test.ts (gerçek e-posta + token loglayan ölü test) · kök 3 kalıntı (BACKEND_TEST_SCRIPT.js, MANUAL_EMAIL_CHECK.js, test-backend-unique.js) · scripts/ 6 ölü canlı-DB teşhis scripti (setup-env.bat/.sh tutuldu)
+- next.config.ts: ölü webpack console-silme bloğu silindi (Turbopack yok sayıyordu; regex'li asset manipülasyonu zaten kırılgan)
+- tests: setup.ts/global-setup.ts'ten ölü OPENAI_API_KEY referansları silindi
+- README TAMAMEN yeniden yazıldı (Next 14+GPT-4o-mini+src/ hayaletleri → Next 16.2.10+React 19.2.4+Gemini+gerçek yapı+gerçek API route'ları)
+- Test: tsc ✓, build ✓ (23 sayfa), smoke 5/5 (landing 200 / subscription 401 / login 200 / logo-preview-old 404 / auth-login boş body 400), port temiz
+
+### 📋 Kullanıcı kalemleri
+- `database/user_profiles_uzunluk.sql` → SQL Editor'de çalıştır (O6 kapanışı; sonrası probe ile doğrulanabilir)
+- Rate Limits ayarları (Token refresh 60/5dk, Anonymous 0, Anonymous sign-ins toggle OFF) — kullanıcı yapıyordu
+- Commit/push kararı: bu turun değişiklikleri commit'lenmedi — kullanıcıya sorulacak
+
+### Session Bitişi
+- Öğrenilen dersler: ① proxy deseni — sunucu signInWithPassword + istemciye token + setSession; istemci rate limiter asla güvenlik sınırı değildir ② "UI maxLength var" denetim notu yanlış çıktı —SettingsPanel'de hiç yoktu; bulgu envanterindeki iddialar koddan teyit edilmeli ③ ölü kod kapatırken zincir etkisi: signIn silinmesi → lib/api.ts küçülmesi → F5 bulgusunun kendiliğinden ölmesi

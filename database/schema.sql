@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   -- yarış durumunda çift satır üretmesini engeller
   user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT,
+  -- O6 uzunluk sınırları (database/user_profiles_uzunluk.sql) — API-düzeyi savunma;
+  -- UI maxLength ile aynı değerler (name 100, üniversite/bölüm 120)
+  CONSTRAINT user_profiles_name_len_check CHECK (name IS NULL OR length(name) <= 100),
   exam_type TEXT NOT NULL CHECK (exam_type IN ('TYT', 'AYT', 'YDT')),
   target_score INTEGER NOT NULL CHECK (target_score >= 0 AND target_score <= 500),
   subjects TEXT[] NOT NULL,
@@ -33,8 +36,8 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   study_hours_per_day NUMERIC NOT NULL CHECK (study_hours_per_day >= 0 AND study_hours_per_day <= 24),
   exam_date DATE,
   -- Hedef üniversite/bölüm — motivasyon rozetini besler (Sınav Hedefleri bölümü)
-  target_university TEXT NOT NULL DEFAULT '',
-  target_major TEXT NOT NULL DEFAULT '',
+  target_university TEXT NOT NULL DEFAULT '' CONSTRAINT user_profiles_university_len_check CHECK (length(target_university) <= 120),
+  target_major TEXT NOT NULL DEFAULT '' CONSTRAINT user_profiles_major_len_check CHECK (length(target_major) <= 120),
   current_streak INTEGER DEFAULT 0,
   total_study_time INTEGER DEFAULT 0, -- in minutes
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

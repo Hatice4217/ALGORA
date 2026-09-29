@@ -41,11 +41,29 @@ export function rateLimit(
   return { ok: true, retryAfterSec: 0 };
 }
 
-// Vercel/Next arkasındaki gerçek istemci IP'si (ilk hop)
+// Anahtarı tamamen temizler. Login proxy'sinde kullanılır: başarılı giriş,
+// o IP'nin birikmiş BAŞARISIZ denemelerini affeder (lockout-success-reset
+// deseni) — NAT arkasındaki sınıfın meşru girişleri, birkaç hatalı deneme
+// yüzünden kilitlenmeye takılmaz. (Saldırgan başarı üretemeyeceğinden
+// sıfırlama yetkisi yalnızca meşru kullanıcıdadır.)
+export function resetRateLimit(key: string): void {
+  buckets.delete(key);
+}
+
+// Gerçek istemci IP'si. SPOOF NOTU (F1): XFF'nin İLK hop'u istemcinin kendisi
+// yazabilir — ilk hop'u almak, sahte header'la sayaç bölmeye izin verirdi.
+// Vercel edge istemci-sağlaması XFF zincirini korur ve GERÇEK bağlantı IP'sini
+// SONA ekler; x-real-ip'yi de platform kendisi yazar (istemci ezemez).
+// Güvenilirlik sırası: x-real-ip → XFF son hop → 'unknown'.
 export function getClientIp(request: Request): string {
+  const real = request.headers.get('x-real-ip');
+  if (real) {
+    return real.trim();
+  }
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) {
-    return forwarded.split(',')[0].trim();
+    const hoplar = forwarded.split(',').map((h) => h.trim()).filter(Boolean);
+    if (hoplar.length > 0) return hoplar[hoplar.length - 1];
   }
-  return request.headers.get('x-real-ip') || 'unknown';
+  return 'unknown';
 }

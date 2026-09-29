@@ -43,12 +43,13 @@ export default function LoginPage() {
     }
   }, []);
 
-  // O1 hijyeni: giriş sayfası eski oturuma ait isim önbelleğini temizler —
-  // aynı tarayıcıda hesap değiştirdiğinde dashboard açılışında önceki hesabın
-  // adı flash etmesin (önbellek yalnızca aktif oturum boyunca yaşamalı)
+  // O1 hijyeni: giriş sayfası eski oturuma ait isim önbelleğini ve son aktif
+  // sekme anahtarını temizler — aynı tarayıcıda hesap değiştirdiğinde önceki
+  // hesabın izleri (ad flash'i, sekmeli arayüz durumu) taşınmasın
   useEffect(() => {
     try {
       localStorage.removeItem('userName');
+      localStorage.removeItem('algora_active_tab');
     } catch {
       // storage erişilemez → sorun değil
     }
@@ -62,7 +63,9 @@ export default function LoginPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const sanitized = sanitizeInput(value);
+    // Şifre RAW kalır (sanitizeInput < > karakterlerini siler → bu karakterleri
+    // içeren şifreyle giriş yapılamazdı; React text-node render'da XSS riski yok)
+    const sanitized = name === 'password' ? value : sanitizeInput(value);
     setFormData((prev) => ({ ...prev, [name]: sanitized }));
 
     // Clear error when user starts typing
@@ -130,11 +133,25 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await authHelpers.signIn(formData.email, formData.password);
+      // S2: giriş artık sunucu proxy'sinden (/api/auth/login) geçer —
+      // sunucu-taraflı IP rate limit + enumerasyon-güvenli tek-tip hata.
+      // Dönen token'lar setSession ile istemci oturumuna işlenir.
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      });
+      const json = await res.json().catch(() => ({ error: 'Bir hata oluştu. Lütfen tekrar deneyin.' }));
 
-      if (error) {
-        // Email confirmation hatası için özel mesaj
-        if (error === 'EMAIL_NOT_CONFIRMED') {
+      if (res.status === 429) {
+        const retrySn = Number(res.headers.get('Retry-After')) || 60;
+        setRemainingTime(retrySn * 1000);
+        setRateLimitError(json.error || 'Çok fazla deneme yaptınız. Lütfen bekleyip tekrar deneyin.');
+        return;
+      }
+
+      if (!res.ok) {
+        if (json.error === 'EMAIL_NOT_CONFIRMED') {
           setFormMessage({
             type: 'error',
             text: '📧 E-posta adresiniz henüz onaylanmamış! Lütfen e-posta kutunuzu kontrol edin ve onay linkine tıklayın. Spam klasörünü de kontrol etmeyi unutmayın.'
@@ -144,20 +161,30 @@ export default function LoginPage() {
 
         setFormMessage({
           type: 'error',
-          text: 'E-posta veya şifre hatalı'
+          text: json.error || 'E-posta veya şifre hatalı'
         });
         return;
       }
 
-      if (data?.user) {
-        setFormMessage({
-          type: 'success',
-          text: 'Giriş başarılı! Hoş geldiniz 👋'
-        });
-
-        // Doğrudan Dinamik Soru Bankası'na (onboarding kaldırıldı)
-        router.push('/dashboard');
+      // Başarılı: oturumu istemci supabase-js'ine işle (localStorage'a yazılır,
+      // SIGNED_IN tetiklenir → SessionGuard/dashboard akışı normal çalışır)
+      const { supabase } = await import('@/lib/supabase');
+      const { error: sessionError } = await supabase!.auth.setSession({
+        access_token: json.access_token,
+        refresh_token: json.refresh_token,
+      });
+      if (sessionError) {
+        setFormMessage({ type: 'error', text: 'Oturum kurulamadı. Lütfen tekrar deneyin.' });
+        return;
       }
+
+      setFormMessage({
+        type: 'success',
+        text: 'Giriş başarılı! Hoş geldiniz 👋'
+      });
+
+      // Doğrudan Dinamik Soru Bankası'na (onboarding kaldırıldı)
+      router.push('/dashboard');
     } catch (error) {
       setFormMessage({
         type: 'error',

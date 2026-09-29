@@ -155,46 +155,9 @@ export const authHelpers = {
     }
   },
 
-  signIn: async (email: string, password: string) => {
-    try {
-      if (!supabase) {
-        return { data: null, error: 'Supabase bağlantısı yok' };
-      }
-
-      console.log('🔄 SignIn başlatılıyor:', { email });
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      console.log('📊 SignIn sonucu:', { data: !!data, error });
-
-      if (error) {
-        console.error('❌ SignIn error:', error);
-
-        // Daha spesifik hata mesajları
-        const errorMessage = error.message || '';
-
-        if (errorMessage.includes('Invalid login credentials')) {
-          return { data: null, error: 'E-posta veya şifre hatalı' };
-        }
-
-        if (errorMessage.includes('Email not confirmed')) {
-          return { data: null, error: 'EMAIL_NOT_CONFIRMED' };
-        }
-
-        return { data: null, error: errorMessage };
-      }
-
-      console.log('✅ SignIn başarılı!');
-      return { data, error: null };
-
-    } catch (error) {
-      console.error('❌ SignIn exception:', error);
-      return { data: null, error: 'Giriş işlemi başarısız' };
-    }
-  },
+  // NOT: signIn helper'ı KALDIRILDI (S2 sunucu login proxy) — şifreli giriş
+  // artık /api/auth/login route'undan geçer (sunucu-taraflı IP rate limit);
+  // istemci dönen token'ları supabase.auth.setSession ile işler.
 
   // Kayıt onay mailini yeniden gönder (Supabase native resend — tek mail kaynağı artık o)
   resendSignUp: async (email: string): Promise<{ error: string | null }> => {

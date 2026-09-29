@@ -392,6 +392,7 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
               <Input
                 label="İsim"
                 value={formData.name}
+                maxLength={100}
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 onBlur={() => handleSectionBlur('profile')}
                 error={errors.name}
@@ -491,6 +492,7 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
                 label="Hedef Üniversite"
                 type="text"
                 value={formData.hedef_universite}
+                maxLength={120}
                 onChange={(e) => handleInputChange('hedef_universite', e.target.value)}
                 leftIcon={<span className="text-base">🎓</span>}
                 placeholder="Örn: Boğaziçi Üniversitesi"
@@ -500,6 +502,7 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
                 label="Hedef Bölüm"
                 type="text"
                 value={formData.hedef_bolum}
+                maxLength={120}
                 onChange={(e) => handleInputChange('hedef_bolum', e.target.value)}
                 leftIcon={<span className="text-base">📚</span>}
                 placeholder="Örn: Bilgisayar Mühendisliği"

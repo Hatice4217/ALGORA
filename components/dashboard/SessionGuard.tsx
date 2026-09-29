@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
 // Çift-oturum koruması: aynı tarayıcıda oturum anahtarı (sb-<ref>-auth-token)
@@ -36,9 +36,13 @@ export function SessionGuard() {
       setBilinenId((onceki) => {
         if (!onceki) return yeniId; // ilk tespit (açılış) — kilit yok
         if (onceki !== yeniId) {
-          // O1: devralan yeni hesap için eski hesabın isim önbelleğini temizle —
-          // kilitleme sonrası açılan ekranda önceki hesabın adı flash etmesin
-          try { localStorage.removeItem('userName'); } catch { /* storage kapalıysa sorun değil */ }
+          // O1: devralan yeni hesap için eski hesabın izlerini temizle —
+          // isim önbelleği + son aktif sekme; kilitleme sonrası açılan ekranda
+          // önceki hesabın adı/sekmesi flash etmesin
+          try {
+            localStorage.removeItem('userName');
+            localStorage.removeItem('algora_active_tab');
+          } catch { /* storage kapalıysa sorun değil */ }
           setSaniye(3);
           setKilit({ eposta: session.user.email ?? 'başka bir hesap' });
         }
@@ -60,6 +64,23 @@ export function SessionGuard() {
     return () => clearTimeout(t);
   }, [kilit, saniye]);
 
+  // Focus-trap: kilit tam-ekran modal olduğundan klavye odağı içeride kalmalı.
+  // Odaklanabilir tek eleman buton — Tab butona geri döndürülür, açılışta buton
+  // odaklanır (klavye kullanıcısı Enter'la direkt çıkabilsin).
+  const donButonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!kilit) return;
+    donButonRef.current?.focus();
+    const yakala = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        donButonRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', yakala);
+    return () => document.removeEventListener('keydown', yakala);
+  }, [kilit]);
+
   if (!kilit) return null;
 
   return (
@@ -78,6 +99,7 @@ export function SessionGuard() {
           güvenlik gereği bu sayfa kapatıldı. Ana sayfaya yönlendiriliyorsunuz...
         </p>
         <button
+          ref={donButonRef}
           onClick={() => {
             window.location.href = '/';
           }}
