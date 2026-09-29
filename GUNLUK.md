@@ -2738,3 +2738,27 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 ### Session Bitişi
 - Faz 0.9 + S2 TAMAMEN kapandı. Denetim döneminden kalan tek açık kalemler: S3 (identities enumeration — kabul edilebilir) ve opsiyonel temizlikler
 - Öğrenilen ders: Supabase rate limit'leri per-IP; sunucu-tarafı proxy kullanan mimaride tüm kullanıcı trafiği tek egress IP'den geçer → limit değerini proje-geneli kapasiteye göre seç
+
+## 29 Eylül 2026 - Salı — Hesap bazlı login kilidi: 3 yanlış → 1 saat + kalıcı geri sayım
+
+### 🎯 Ürün kararı (kullanıcı isteği)
+- "15 deneme çok; 3 olsun, 'son deneme hakkın X' gösterilsin, kilitlenince geri sayım başlasın, sayfa yenilense bile sayım kaybolmasın"
+- Kapsam kararı (AskUserQuestion): **HESABA GÖRE kilit** — IP'ye göre olsaydı okulda 3 şifre hatası tüm okulu 1 saat kilitlerdi (80-100 öğrenci aynı genel IP)
+- IP bazlı katman 15/5dk aynen korundu (NAT dostu); agresif 3'lü sayım bilerek hesap bazlı
+
+### ✅ Uygulama (commit 2256c9e, deploy SUCCESS)
+- `database/login_lockouts.sql`: login_lockouts tablosu (email PK) + record_failed_login / check_login_lock / reset_failed_login RPC'leri — SECURITY DEFINER, REVOKE FROM PUBLIC/anon/authenticated + GRANT service_role (default-privileges tuzağına karşı), idempotent; kullanıcı çalıştırdı
+- Login route: 401'e kalanHak alanı (RPC'den attempts_left hazır geliyor); 3. yanlışta 429 + lockedUntil + Retry-After=3600; giriş öncesi check_login_lock (ön-auth guard); başarılı girişte reset; **RPC yoksa fail-open** (migration'sız deploy bozulmaz)
+- Login sayfası: "Son X deneme hakkınız kaldı" · MM:SS geri sayım · buton "Kilitli (0:59)" + disabled + handler guard · localStorage `algora_login_lock` MUTLUK zaman saklar → yenileme sonrası sayaç devam eder · süre bitince otomatik açılır · sadece e-posta eşleşirse kilitler (ortak bilgisayarda başkasını engellemez)
+- İki katman: localStorage sadece GÖSTERİM — silinse bile sunucu 429 vermeye devam eder
+
+### 🔥 Yazarken yakalanan hata
+- kalanHak için record_failed_login'i İKİNCİ kez çağırmıştım → her hata sayacı 2 artıracaktı (2. hatada kilitlenirdi). RPC zaten attempts_left döndürüyor; tek çağrıya indirildi
+
+### 🧪 Canlı E2E probe 7/7 PASS (gerçek test kullanıcısı, temizlikle)
+- 1. yanlış → 401 + kalanHak=2 · 2. → 401 + kalanHak=1 · 3. → 429 + Retry-After=3600
+- Kilitliyken DOĞRU şifre → 429 (ön-auth guard kanıtı) · reset_failed_login → doğru şifre 200+token · kilit satırı temiz · kullanıcı silindi
+
+### Session Bitişi
+- Kullanıcıya uyarı: kendi hesabıyla canlı test ederken 3 yanlış yazarsa hesabı 1 saat kilitlenir — test edecekse 2 yanlış yeter (kalanHak mesajını görür)
+- Ders: fail-open tasarımı deploy sırasını esnetti — kod önce canlıya gidebildi, migration sonra çalıştı, özellik o an aktifleşti
