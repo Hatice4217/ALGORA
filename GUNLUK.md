@@ -2715,3 +2715,26 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi
 - Öğrenilen dersler: ① proxy deseni — sunucu signInWithPassword + istemciye token + setSession; istemci rate limiter asla güvenlik sınırı değildir ② "UI maxLength var" denetim notu yanlış çıktı —SettingsPanel'de hiç yoktu; bulgu envanterindeki iddialar koddan teyit edilmeli ③ ölü kod kapatırken zincir etkisi: signIn silinmesi → lib/api.ts küçülmesi → F5 bulgusunun kendiliğinden ölmesi
+
+## 29 Eylül 2026 - Salı — Görev Döngüsü 2 canlıya aldı: commit + deploy + canlı re-probe
+
+### ✅ Kullanıcı adımları tamamlandı
+- `database/user_profiles_uzunluk.sql` SQL Editor'de çalıştırıldı (O6 kapandı: name ≤100, uni/major ≤120 CHECK)
+- Supabase Auth Rate Limits sıkılaştırıldı (S2 kısa vade): sign-up/sign-in 30/5dk/IP
+- **Not:** login proxy sunucudan çağrıldığı için Supabase'e ulaşan IP Vercel egress IP'si → 30/5dk = 360 giriş/saat proje-geneli ortak havuz. 80-100 öğrenci için bol; daha aşağı çekmek toplu girişte kilitleme riski. Email 30/saat: bir sınıf aynı saatte toplu kayıt olursa dolabilir (signUpMesajEsle Türkçe mesaj veriyor)
+
+### 🚀 Commit + Deploy
+- `60a4105` — 29 dosya, +357/−1980 satır (ağırlıklı temizlik)
+- Pre-commit hook geçti (tsc ✓, ESLint 24 uyarı / limit 50)
+- Vercel deploy: SUCCESS (GitHub API context "Vercel" = success)
+
+### 🧪 Canlı re-probe 4/4 PASS
+- Boş gövde → 400 (yeni route canlıda, 404 değil)
+- Yanlış şifre → 401 tek-tip `"E-posta veya şifre hatalı"` (enumeration sızıntısı yok)
+- 15×401 → 16. istek 429 + Retry-After=289
+- Güvenlik header'ları canlı API yanıtında: CSP, X-Frame-Options DENY, HSTS, nosniff, Referrer-Policy, Permissions-Policy
+- Probe maliyeti: kendi IP login route'unda ~5 dk kilitli kaldı (bilinçli)
+
+### Session Bitişi
+- Faz 0.9 + S2 TAMAMEN kapandı. Denetim döneminden kalan tek açık kalemler: S3 (identities enumeration — kabul edilebilir) ve opsiyonel temizlikler
+- Öğrenilen ders: Supabase rate limit'leri per-IP; sunucu-tarafı proxy kullanan mimaride tüm kullanıcı trafiği tek egress IP'den geçer → limit değerini proje-geneli kapasiteye göre seç
