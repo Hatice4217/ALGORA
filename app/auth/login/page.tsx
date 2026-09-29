@@ -9,6 +9,33 @@ import { authHelpers } from '@/lib/supabase';
 import { Logo } from '../../components/ui/Logo';
 import { validateEmail, sanitizeInput, loginRateLimiter } from '@/lib/security';
 
+// Hesap bazlı kilit (3 yanlış deneme → 1 saat): sunucu 429 + lockedUntil döner,
+// mutlak zaman localStorage'a yazılır → sayfa yenilense bile geri sayım ekranda kalır.
+// Gerçek kilit SUNUCUDADIR (login_lockouts tablosu); localStorage silinse bile
+// API 429 döndürmeye devam eder — buradaki sayaç yalnızca UX gösterimidir.
+const LOCK_STORAGE_KEY = 'algora_login_lock';
+
+const readStoredLock = (): { email: string; lockedUntil: number } | null => {
+  try {
+    const raw = localStorage.getItem(LOCK_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { email?: unknown; lockedUntil?: unknown };
+    if (typeof parsed.email === 'string' && typeof parsed.lockedUntil === 'number') {
+      return { email: parsed.email, lockedUntil: parsed.lockedUntil };
+    }
+  } catch {
+    // bozuk/erişilemez kayıt → yok say
+  }
+  return null;
+};
+
+const formatCountdown = (ms: number): string => {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}:${String(sec).padStart(2, '0')}`;
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -24,6 +51,9 @@ export default function LoginPage() {
   // Rate limiting state
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [remainingTime, setRemainingTime] = useState<number>(0);
+  // Şu an geri sayımı gösterilen kilitli hesap (yalnızca o e-posta yazılınca buton kilitlenir —
+  // ortak bilgisayarda başka öğrencinin kilitli hesabı başkasını engellemez)
+  const [lockedEmail, setLockedEmail] = useState<string | null>(null);
   const [registeredMessage, setRegisteredMessage] = useState<string | null>(null);
   const [resendBusy, setResendBusy] = useState(false);
   const [resendInfo, setResendInfo] = useState<string | null>(null);
@@ -54,6 +84,20 @@ export default function LoginPage() {
       // storage erişilemez → sorun değil
     }
   }, []);
+
+  // Kalıcı kilit geri sayımı: yazılan e-posta kilitli hesapla eşleşirse sayacı
+  // localStorage'daki MUTLUK zamandan türet — yenileme/kapat-aç sonrası de devam eder
+  useEffect(() => {
+    const lock = readStoredLock();
+    const emailNorm = formData.email.trim().toLowerCase();
+    if (lock && lock.lockedUntil > Date.now() && lock.email === emailNorm) {
+      setLockedEmail(lock.email);
+      setRemainingTime(lock.lockedUntil - Date.now());
+      setRateLimitError('Bu hesap çok fazla hatalı deneme nedeniyle geçici olarak kilitlendi.');
+    } else if (lockedEmail && (!lock || lock.email !== emailNorm || lock.lockedUntil <= Date.now())) {
+      setLockedEmail(null);
+    }
+  }, [formData.email, lockedEmail]);
 
   // Form message
   const [formMessage, setFormMessage] = useState<{
@@ -114,6 +158,11 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Kilit geri sayımı sürerken gönderim yok (buton da kapalı — çift katman)
+    if (lockedEmail && remainingTime > 0) {
+      return;
+    }
+
     // Clear previous messages
     setRateLimitError(null);
     setFormMessage({ type: null, text: '' });
@@ -145,7 +194,24 @@ export default function LoginPage() {
 
       if (res.status === 429) {
         const retrySn = Number(res.headers.get('Retry-After')) || 60;
-        setRemainingTime(retrySn * 1000);
+        if (json.lockedUntil) {
+          // Hesap bazlı kilit: mutlak zamanı sakla → yenileme sonrası sayaç devam eder
+          const emailNorm = formData.email.trim().toLowerCase();
+          const lockedUntilMs = new Date(json.lockedUntil).getTime();
+          try {
+            localStorage.setItem(
+              LOCK_STORAGE_KEY,
+              JSON.stringify({ email: emailNorm, lockedUntil: lockedUntilMs })
+            );
+          } catch {
+            // storage yazılamadı → sayaç yalnızca bu oturumda görünür; sunucu yine korur
+          }
+          setLockedEmail(emailNorm);
+          setRemainingTime(Math.max(1000, lockedUntilMs - Date.now()));
+        } else {
+          // IP bazlı limit (kısa süreli) — yalnızca oturum içinde gösterilir
+          setRemainingTime(retrySn * 1000);
+        }
         setRateLimitError(json.error || 'Çok fazla deneme yaptınız. Lütfen bekleyip tekrar deneyin.');
         return;
       }
@@ -159,10 +225,13 @@ export default function LoginPage() {
           return;
         }
 
-        setFormMessage({
-          type: 'error',
-          text: json.error || 'E-posta veya şifre hatalı'
-        });
+        // Hatalı kimlik + kalan deneme hakkı: "Son X deneme hakkınız kaldı"
+        const baseMsg: string = json.error || 'E-posta veya şifre hatalı';
+        const text =
+          typeof json.kalanHak === 'number' && json.kalanHak > 0
+            ? `${baseMsg} Son ${json.kalanHak} deneme hakkınız kaldı.`
+            : baseMsg;
+        setFormMessage({ type: 'error', text });
         return;
       }
 
@@ -182,6 +251,13 @@ export default function LoginPage() {
         type: 'success',
         text: 'Giriş başarılı! Hoş geldiniz 👋'
       });
+
+      // Başarılı giriş: kilit göstergesini temizle (sunucu reset_failed_login ile zaten sildi)
+      try {
+        localStorage.removeItem(LOCK_STORAGE_KEY);
+      } catch {
+        // yoksay
+      }
 
       // Doğrudan Dinamik Soru Bankası'na (onboarding kaldırıldı)
       router.push('/dashboard');
@@ -235,7 +311,7 @@ export default function LoginPage() {
     }
   };
 
-  // Countdown timer for rate limit
+  // Countdown timer for rate limit + account lock
   useEffect(() => {
     if (remainingTime > 0) {
       const timer = setInterval(() => {
@@ -243,6 +319,16 @@ export default function LoginPage() {
           if (prev <= 1000) {
             clearInterval(timer);
             setRateLimitError(null);
+            setLockedEmail(prevLocked => {
+              if (prevLocked) {
+                try {
+                  localStorage.removeItem(LOCK_STORAGE_KEY);
+                } catch {
+                  // yoksay
+                }
+              }
+              return null;
+            });
             return 0;
           }
           return prev - 1000;
@@ -309,7 +395,7 @@ export default function LoginPage() {
                   <p className="text-sm text-red-800">{rateLimitError}</p>
                   {remainingTime > 0 && (
                     <p className="text-xs text-red-700 mt-1">
-                      Kalan süre: {Math.ceil(remainingTime / 1000)} saniye
+                      Kalan süre: {formatCountdown(remainingTime)}
                     </p>
                   )}
                 </div>
@@ -380,8 +466,9 @@ export default function LoginPage() {
               size="lg"
               fullWidth
               isLoading={isLoading}
+              disabled={lockedEmail !== null && remainingTime > 0}
             >
-              Giriş Yap
+              {lockedEmail !== null && remainingTime > 0 ? `Kilitli (${formatCountdown(remainingTime)})` : 'Giriş Yap'}
             </Button>
 
             {/* Message Bar */}

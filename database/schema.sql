@@ -330,6 +330,119 @@ CREATE TRIGGER update_user_study_time_trigger
   EXECUTE FUNCTION update_user_study_time();
 
 -- ===================================
+-- LOGIN KİLİTLEMESİ (hesaba göre: 3 yanlış deneme → 1 saat kilit)
+-- Kaynak: database/login_lockouts.sql (tam açıklamalı sürüm)
+-- ===================================
+
+CREATE TABLE IF NOT EXISTS login_lockouts (
+  email        text PRIMARY KEY,
+  failed_count integer NOT NULL DEFAULT 0,
+  locked_until timestamptz,
+  updated_at   timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE login_lockouts ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON login_lockouts FROM PUBLIC, anon, authenticated;
+GRANT ALL ON login_lockouts TO service_role;
+
+CREATE OR REPLACE FUNCTION record_failed_login(
+  p_email        text,
+  p_max_attempts integer DEFAULT 3,
+  p_lock         interval DEFAULT interval '1 hour'
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_email       text := lower(trim(p_email));
+  v_count       int;
+  v_locked_until timestamptz;
+BEGIN
+  IF v_email IS NULL OR v_email = '' THEN
+    RAISE EXCEPTION 'email gerekli';
+  END IF;
+
+  SELECT failed_count, locked_until
+    INTO v_count, v_locked_until
+    FROM login_lockouts
+    WHERE email = v_email
+    FOR UPDATE;
+
+  IF NOT FOUND THEN
+    v_count := 1;
+    v_locked_until := NULL;
+  ELSIF v_locked_until IS NOT NULL AND v_locked_until <= now() THEN
+    v_count := 1;
+    v_locked_until := NULL;
+  ELSE
+    v_count := v_count + 1;
+  END IF;
+
+  IF v_count >= p_max_attempts AND v_locked_until IS NULL THEN
+    v_locked_until := now() + p_lock;
+  END IF;
+
+  INSERT INTO login_lockouts (email, failed_count, locked_until, updated_at)
+  VALUES (v_email, v_count, v_locked_until, now())
+  ON CONFLICT (email) DO UPDATE
+    SET failed_count = EXCLUDED.failed_count,
+        locked_until = EXCLUDED.locked_until,
+        updated_at   = now();
+
+  RETURN json_build_object(
+    'failed_count',  v_count,
+    'attempts_left', GREATEST(p_max_attempts - v_count, 0),
+    'locked',        v_locked_until IS NOT NULL AND v_locked_until > now(),
+    'locked_until',  v_locked_until
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION check_login_lock(p_email text)
+RETURNS timestamptz
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT CASE WHEN locked_until > now() THEN locked_until END
+    FROM login_lockouts
+    WHERE email = lower(trim(p_email));
+$$;
+
+CREATE OR REPLACE FUNCTION reset_failed_login(p_email text)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  DELETE FROM login_lockouts WHERE email = lower(trim(p_email));
+$$;
+
+DO $$
+DECLARE
+  fn record;
+  fn_names text[] := ARRAY['record_failed_login', 'check_login_lock', 'reset_failed_login'];
+  n text;
+BEGIN
+  FOREACH n IN ARRAY fn_names LOOP
+    FOR fn IN
+      SELECT p.oid, p.proname
+      FROM pg_proc p
+      JOIN pg_namespace ns ON ns.oid = p.pronamespace
+      WHERE ns.nspname = 'public' AND p.proname = n
+    LOOP
+      EXECUTE format('REVOKE ALL ON FUNCTION public.%I FROM PUBLIC, anon, authenticated', fn.proname);
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.%I TO service_role', fn.proname);
+    END LOOP;
+  END LOOP;
+END;
+$$;
+
+-- ===================================
 -- SAMPLE DATA (Optional - for testing)
 -- ===================================
 

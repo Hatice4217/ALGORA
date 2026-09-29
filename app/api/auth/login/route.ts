@@ -15,8 +15,9 @@ import { validateEmail } from '../../../../lib/security';
 // bildirilir (UI'da "onay maili" mesajı için; bu bilgi Supabase'in de
 // açtığı bir bilgidir, ek sızıntı değildir).
 
-const LOGIN_LIMIT = 15;        // deneme
+const LOGIN_LIMIT = 15;        // deneme (IP bazlı katman — NAT dostu)
 const LOGIN_WINDOW_MS = 5 * 60_000; // 5 dakika
+const MAX_LOGIN_ATTEMPTS = 3;  // hesap bazlı yanlış deneme eşiği (DB'deki RPC default ile aynı)
 
 export async function POST(request: NextRequest) {
   // 1) Sunucu-taraflı IP limiti (F1 fix'li getClientIp: sahte XFF ilk hop'u okunmaz)
@@ -52,6 +53,35 @@ export async function POST(request: NextRequest) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
+  // Service-role client: login_lockouts RPC'leri yalnızca service_role'a açıktır.
+  // Migration henüz çalıştırılmamışsa RPC yok demektir → fail-open (kilit özelliği
+  // sessizce kapalı kalır, giriş akışı bozulmaz; IP limiti + Supabase limiti çalışır).
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const adminClient = url && serviceRoleKey
+    ? createClient(url, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : null;
+
+  // 3a) Hesap bazlı kilit kontrolü — kilitliyse daha şifreye bakılmadan reddedilir
+  if (adminClient) {
+    const { data: lockData, error: lockError } = await adminClient.rpc('check_login_lock', {
+      p_email: email,
+    });
+    if (!lockError && lockData) {
+      const lockedUntilMs = new Date(lockData as string).getTime();
+      const retryAfterSec = Math.max(1, Math.ceil((lockedUntilMs - Date.now()) / 1000));
+      return NextResponse.json(
+        {
+          error: 'Hesabınız çok fazla hatalı deneme nedeniyle geçici olarak kilitlendi.',
+          lockedUntil: lockData as string,
+        },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } }
+      );
+    }
+    // lockError → RPC yok/hata: fail-open, aşağıda normal akış
+  }
+
   const { data, error } = await supa.auth.signInWithPassword({ email, password });
 
   if (error || !data.session || !data.user) {
@@ -65,14 +95,56 @@ export async function POST(request: NextRequest) {
         { status: 429, headers: { 'Retry-After': '60' } }
       );
     }
-    // Invalid login credentials dahil her şey → tek tip yanıt (enumerasyon yok)
-    return NextResponse.json({ error: 'E-posta veya şifre hatalı' }, { status: 401 });
+
+    // 4) Hatalı kimlik → hesap bazlı sayacı ilerlet (olmayan e-postalar dahil —
+    //    kalanHak alanı var/yok hesap arasında aynı kalır, enumerasyon sızıntısı olmaz)
+    let kalanHak: number | undefined;
+    if (adminClient) {
+      const { data: failData, error: failError } = await adminClient.rpc('record_failed_login', {
+        p_email: email,
+        p_max_attempts: MAX_LOGIN_ATTEMPTS,
+      });
+      if (!failError && failData) {
+        const info = failData as { locked?: boolean; locked_until?: string | null; attempts_left?: number };
+        if (info.locked) {
+          const lockedUntilMs = info.locked_until ? new Date(info.locked_until).getTime() : Date.now();
+          const retryAfterSec = Math.max(1, Math.ceil((lockedUntilMs - Date.now()) / 1000));
+          return NextResponse.json(
+            {
+              error: 'Hesabınız 3 hatalı deneme nedeniyle 1 saatliğine kilitlendi. Şifrenizi unuttuysanız "Şifremi Unuttum" akışını kullanabilirsiniz.',
+              lockedUntil: info.locked_until,
+            },
+            { status: 429, headers: { 'Retry-After': String(retryAfterSec) } }
+          );
+        }
+        // 1. hatada 2, 2. hatada 1 kalan hak; RPC'den hazır geliyor
+        if (typeof info.attempts_left === 'number') {
+          kalanHak = info.attempts_left;
+        }
+      } else if (failError) {
+        // RPC yok (migration çalışmadı) veya hata → kilit özelliği fail-open
+        console.error('login: record_failed_login hatası:', failError.message);
+      }
+    }
+
+    return NextResponse.json(
+      kalanHak !== undefined
+        ? { error: 'E-posta veya şifre hatalı', kalanHak }
+        : { error: 'E-posta veya şifre hatalı' },
+      { status: 401 }
+    );
   }
 
-  // 4) Başarılı giriş: bu IP'nin başarısız-deneme sayacını affet
+  // 5) Başarılı giriş: IP sayacını affet + hesap kilit sayacını temizle
   resetRateLimit(`login:${ip}`);
+  if (adminClient) {
+    const { error: resetError } = await adminClient.rpc('reset_failed_login', { p_email: email });
+    if (resetError) {
+      console.error('login: reset_failed_login hatası:', resetError.message);
+    }
+  }
 
-  // 5) Token'ları istemciye ver — supabase.auth.setSession ile oturum kurulur
+  // 6) Token'ları istemciye ver — supabase.auth.setSession ile oturum kurulur
   return NextResponse.json({
     access_token: data.session.access_token,
     refresh_token: data.session.refresh_token,
