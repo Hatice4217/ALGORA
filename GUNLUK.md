@@ -2864,3 +2864,38 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 ### ✅ Uygulama
 - credits_remaining > 0 → statik metin: "Krediler her gün yenilenir — geri sayım kredi bitince başlar"
 - credits_remaining = 0 → "Yenilenme: tarih · sayaç" (aşağıdaki kırmızı çubuk mesajıyla tutarlı)
+
+## 1 Ekim 2026 - Perşembe — Branş-Öncelikli 2 Tık Akışı: Dashboard yeniden inşası
+
+### 🎯 Hedef
+- Eski 3 adımlı sihirbaz (sınav→ders→konu/zorluk) = soruya ulaşmak 5 tık; havuz-ilk modelde soru ~0,2 sn'de geldiği için seçim akışının ağır olmasının gerekçesi kalmadı
+- Yeni akış: **ders kartına dokun → (gerekirse sınav türü seç) → soru anında açılır**; varsayılanlar konu = Tümü (Karışık), zorluk = Orta; detay isteyen karttaki ⚙️ ile seçer
+
+### ✅ Uygulama
+- **`app/dashboard/page.tsx`**
+  - Module-scope `DERS_KARTLARI`: `getSubjects` (MEB_SYLLABUS) üzerinden TYT→AYT→YDT dolaşılıp Map ile birleştirildi → 11 kart (9 TYT + Türk Dili ve Edebiyatı + İngilizce); paylaşılan 6 ders (Mat/Fiz/Kim/Biy/Tar/Coğ) iki tür etiketli tek kart
+  - `generateQuestion(secim?)` override parametresi (stale-closure çözümü: kart handler'ı set state + çağrıyı aynı tikte yapar); `dersBaslat(ders, tur, ozellikler?)` eklendi
+  - **Tutarlı Reset kuralı (kullanıcı talimatı):** `ozellikler`'siz her hızlı başlatma konu `''` + zorluk `'orta'` uygular — ⚙️ ile İleri seçen başka ders kartında yine Orta ile başlar, seçim yapışık KALMAZ; yalnız ⚙️ penceresi override eder
+  - `selectedDifficulty` initial `'baslangic'`→`'orta'`; eski `setExamType/DERSLER/KONULAR/setSecili*` props'ları kaldırıldı; `selectAnswer` state'ten okuduğu için istatistik doğru derse düşer (state'ler çağrıdan önce set ediliyor)
+- **`components/dashboard/QuestionPractice.tsx`**
+  - 3 adımlı sihirbaz JSX'i + `step` state + `SINAV_TURLERI/SINAV_KARTLARI/dersSec/sinavTuruDegistir` silindi; `getSubjects` import'u → `getTopics`
+  - Yeni sol kolon: `grid-cols-2 min-[480px]:grid-cols-3 lg:grid-cols-4` kart grid'i; kart = `relative` div içinde **kardeş** ana buton (renkli ikon + ders + tür pill'eri) + `absolute top-2 right-2` ⚙️ (nested-button/hydration tuzağı yok)
+  - İki türlü ders → z-40 ortalanmış mini-chooser ("Hangi sınav için çalışmak istersin?" TYT/AYT + Vazgeç; soru modalı z-50 üstte kalır); tek türlüler doğrudan başlar
+  - ⚙️ Detaylı Seçim (z-40): paylaşılan derste tür segmented (tür değişince konu sıfırlanır — konular türe bağlı), konu dropdown (`Tümü (Karışık)` GEÇERLİ), zorluk segmented, koşulsuz Başlat
+  - Üretimde grid `opacity-50 pointer-events-none` + inline "Soru hazırlanıyor... X sn" banner'ı (hızlı yolda geri bildirimin tek yeri)
+  - Modal düzeltmeleri: `onClick={() => soruUret()}` (event sızma — generateQuestion parametreli olduğundan MouseEvent sızardı); `disabled`'dan `!seciliKonu` kalktı → "Sıradaki Soru" konu olmadan çalışır
+- **`lib/utils.ts`**: `getSubjectColor`'a `'Türk Dili ve Edebiyatı': 'bg-rose-500'` (eksikti, kart gri düşerdi)
+- **Dokunulmadı:** `/api/questions/next` (topic `''` zaten konu-filtresiz havuz davranışı), exclude akışı, Üst Beyin/bildirim, QuotaExhaustedModal, sekmeler/SessionGuard
+
+### 🔍 Doğrulama
+- `npm run build` ✅ (strict TS); eslint 0 hata / 3 önceden-var uyarı (limit 50)
+- `npm start` → `/dashboard` 200; chunk grep node ile 5/5 PASS: `Tümü (Karışık)`, chooser başlığı, `Detaylı Seçim`, `Soru Çözmeye Başla`, `Türk Dili ve Edebiyatı`
+- Sunucu kapatıldı, port 3000 temiz (zombi PID taskkill)
+
+### 🧠 Çıkarım
+- Parametreli callback'i prop geçerken `onClick={fn}` desenini BIRAK — event nesnesi ilk parametreye sızar; inline ok zorunlu
+- Yeni "hızlı başlat" örüntüsünde state override'ı + tutarlı reset birlikte düşünülmeli: sticky seçim UX'te sessiz yanlış-derse-sevkiyat üretir
+
+### 📌 Session Bitişi
+- Durum: kod tamam + build/lint/chunk doğrulaması geçti; **tarayıcı testleri kullanıcıda bekliyor** (Türkçe→direkt, Matematik→chooser→TYT, ⚙️→AYT+konu+İleri, İngilizce→YDT, Sıradaki Soru exclude, üretim kilidi/banner, mobil dar viewport)
+- Commit/push ve deploy: kullanıcı kararı bekliyor

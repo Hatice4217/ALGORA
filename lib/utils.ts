@@ -107,6 +107,7 @@ export function getSubjectColor(subject: string): string {
     Coğrafya: 'bg-teal-500',
     Felsefe: 'bg-indigo-500',
     'Din Kültürü': 'bg-cyan-500',
+    'Türk Dili ve Edebiyatı': 'bg-rose-500',
     İngilizce: 'bg-red-500',
   };
   return colors[subject] || 'bg-gray-500';

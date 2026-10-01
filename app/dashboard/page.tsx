@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '../components/ui/Button';
 import { Logo } from '../components/ui/Logo';
 import { MobileMenu, HamburgerButton } from '../../components/MobileMenu';
-import { getSubjectColor, hesaplaGunlukSeri } from '../../lib/utils';
+import { hesaplaGunlukSeri } from '../../lib/utils';
 import { authHelpers, dbHelpers } from '../../lib/supabase';
 import { StatisticsCards } from '../../components/dashboard/StatisticsCards';
 import { AnalysisPanel } from '../../components/dashboard/AnalysisPanel';
@@ -20,7 +20,7 @@ import { GoalsProvider } from '../../components/dashboard/GoalsProvider';
 import { UserPreferencesProvider, HedefRozeti } from '../../components/dashboard/UserPreferencesProvider';
 import { SessionGuard } from '../../components/dashboard/SessionGuard';
 import { authFetch } from '../../lib/api';
-import { getSubjects, getTopics } from '../../lib/constants/syllabus';
+import { getSubjects } from '../../lib/constants/syllabus';
 
 import type { SubscriptionSummary, PaidPlanId } from '../../types/subscription';
 
@@ -57,6 +57,21 @@ const DIFFICULTIES = [
   { deger: 'ileri', etiket: 'İleri' },
 ];
 
+// Branş-öncelikli akış: tüm sınav türlerinin dersleri TEK kart grid'inde.
+// Tek kaynak MEB_SYLLABUS (getSubjects); TYT→AYT→YDT sırayla dolaşılır,
+// iki türde okutulan dersler (Matematik vb.) tek kartta iki tür etiketiyle
+// listelenir (Map ekleme sırası korunur → TYT dersleri + Türk Dili ve
+// Edebiyatı + İngilizce, toplam 11 kart).
+const DERS_KARTLARI: Array<{ ders: string; turler: Array<'TYT' | 'AYT' | 'YDT'> }> = (() => {
+  const harita = new Map<string, Array<'TYT' | 'AYT' | 'YDT'>>();
+  (['TYT', 'AYT', 'YDT'] as const).forEach((tur) => {
+    getSubjects(tur).forEach((ders) => {
+      harita.set(ders, [...(harita.get(ders) ?? []), tur]);
+    });
+  });
+  return Array.from(harita.entries()).map(([ders, turler]) => ({ ders, turler }));
+})();
+
 export default function DashboardPage() {
   const router = useRouter();
   // Giriş yapan kullanıcı doğrudan Dinamik Soru Bankası'nda başlar (onboarding kaldırıldı);
@@ -73,9 +88,10 @@ export default function DashboardPage() {
     gucluAlanlar: [],
   }); // Empty state - no mock data
   const [selectedSubject, setSelectedSubject] = useState('Matematik');
-  // Sınav türü artık laboratuvarda seçilir (TYT | AYT | YDT toggle)
+  // Sınav türü artık kart tıklamasından gelir (paylaşılan derslerde chooser)
   const [examType, setExamType] = useState<'TYT' | 'AYT' | 'YDT'>('TYT');
-  const [selectedDifficulty, setSelectedDifficulty] = useState('baslangic');
+  // Hızlı başlatmanın standart zorluğu 'Orta' (Tutarlı Reset kuralı)
+  const [selectedDifficulty, setSelectedDifficulty] = useState('orta');
   // Konu seçilmeden üretim yapılamaz; ders/sınav türü değişince sıfırlanır
   const [selectedTopic, setSelectedTopic] = useState('');
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
@@ -339,7 +355,16 @@ export default function DashboardPage() {
 
   // V2 havuz akışı: soru ARTIK üretilmez, havuzdan GETİRİLİR (kredisiz).
   // Havuzda uygun soru varsa anında döner; yoksa Gemini üretip havuza ekler.
-  const generateQuestion = async () => {
+  // `secim` override parametresi stale-closure'ı çözer: kart handler'ı set
+  // state + çağrıyı AYNI tikte yapar; klasör güncel state'i değil çağrı
+  // anındaki override'ı görür. "Sıradaki Soru" gibi state'ten okuyan
+  // çağrılar parametresiz çağırır.
+  const generateQuestion = async (secim?: {
+    subject?: string;
+    topic?: string;
+    difficulty?: string;
+    examType?: 'TYT' | 'AYT' | 'YDT';
+  }) => {
     setIsGeneratingQuestion(true);
     setShowAnswer(false);
     setSelectedAnswer(null);
@@ -353,10 +378,10 @@ export default function DashboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          subject: selectedSubject,
-          topic: selectedTopic,
-          difficulty: selectedDifficulty,
-          examType,
+          subject: secim?.subject ?? selectedSubject,
+          topic: secim?.topic ?? selectedTopic,
+          difficulty: secim?.difficulty ?? selectedDifficulty,
+          examType: secim?.examType ?? examType,
           // Sıradaki sorunun öncekinden farklı olması için mevcut soru metnini gönder
           previous_question: currentQuestion?.question ?? null,
           // Bu oturumda görülen sorular havuzdan hariç tutulur (mükerrer önleme)
@@ -390,6 +415,29 @@ export default function DashboardPage() {
     } finally {
       setIsGeneratingQuestion(false);
     }
+  };
+
+  // Branş-öncelikli hızlı başlatma: ders kartı tıklaması (tek türde doğrudan,
+  // iki türde chooser üzerinden) buraya düşer.
+  // ⚠️ Tutarlı Reset kuralı: ⚙️ detay penceresi dışındaki (ozellikler'siz)
+  // her hızlı başlatma konuyu "Tümü (Karışık)" ve zorluğu "Orta" standartına
+  // döndürür — kullanıcı başka derste 'İleri' seçmiş olsa bile yeni ders
+  // 'Orta' ile başlar; seçim asla yapışık kalmaz.
+  const dersBaslat = (
+    ders: string,
+    tur: 'TYT' | 'AYT' | 'YDT',
+    ozellikler?: { konu?: string; zorluk?: string }
+  ) => {
+    if (isGeneratingQuestion) return;
+    const konu = ozellikler?.konu ?? '';
+    const zorluk = ozellikler?.zorluk ?? 'orta';
+    // selectAnswer state'ten okuduğu için istatistiğin doğru derse düşmesi
+    // için state'leri çağrıdan ÖNCE set ediyoruz (aynı tikte batch'lenir)
+    setExamType(tur);
+    setSelectedSubject(ders);
+    setSelectedTopic(konu);
+    setSelectedDifficulty(zorluk);
+    generateQuestion({ subject: ders, topic: konu, difficulty: zorluk, examType: tur });
   };
 
   // Ücretsiz Sokratik ipucu: bir sonrakini açar (çözüm ifşa etmez, yön gösterir)
@@ -765,29 +813,16 @@ export default function DashboardPage() {
         {activeTab === 'practiceRoom' && (
           <QuestionPractice
             examType={examType}
-            setExamType={(tur) => {
-              setExamType(tur);
-              // Türün ilk dersi varsayılan olur (TYT/AYT → Matematik, YDT → İngilizce)
-              setSelectedSubject(getSubjects(tur)[0] ?? 'Matematik');
-              setSelectedTopic('');
-            }}
-            DERSLER={getSubjects(examType)}
+            DERS_KARTLARI={DERS_KARTLARI}
             ZORLUKLER={DIFFICULTIES}
-            KONULAR={getTopics(examType, selectedSubject)}
             seciliDers={selectedSubject}
             seciliZorluk={selectedDifficulty}
-            seciliKonu={selectedTopic}
             soruUretiliyor={isGeneratingQuestion}
             mevcutSoru={currentQuestion}
             cevapGoster={showAnswer}
             seciliCevap={selectedAnswer}
-            setSeciliDers={(ders) => {
-              setSelectedSubject(ders);
-              setSelectedTopic(''); // ders değişince konu sıfırlanır
-            }}
-            setSeciliZorluk={setSelectedDifficulty}
-            setSeciliKonu={setSelectedTopic}
-            soruUret={generateQuestion}
+            dersBaslat={dersBaslat}
+            soruUret={() => generateQuestion()}
             cevapSec={selectAnswer}
             sonCozulenler={recentAnswers}
             kayitIncele={reviewRecentAnswer}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getSubjectColor } from '../../lib/utils';
-import { getSubjects } from '../../lib/constants/syllabus';
+import { getTopics } from '../../lib/constants/syllabus';
 import type { RecentAnswer } from '../../types/question';
 
 interface Question {
@@ -23,23 +23,31 @@ interface Difficulty {
   etiket: string;
 }
 
+// Branş-öncelikli kart: ders adı + okutulduğu sınav türleri (dashboard'ta
+// MEB_SYLLABUS'tan türetilir — hardcoded liste asla)
+interface DersKarti {
+  ders: string;
+  turler: Array<'TYT' | 'AYT' | 'YDT'>;
+}
+
 interface QuestionPracticeProps {
-  // Sınav türü state'i dashboard'ta yaşar (üretim isteğine gider)
+  // Görüntü fallback'i (soru modalı rozetleri); türlen seçim artık kart akışından
   examType: string;
-  setExamType: (tur: 'TYT' | 'AYT' | 'YDT') => void;
-  DERSLER: string[];
+  DERS_KARTLARI: DersKarti[];
   ZORLUKLER: Difficulty[];
-  KONULAR: string[];
   seciliDers: string;
   seciliZorluk: string;
-  seciliKonu: string;
   soruUretiliyor: boolean;
   mevcutSoru: Question | null;
   cevapGoster: boolean;
   seciliCevap: number | null;
-  setSeciliDers: (ders: string) => void;
-  setSeciliZorluk: (zorluk: string) => void;
-  setSeciliKonu: (konu: string) => void;
+  // Hızlı başlatma: kart tıklaması → (gerekirse tür seçimi) → soru anında açılır.
+  // ozellikler'siz çağrı Tutarlı Reset kuralıyla konu '' + zorluk 'orta' uygular.
+  dersBaslat: (
+    ders: string,
+    tur: 'TYT' | 'AYT' | 'YDT',
+    ozellikler?: { konu?: string; zorluk?: string }
+  ) => void;
   soruUret: () => void;
   cevapSec: (index: number) => void;
   sonCozulenler: RecentAnswer[];
@@ -78,31 +86,17 @@ function gecmisZamaniEtiketi(isoTarih: string): string {
   );
 }
 
-const SINAV_TURLERI: Array<'TYT' | 'AYT' | 'YDT'> = ['TYT', 'AYT', 'YDT'];
-
-// 1. adım kartları: sınav adı + açıklama (ders sayısı getSubjects'tan dinamik)
-const SINAV_KARTLARI: Record<'TYT' | 'AYT' | 'YDT', { ikon: string; aciklama: string }> = {
-  TYT: { ikon: '📘', aciklama: 'Temel Yeterlilik Testi' },
-  AYT: { ikon: '📙', aciklama: 'Alan Yeterlilik Testi' },
-  YDT: { ikon: '🌐', aciklama: 'Yabancı Dil Testi' },
-};
-
 export function QuestionPractice({
   examType,
-  setExamType,
-  DERSLER,
+  DERS_KARTLARI,
   ZORLUKLER,
-  KONULAR,
   seciliDers,
   seciliZorluk,
-  seciliKonu,
   soruUretiliyor,
   mevcutSoru,
   cevapGoster,
   seciliCevap,
-  setSeciliDers,
-  setSeciliZorluk,
-  setSeciliKonu,
+  dersBaslat,
   soruUret,
   cevapSec,
   sonCozulenler,
@@ -118,9 +112,13 @@ export function QuestionPractice({
   soruBildir,
   modalKapat,
 }: QuestionPracticeProps) {
-  // 3 adımlı akış: 1 = sınav türü, 2 = ders, 3 = konu + zorluk + üretim.
-  // YDT'de tek ders (İngilizce) olduğu için 2. adım otomatik atlanır.
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // İki türlü dersin kartına basılınca açılan "TYT mi, AYT mi?" chooser'ı
+  const [chooserKarti, setChooserKarti] = useState<DersKarti | null>(null);
+  // ⚙️ Detaylı Seçim penceresi state'i (tür + konu + zorluk)
+  const [detayKarti, setDetayKarti] = useState<DersKarti | null>(null);
+  const [detayTur, setDetayTur] = useState<'TYT' | 'AYT' | 'YDT'>('TYT');
+  const [detayKonu, setDetayKonu] = useState('');
+  const [detayZorluk, setDetayZorluk] = useState('orta');
   // Üretim beklenirken geçen süre (saniye) — kullanıcının bekleyiş hissini yönetir
   const [beklemeSaniye, setBeklemeSaniye] = useState(0);
 
@@ -151,202 +149,126 @@ export function QuestionPractice({
     'İngilizce': '🌐',
   };
 
-  // Adım 2'de ders kartına basınca ders seçilir ve akış 3. adıma ilerler
-  const dersSec = (ders: string) => {
-    setSeciliDers(ders); // parent konuyu sıfırlar
-    setStep(3);
+  // Kart tıklaması: tek türlü derste anında başlar; iki türlü derste
+  // ("TYT mi, AYT mi?" sormak anlamlı olan tek senaryo) chooser açılır
+  const dersKartinaBas = (kart: DersKarti) => {
+    if (soruUretiliyor) return;
+    if (kart.turler.length === 1) {
+      dersBaslat(kart.ders, kart.turler[0]);
+    } else {
+      setChooserKarti(kart);
+    }
   };
 
-  // Sınav türü seçimi parent'ta ders + konu sıfırlamasını tetikler;
-  // YDT tek ders olduğundan ders adımı atlanıp doğrudan konu adımına gidilir
-  const sinavTuruDegistir = (tur: 'TYT' | 'AYT' | 'YDT') => {
-    setExamType(tur);
-    setStep(tur === 'YDT' ? 3 : 2);
+  // ⚙️ penceresi: güncel examType kartın türlerindense o, değilse kartın ilk türü;
+  // konu/zorluk her açılışta standarttan (Tümü + Orta) başlar
+  const detayiAc = (kart: DersKarti) => {
+    if (soruUretiliyor) return;
+    setDetayKarti(kart);
+    setDetayTur(
+      kart.turler.includes(examType as 'TYT' | 'AYT' | 'YDT')
+        ? (examType as 'TYT' | 'AYT' | 'YDT')
+        : kart.turler[0]
+    );
+    setDetayKonu('');
+    setDetayZorluk('orta');
+  };
+
+  // ⚙️ penceresinden başlatma: seçilen konu/zorluk ozellikler ile gider
+  const detayiBaslat = () => {
+    if (!detayKarti) return;
+    dersBaslat(detayKarti.ders, detayTur, { konu: detayKonu, zorluk: detayZorluk });
+    setDetayKarti(null);
   };
 
   return (
     <div className="h-full w-full">
       {/* Masaüstünde sayfa kaydırması yok: tek satır ekranı doldurur, taşma kolon içinde kayar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full items-start lg:grid-rows-[minmax(0,1fr)] lg:items-stretch">
-        {/* Sol Kolon - Soru Üretimi (2 birim) */}
+        {/* Sol Kolon - Branş-Öncelikli Ders Kartları (2 birim) */}
         <div className="lg:col-span-8 lg:min-h-0">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm h-full lg:min-h-0">
-            <div className="p-8 h-full flex flex-col lg:min-h-0 lg:overflow-y-auto thin-scrollbar">
-              {step === 1 ? (
-                <>
-                  {/* ══════════ ADIM 1: Sınav Türü ══════════ */}
-                  <h2 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">
-                    Soru Çözmeye Başla
-                  </h2>
-                  <p className="text-slate-500 mb-8 text-sm">
-                    1. Adım: Hangi sınav için çalışmak istersin?
-                  </p>
+            <div className="p-6 md:p-8 h-full flex flex-col lg:min-h-0 lg:overflow-y-auto thin-scrollbar">
+              <h2 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">
+                Soru Çözmeye Başla
+              </h2>
+              <p className="text-slate-500 mb-6 text-sm">
+                Ders kartına dokun — soru havuzdan anında açılır (varsayılan: tüm konular, orta
+                zorluk). İstersen ⚙️ ile konu ve zorluk seçebilirsin.
+              </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {SINAV_TURLERI.map((tur) => (
-                      <button
-                        key={tur}
-                        onClick={() => sinavTuruDegistir(tur)}
-                        className={`
-                          p-5 rounded-xl border-2 text-left transition-all duration-200 flex flex-col gap-1
-                          ${examType === tur
-                            ? 'border-purple-500 bg-purple-50 shadow-md shadow-purple-100'
-                            : 'border-slate-200 bg-slate-50 hover:border-purple-300 hover:-translate-y-0.5'
-                          }
-                        `}
-                      >
-                        <span className="text-2xl">{SINAV_KARTLARI[tur].ikon}</span>
-                        <span className="text-lg font-bold text-slate-800">{tur}</span>
-                        <span className="text-xs text-slate-500">{SINAV_KARTLARI[tur].aciklama}</span>
-                        <span className="text-xs font-medium text-purple-600 mt-1">
-                          {tur === 'YDT' ? 'İngilizce' : `${getSubjects(tur).length} ders`}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              ) : step === 2 ? (
-                <>
-                  {/* ══════════ ADIM 2: Ders Seçimi ══════════ */}
-                  <div className="flex items-center gap-3 mb-2">
+              {/* Hızlı yolda üretim geri bildiriminin tek yeri: inline bekleme banner'ı */}
+              {soruUretiliyor && (
+                <div className="mb-4 rounded-xl bg-purple-50 border border-purple-200 px-4 py-3 flex items-center gap-3">
+                  <svg className="animate-spin h-5 w-5 text-purple-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="text-sm font-medium text-purple-700">
+                    Soru hazırlanıyor... ({beklemeSaniye} sn)
+                  </span>
+                </div>
+              )}
+
+              {/* Ders kartları — üretim sırasında grid kilitlenir.
+                  min-[480px]: Windows %125-150 ölçeklemede sm eşikleri ölü olabilir */}
+              <div
+                className={`grid grid-cols-2 min-[480px]:grid-cols-3 lg:grid-cols-4 gap-3 transition-opacity ${
+                  soruUretiliyor ? 'opacity-50 pointer-events-none' : ''
+                }`}
+              >
+                {DERS_KARTLARI.map((kart) => (
+                  <div key={kart.ders} className="relative">
+                    {/* Ana buton: dokun → soru (nested-button tuzağına karşı
+                        ⚙️ KARDEŞ butondur, içine gömülü değil) */}
                     <button
-                      onClick={() => setStep(1)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-purple-700 hover:bg-purple-50 transition-all"
+                      onClick={() => dersKartinaBas(kart)}
+                      className="w-full h-full px-4 py-4 pt-5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-purple-300 hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-start gap-2 text-left"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                      Geri
-                    </button>
-                  </div>
-                  <h2 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">
-                    {examType} Dersleri
-                  </h2>
-                  <p className="text-slate-500 mb-8 text-sm">
-                    2. Adım: {examType} için çalışmak istediğin dersi seç
-                  </p>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {DERSLER.map((ders) => (
-                      <button
-                        key={ders}
-                        onClick={() => dersSec(ders)}
-                        className={`
-                          px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200
-                          flex items-center justify-center gap-2
-                          ${seciliDers === ders
-                            ? 'bg-purple-600 text-white shadow-lg shadow-purple-200'
-                            : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-2 border-slate-200 hover:border-purple-300 hover:-translate-y-0.5'
-                          }
-                        `}
+                      <span
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${getSubjectColor(kart.ders)}`}
                       >
-                        <span className="text-lg">{dersIkonlari[ders] || '📚'}</span>
-                        <span>{ders}</span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <>
-                  {/* ══════════ ADIM 3: Konu + Zorluk + Üretim ══════════ */}
-                  <div className="flex items-center gap-3 mb-2">
-                    <button
-                      onClick={() => setStep(examType === 'YDT' ? 1 : 2)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-purple-700 hover:bg-purple-50 transition-all"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                      Geri
-                    </button>
-                  </div>
-                  <h2 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">
-                    {examType} - {seciliDers}
-                  </h2>
-                  <p className="text-slate-500 mb-8 text-sm">
-                    3. Adım: Konu ve zorluk seviyesini seç, teste başla
-                  </p>
-
-                  <div className="space-y-8 flex-1">
-                    {/* Konu Seçimi - Dropdown (seçim zorunlu) */}
-                    <div>
-                      <label htmlFor="konu-secimi" className="block text-sm font-semibold text-slate-700 mb-4">
-                        Konu Seçimi
-                      </label>
-                      <select
-                        id="konu-secimi"
-                        value={seciliKonu}
-                        onChange={(e) => setSeciliKonu(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-700 font-medium text-sm focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer"
-                      >
-                        <option value="" disabled>
-                          Konu seçin
-                        </option>
-                        {KONULAR.map((konu) => (
-                          <option key={konu} value={konu}>
-                            {konu}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Zorluk Seviyesi - Segmented Control */}
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-4">
-                        Zorluk Seviyesi
-                      </label>
-                      <div className="bg-slate-100 p-1.5 rounded-xl inline-flex w-full">
-                        {ZORLUKLER.map((zorluk) => (
-                          <button
-                            key={zorluk.deger}
-                            onClick={() => setSeciliZorluk(zorluk.deger)}
-                            className={`
-                              flex-1 py-3 px-4 rounded-lg font-medium text-sm transition-all duration-200
-                              ${seciliZorluk === zorluk.deger
-                                ? 'bg-white text-purple-700 shadow-sm'
-                                : 'text-slate-600 hover:text-slate-800'
-                              }
-                            `}
+                        {dersIkonlari[kart.ders] || '📚'}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-800 leading-tight">
+                        {kart.ders}
+                      </span>
+                      <span className="flex gap-1 flex-wrap">
+                        {kart.turler.map((tur) => (
+                          <span
+                            key={tur}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700"
                           >
-                            {zorluk.etiket}
-                          </button>
+                            {tur}
+                          </span>
                         ))}
-                      </div>
-                    </div>
-
-                    {/* Testi Başlat — havuzdan anında gelir; havuz boşsa yapay zeka üretir */}
-                    <button
-                      onClick={soruUret}
-                      disabled={soruUretiliyor || !seciliKonu}
-                      className="w-full py-4 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 hover:from-purple-700 hover:via-purple-600 hover:to-pink-600 text-white font-bold rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-purple-600 disabled:hover:via-purple-500 disabled:hover:to-pink-500 shadow-lg shadow-purple-200 hover:shadow-xl hover:shadow-purple-300 transform hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-lg"
-                    >
-                      <span className="flex items-center justify-center gap-3">
-                        {soruUretiliyor ? (
-                          <>
-                            {/* Spinner Animation */}
-                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>
-                              Soru hazırlanıyor... ({beklemeSaniye} sn)
-                              {beklemeSaniye >= 30 && ' — kaliteli sorular biraz zaman alır'}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-xl">✨</span>
-                            <span>{seciliKonu ? 'Testi Başlat' : 'Önce konu seçin'}</span>
-                          </>
-                        )}
                       </span>
                     </button>
-                    <p className="text-xs text-slate-400 text-center -mt-4">
-                      Sorular havuzdan anında gelir; havuz boşsa yapay zeka yeni soru üretir. Soru çözmek sınırsız ve ücretsizdir.
-                    </p>
+                    {/* ⚙️ Detaylı Seçim — konu/zorluk seçmek isteyenler için */}
+                    <button
+                      onClick={() => detayiAc(kart)}
+                      aria-label={`${kart.ders} için detaylı seçim`}
+                      title="Konu ve zorluk seç"
+                      className="absolute top-2 right-2 p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-all"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                        />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </button>
                   </div>
-                </>
-              )}
+                ))}
+              </div>
+
+              <p className="text-xs text-slate-400 text-center mt-6">
+                Sorular havuzdan anında gelir; havuz boşsa yapay zeka yeni soru üretir. Soru çözmek
+                sınırsız ve ücretsizdir.
+              </p>
             </div>
           </div>
         </div>
@@ -413,6 +335,148 @@ export function QuestionPractice({
           </div>
         </div>
       </div>
+
+      {/* ══════════ Mini-Chooser Overlay: "TYT mi, AYT mi?" ══════════
+          Ortalanmış overlay (z-40): mobilde taşma yok, soru modalı (z-50) üstte kalır */}
+      {chooserKarti && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="text-lg font-bold text-slate-800 mb-1 text-center">
+              {chooserKarti.ders}
+            </h3>
+            <p className="text-sm text-slate-500 mb-5 text-center">
+              Hangi sınav için çalışmak istersin?
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {chooserKarti.turler.map((tur) => (
+                <button
+                  key={tur}
+                  onClick={() => {
+                    const kart = chooserKarti;
+                    setChooserKarti(null);
+                    dersBaslat(kart.ders, tur);
+                  }}
+                  className="py-8 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-purple-400 hover:bg-purple-50 hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-center gap-2"
+                >
+                  <span className="text-2xl font-bold text-slate-800">{tur}</span>
+                  <span className="text-xs text-slate-500">
+                    {tur === 'TYT' ? 'Temel Yeterlilik' : 'Alan Yeterlilik'}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setChooserKarti(null)}
+              className="mt-4 w-full py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              Vazgeç
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ ⚙️ Detaylı Seçim penceresi (z-40) ══════════
+          Konu artık opsiyonel: "Tümü (Karışık)" geçerli bir seçimdir */}
+      {detayKarti && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Detaylı Seçim</h3>
+            <p className="text-sm text-slate-500 mb-6">{detayKarti.ders}</p>
+
+            <div className="space-y-6">
+              {/* Sınav Türü — yalnız paylaşılan derslerde görünür (tek türlüde sormak anlamsız) */}
+              {detayKarti.turler.length > 1 && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                    Sınav Türü
+                  </label>
+                  <div className="bg-slate-100 p-1.5 rounded-xl flex">
+                    {detayKarti.turler.map((tur) => (
+                      <button
+                        key={tur}
+                        onClick={() => {
+                          // Konular türe bağlı: tür değişince konu sıfırlanır
+                          if (detayTur !== tur) {
+                            setDetayTur(tur);
+                            setDetayKonu('');
+                          }
+                        }}
+                        className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-all ${
+                          detayTur === tur
+                            ? 'bg-white text-purple-700 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-800'
+                        }`}
+                      >
+                        {tur}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Konu — "Tümü (Karışık)" boş değer olarak GEÇERLİ */}
+              <div>
+                <label htmlFor="detay-konu" className="block text-sm font-semibold text-slate-700 mb-3">
+                  Konu
+                </label>
+                <select
+                  id="detay-konu"
+                  value={detayKonu}
+                  onChange={(e) => setDetayKonu(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-700 font-medium text-sm focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer"
+                >
+                  <option value="">Tümü (Karışık)</option>
+                  {getTopics(detayTur, detayKarti.ders).map((konu) => (
+                    <option key={konu} value={konu}>
+                      {konu}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Zorluk */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-3">
+                  Zorluk Seviyesi
+                </label>
+                <div className="bg-slate-100 p-1.5 rounded-xl flex">
+                  {ZORLUKLER.map((zorluk) => (
+                    <button
+                      key={zorluk.deger}
+                      onClick={() => setDetayZorluk(zorluk.deger)}
+                      className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-all ${
+                        detayZorluk === zorluk.deger
+                          ? 'bg-white text-purple-700 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-800'
+                      }`}
+                    >
+                      {zorluk.etiket}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Başlat — konu opsiyonel olduğundan koşulsuz aktif */}
+              <button
+                onClick={detayiBaslat}
+                disabled={soruUretiliyor}
+                className="w-full py-4 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 hover:from-purple-700 hover:via-purple-600 hover:to-pink-600 text-white font-bold rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <span className="text-xl">✨</span>
+                  <span>Başlat</span>
+                </span>
+              </button>
+              <button
+                onClick={() => setDetayKarti(null)}
+                className="w-full py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Soru Modal Overlay */}
       {mevcutSoru && (
@@ -629,9 +693,11 @@ export function QuestionPractice({
                 )}
               </div>
 
+              {/* Konu artık opsiyonel: "Sıradaki Soru" seçili konu olmadan da çalışır.
+                  onClick inline ok: soruUret parametresiz — MouseEvent sızmasın */}
               <button
-                onClick={soruUret}
-                disabled={soruUretiliyor || !seciliKonu}
+                onClick={() => soruUret()}
+                disabled={soruUretiliyor}
                 className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
               >
                 {soruUretiliyor ? (
