@@ -66,11 +66,17 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
             <p className="text-sm text-gray-500 mb-1">Mevcut Paket</p>
             <h2 className="text-2xl font-bold text-gray-900">{planConfig.name}</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Yenilenme: {formatDate(subscription.period_end)} ·{' '}
-              <QuotaCountdown
-                periodEnd={subscription.period_end}
-                className="font-medium text-purple-600"
-              />
+              {subscription.credits_remaining > 0 ? (
+                'Krediler her gün yenilenir — geri sayım kredi bitince başlar'
+              ) : (
+                <>
+                  Yenilenme: {formatDate(subscription.period_end)} ·{' '}
+                  <QuotaCountdown
+                    periodEnd={subscription.period_end}
+                    className="font-medium text-purple-600"
+                  />
+                </>
+              )}
             </p>
           </div>
           <div className="text-right">

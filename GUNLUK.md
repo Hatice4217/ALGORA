@@ -2854,3 +2854,13 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### Session Bitişi (güncel)
 - Ders: pivot migration'larında YENİ seed + backfill yetmez — MEVCUT tüm plan satırlarının yeni modele çekildiği ayrıca doğulanmalı (plan/limit dağılım sorgusu standart kontrol listesine girdi)
+
+## 1 Ekim 2026 - Perşembe — Paketim geri sayımı yalnızca kredi 0'ken göster
+
+### 🎯 Kullanıcı geri bildirimi
+- "3/3 kredim varken neden geri sayım başladı?" — PackagePanel'deki 'Yenilenme: tarih · sayaç' satırı HER ZAMAN gösteriliyordu; cooldown modeliyle kredi varken sürenin görünümü anlamsız
+- Ayrıca görüntülenen dönem saati geçmişe düşmüş olabiliyor (sayfa verisi rollover'dan eskiyse) — sayaç kalkınca bu kafa karışıklığı da gitti
+
+### ✅ Uygulama
+- credits_remaining > 0 → statik metin: "Krediler her gün yenilenir — geri sayım kredi bitince başlar"
+- credits_remaining = 0 → "Yenilenme: tarih · sayaç" (aşağıdaki kırmızı çubuk mesajıyla tutarlı)
