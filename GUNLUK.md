@@ -2839,3 +2839,18 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 ### Session Bitişi
 - Bugün 3 ships: Faz 1a canlıya alındı + premium 50/GÜN + kredi-bitince-cooldown — hepsi canlıda E2E kanıtlı
 - Sıradaki: Faz 1b (ai_solutions önbellek + gece vardiyası), PAYMENT_INFO gerçek IBAN
+
+## 1 Ekim 2026 - Perşembe — Pivot geçiş boşluğu: mevcut free satırlar 20'de kalmış
+
+### 🐛 Canlı gözlem (kullanıcı bildirimi)
+- Dashboard "15/20 AI kredisi" gösteriyordu — V2'de free = 3/GÜN olmalıydı
+- Kök neden: credit_pivot_gunluk.sql yalnızca pro/premium backfill'i + YENİ kullanıcı seed'ini güncellemişti; MEVCUT free satırları (3 kullanıcı) V1'den kalan limit=20 ile kalmış
+- Dönem bitip ilk lazy rollover'da 3/3 olacaktı (rollover doğru yazıyor) ama geçiş döneminde tutarsız görüntü + arada 20 kredi harcanabilirdi
+
+### ✅ Panzehir
+- `database/free_3_gecis.sql` (kullanıcı çalıştırdı): free satırlar limit=3, kalan=LEAST(kalan,3)
+- Doğrulama: 3 kullanıcı da "free / limit 3", asiri_kredi=0
+- Commit 52f28cf push edildi (cooldown SQL + baseline + GUNLUK)
+
+### Session Bitişi (güncel)
+- Ders: pivot migration'larında YENİ seed + backfill yetmez — MEVCUT tüm plan satırlarının yeni modele çekildiği ayrıca doğulanmalı (plan/limit dağılım sorgusu standart kontrol listesine girdi)
