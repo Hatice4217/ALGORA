@@ -5,8 +5,10 @@ import { PLAN_LIMITS } from '../../../../../lib/subscription-config';
 
 // POST /api/subscription/admin/review — ödeme talebini onayla/reddet.
 // Body: { claim_id, action: 'approve' | 'reject' }
-// Approve = YENİ 1 aylık dönem: plan güncellenir, kredi limit'e resetlenir,
-// period_start = onay anı, period_end = onay + 1 ay + 'plan_change' transaction kaydı.
+// Approve (V2 günlük kota modeli — credit_pivot_gunluk.sql):
+//   paid_until = onay + 1 AY (satın alma süresi — plan bitişi budur)
+//   period_end = onay + 1 GÜN (günlük kota dönemi; rollover her gün yeniler)
+//   credits = günlük plan limiti (PLAN_LIMITS — pro/premium 20) + 'plan_change' tx.
 export async function POST(request: NextRequest) {
   try {
     if (!verifyAdminKey(request.headers.get('x-admin-key'))) {
@@ -61,11 +63,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, status: 'rejected' });
     }
 
-    // 2) Approve: aboneliği yeni dönemle güncelle
+    // 2) Approve: satın alma süresi (paid_until) +1 ay; kota dönemi günlük (+1 gün)
     const plan = claim.plan as 'pro' | 'premium';
-    const limit = PLAN_LIMITS[plan];
+    const limit = PLAN_LIMITS[plan]; // günlük kredi (pro/premium: 20)
+    const paidUntil = new Date(now);
+    paidUntil.setMonth(paidUntil.getMonth() + 1);
     const periodEnd = new Date(now);
-    periodEnd.setMonth(periodEnd.getMonth() + 1);
+    periodEnd.setDate(periodEnd.getDate() + 1);
 
     const { data: subscription, error: subError } = await adminClient
       .from('subscriptions')
@@ -77,6 +81,7 @@ export async function POST(request: NextRequest) {
         credits_limit: limit,
         period_start: now.toISOString(),
         period_end: periodEnd.toISOString(),
+        paid_until: paidUntil.toISOString(),
       })
       .select()
       .single();

@@ -26,7 +26,10 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   credits_remaining INTEGER NOT NULL DEFAULT 20 CHECK (credits_remaining >= 0),
   credits_limit INTEGER NOT NULL DEFAULT 20 CHECK (credits_limit > 0),
   period_start TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  period_end TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW() + INTERVAL '1 month',
+  -- V2 (credit_pivot_gunluk.sql): period_end ARTIK günlük kota dönemidir
+  -- (herkes 1 gün); plan bitişi paid_until'tedir (NULL = free)
+  period_end TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW() + INTERVAL '1 day',
+  paid_until TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -37,7 +40,8 @@ CREATE TABLE IF NOT EXISTS credit_transactions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   amount INTEGER NOT NULL CHECK (amount <> 0),
-  reason TEXT NOT NULL CHECK (reason IN ('generation', 'monthly_reset', 'plan_change', 'admin_adjust', 'refund')),
+  -- 'higher_brain': V2 Üst Beyin (AI Özel Hoca) tüketimi (credit_pivot_gunluk.sql)
+  reason TEXT NOT NULL CHECK (reason IN ('generation', 'monthly_reset', 'plan_change', 'admin_adjust', 'refund', 'higher_brain')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -145,7 +149,8 @@ CREATE TRIGGER update_payment_claims_updated_at
 -- Atomik kredi düşme: yalnızca credits_remaining > 0 iken günceller (yarış koşulu güvenli).
 -- Başarılıysa güncel kalan krediyi (integer), kredi yoksa NULL döndürür.
 -- Transaction kaydı aynı işlem içinde yazılır.
--- Çağrım: service-role client ile RPC (RLS bypass) — app/api/questions/generate/route.ts
+-- V2: krediyi yalnızca Üst Beyin (/api/questions/solution) tüketir → reason 'higher_brain'.
+-- Çağrım: service-role client ile RPC (RLS bypass) — app/api/questions/solution/route.ts
 CREATE OR REPLACE FUNCTION deduct_credit(p_user_id uuid)
 RETURNS integer AS $$
 DECLARE
@@ -162,7 +167,7 @@ BEGIN
   END IF;
 
   INSERT INTO credit_transactions (user_id, amount, reason)
-  VALUES (p_user_id, -1, 'generation');
+  VALUES (p_user_id, -1, 'higher_brain');
 
   RETURN v_remaining;
 END;
@@ -187,19 +192,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- rollover_subscription(p_user_id)
--- Lazy rollover: period_end geçmişse yeni dönem açar, kredi plan limitine reset.
--- DÖNEM UZUNLUĞU plana göre: free = 1 GÜN (günlük 20 soru), pro/premium = 1 AY.
+-- rollover_subscription(p_user_id) — V2 GÜNLÜK dönem (credit_pivot_gunluk.sql)
+-- Lazy rollover: period_end geçmişse yeni GÜN açar, kredi günlük plan limitine resetlenir.
+-- Ücretli planın satın alma süresi paid_until'tedir: geçince plan otomatik free'e düşer.
 -- Dönem henüz bitmemişse satırı olduğu gibi döndürür (no-op). Yarış koruması:
 -- UPDATE ... WHERE period_end < NOW() — paralel çağrılarda yalnızca biri resetler.
--- Çağrım: YALNIZCA service-role (GET /api/subscription ve generate route) — kullanıcı
+-- Çağrım: YALNIZCA service-role (GET /api/subscription ve soru endpoint'leri) — kullanıcı
 -- subscriptions üzerinde UPDATE yetkisine sahip DEĞIL (yetki yükseltme koruması).
 CREATE OR REPLACE FUNCTION rollover_subscription(p_user_id uuid)
 RETURNS subscriptions AS $$
 DECLARE
   v_row subscriptions;
   v_limit integer;
-  v_period interval;
 BEGIN
   SELECT * INTO v_row FROM subscriptions WHERE user_id = p_user_id;
   IF NOT FOUND THEN
@@ -210,25 +214,44 @@ BEGIN
     RETURN v_row; -- dönem geçerli, dokunma
   END IF;
 
-  -- PLAN_LIMITS ile senkron: free 20 / pro 1000 / premium 5000
-  v_limit := CASE v_row.plan
-    WHEN 'pro' THEN 1000
-    WHEN 'premium' THEN 5000
-    ELSE 20
-  END;
+  -- (a) Ücretli planın satın alma süresi dolmuş → free'e düşür
+  IF v_row.plan <> 'free' AND (v_row.paid_until IS NULL OR v_row.paid_until < NOW()) THEN
+    UPDATE subscriptions
+    SET plan = 'free',
+        status = 'active',
+        paid_until = NULL,
+        credits_remaining = 3,
+        credits_limit = 3,
+        period_start = NOW(),
+        period_end = NOW() + INTERVAL '1 day'
+    WHERE user_id = p_user_id
+      AND period_end < NOW()
+    RETURNING * INTO v_row;
 
-  -- Dönem uzunluğu: free günlük, ücretli paketler aylık (ödeme dönemiyle uyumlu)
-  v_period := CASE v_row.plan
-    WHEN 'pro' THEN INTERVAL '1 month'
-    WHEN 'premium' THEN INTERVAL '1 month'
-    ELSE INTERVAL '1 day'
+    IF v_row IS NULL THEN
+      -- Paralel istek az önce güncelledi; taze satırı dön
+      SELECT * INTO v_row FROM subscriptions WHERE user_id = p_user_id;
+      RETURN v_row;
+    END IF;
+
+    INSERT INTO credit_transactions (user_id, amount, reason)
+    VALUES (p_user_id, 3, 'monthly_reset');
+
+    RETURN v_row;
+  END IF;
+
+  -- (b) Normal GÜNLÜK reset — PLAN_LIMITS ile senkron: free 3 / pro 20 / premium 20
+  v_limit := CASE v_row.plan
+    WHEN 'pro' THEN 20
+    WHEN 'premium' THEN 20
+    ELSE 3
   END;
 
   UPDATE subscriptions
   SET credits_remaining = v_limit,
       credits_limit = v_limit,
       period_start = NOW(),
-      period_end = NOW() + v_period
+      period_end = NOW() + INTERVAL '1 day'
   WHERE user_id = p_user_id
     AND period_end < NOW()
   RETURNING * INTO v_row;
@@ -284,10 +307,10 @@ BEGIN
     NEW.id,
     'free',
     'active',
-    20,                              -- PLAN_LIMITS.free (lib/subscription-config.ts ile senkron)
-    20,                              -- PLAN_LIMITS.free
+    3,                               -- PLAN_LIMITS.free (AI Üst Beyin kredisi / gün — V2 pivot)
+    3,                               -- PLAN_LIMITS.free
     NOW(),
-    NOW() + INTERVAL '1 day'         -- free dönemi GÜNLÜK (günlük 20 soru)
+    NOW() + INTERVAL '1 day'         -- dönem GÜNLÜK
   )
   ON CONFLICT (user_id) DO NOTHING;  -- idempotent
   RETURN NEW;
@@ -320,10 +343,10 @@ SELECT
   id,
   'free',
   'active',
-  20,                              -- PLAN_LIMITS.free
-  20,                              -- PLAN_LIMITS.free
+  3,                               -- PLAN_LIMITS.free (AI Üst Beyin kredisi / gün — V2 pivot)
+  3,                               -- PLAN_LIMITS.free
   NOW(),
-  NOW() + INTERVAL '1 day'         -- free dönemi GÜNLÜK
+  NOW() + INTERVAL '1 day'         -- dönem GÜNLÜK
 FROM auth.users
 ON CONFLICT (user_id) DO NOTHING;
 

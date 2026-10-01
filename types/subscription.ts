@@ -5,8 +5,9 @@ export type PlanId = 'free' | 'pro' | 'premium';
 export type SubscriptionStatus = 'active' | 'pending' | 'cancelled';
 
 export type CreditTransactionReason =
-  | 'generation' // -1: AI soru üretimi tüketimi
-  | 'monthly_reset' // +N: dönem yenilenmesi
+  | 'generation' // -1: eski anlık üretim tüketimi (V2'de emekli; tarihsel kayıtlarda)
+  | 'higher_brain' // -1: AI Özel Hoca (Üst Beyin) derin çözüm tüketimi — V2
+  | 'monthly_reset' // +N: günlük kredi yenilenmesi
   | 'plan_change' // +N: paket yükseltmesi (approve)
   | 'admin_adjust' // +N/-N: admin manuel bakiye müdahalesi
   | 'refund'; // +1: Gemini hata iadesi
@@ -33,8 +34,9 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     price: 0,
     description: 'Sistemi keşfetmek ve yapay zekanın gücünü test etmek isteyenler için.',
     features: [
-      'Günlük 20 AI soru kredisi — her gün yenilenir',
-      'Temel seviye ilerleme takibi',
+      'Sınırsız soru çözümü (soru havuzundan, ücretsiz)',
+      'Günlük 3 AI Üst Beyin kredisi — her gün yenilenir',
+      'Her soruda 3 adet ücretsiz Sokratik ipucu',
       'Platform arayüzüne tam erişim',
     ],
   },
@@ -44,10 +46,10 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     price: 199,
     description: 'Düzenli çalışan ve eksiklerini nokta atışı görmek isteyen öğrenciler için optimize edilmiştir.',
     features: [
-      'Aylık 1000 AI soru/token kredisi',
+      'Sınırsız soru çözümü + günlük 20 AI Üst Beyin kredisi',
       'Detaylı yapay zeka konu ve eksik analizi',
+      'Eksik Kapatma modu: yanlışların klonlanmış hâlleriyle pratik',
       'Geçmişe dönük performans ve ilerleme grafikleri',
-      'Aylık standart gelişim raporu',
     ],
     highlighted: true,
   },
@@ -57,7 +59,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     price: 499,
     description: 'Sınav sürecinde bir rehbere ihtiyaç duyan ve sınırları kaldırmak isteyenler için.',
     features: [
-      'Sınırsız (Adil kullanım kotalı) AI etkileşimi',
+      'Sınırsız soru çözümü + günlük 20 AI Üst Beyin kredisi',
       'Yapay Zeka Koçluk Sistemi (Haftalık çalışma programı)',
       'Anlık rota hesaplama ve motivasyon bildirimleri',
       'Veliler için haftalık detaylı e-posta raporları',
@@ -75,6 +77,8 @@ export interface Subscription {
   credits_limit: number;
   period_start: string;
   period_end: string;
+  // V2: ücretli planın satın alma bitişi (NULL = free). period_end günlük kota dönemidir.
+  paid_until?: string | null;
   created_at?: string;
   updated_at?: string;
 }

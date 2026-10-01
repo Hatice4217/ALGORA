@@ -1,15 +1,21 @@
 // Paket kota ve ödeme yapılandırması (sunucu tarafı zorlama için tek kaynak)
 import type { PlanId } from '@/types/subscription';
 
-// Kredi limitleri. DÖNEM UZUNLUKLARI FARKLIDIR:
-//   free    → 20 soru / GÜN   (her gün yenilenir — SQL tarafı: INTERVAL '1 day')
-//   pro     → 1000 soru / AY  (ödeme dönemiyle uyumlu — INTERVAL '1 month')
-//   premium → 5000 soru / AY
-// DİKKAT: database/subscriptions.sql içindeki rollover/seed fonksiyonlarıyla senkron tutulmalı.
+// V2 KREDİ MODELİ (30 Eylül 2026, BAP danışman kararı — credit_pivot_gunluk.sql):
+// Kredi artık "AI Özel Hoca (Üst Beyin)" kredisidir. Havuzdan soru çekmek/çözmek
+// SINIRSIZ ve ÜCRETSİZDİR; kredi yalnızca derin çözüm/anlatım talebinde düşer.
+// HEPSİ GÜNLÜKTÜR (dönem = 1 gün; gece yarısı lazy rollover ile yenilenir):
+//   free    → 3 Üst Beyin / GÜN
+//   pro     → 20 Üst Beyin / GÜN
+//   premium → 20 Üst Beyin / GÜN
+// DİKKAT: database/subscriptions.sql ve database/credit_pivot_gunluk.sql içindeki
+// rollover/seed fonksiyonlarıyla senkron tutulmalıdır (SQL tarafında 3/20/20).
+// NOT: Ücretli planın satın alma süresi subscriptions.paid_until'tedir (aylık);
+// period_end ise günlük kota dönemidir — ikisi artık farklı kavramlardır.
 export const PLAN_LIMITS: Record<PlanId, number> = {
-  free: 20,
-  pro: 1000,
-  premium: 5000,
+  free: 3,
+  pro: 20,
+  premium: 20,
 };
 
 // Manuel ödeme (havale/EFT) bilgileri.

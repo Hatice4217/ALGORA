@@ -13,6 +13,9 @@ interface Question {
   difficulty?: string;
   topic?: string;
   exam_type?: string; // TYT | AYT | YDT (paylaşılan Question tipiyle aynı alan adı)
+  // V2 havuz akışı: 3'lü Sokratik ipucu (eski havuz sorularında yok) + kaynak rozeti
+  hints?: string[];
+  source?: 'pool' | 'generated';
 }
 
 interface Difficulty {
@@ -41,6 +44,16 @@ interface QuestionPracticeProps {
   cevapSec: (index: number) => void;
   sonCozulenler: RecentAnswer[];
   kayitIncele: (kayit: RecentAnswer) => void;
+  // V2: Sokratik ipuçları (ücretsiz, kademeli) + Üst Beyin (-1 kredi) + bildirim
+  ipuclar: string[];
+  acilanIpucu: number;
+  ipucuAc: () => void;
+  ustBeyinMetni: string | null;
+  ustBeyinIstiyor: boolean;
+  ustBeyinIste: () => void;
+  bildirimDurumu: null | 'gonderildi' | 'askida';
+  bildiriliyor: boolean;
+  soruBildir: () => void;
   modalKapat: () => void;
 }
 
@@ -94,6 +107,15 @@ export function QuestionPractice({
   cevapSec,
   sonCozulenler,
   kayitIncele,
+  ipuclar,
+  acilanIpucu,
+  ipucuAc,
+  ustBeyinMetni,
+  ustBeyinIstiyor,
+  ustBeyinIste,
+  bildirimDurumu,
+  bildiriliyor,
+  soruBildir,
   modalKapat,
 }: QuestionPracticeProps) {
   // 3 adımlı akış: 1 = sınav türü, 2 = ders, 3 = konu + zorluk + üretim.
@@ -157,7 +179,7 @@ export function QuestionPractice({
                     Soru Çözmeye Başla
                   </h2>
                   <p className="text-slate-500 mb-8 text-sm">
-                    1. Adım: Hangi sınav için soru üretmek istersin?
+                    1. Adım: Hangi sınav için çalışmak istersin?
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -242,7 +264,7 @@ export function QuestionPractice({
                     {examType} - {seciliDers}
                   </h2>
                   <p className="text-slate-500 mb-8 text-sm">
-                    3. Adım: Konu ve zorluk seviyesini seç, sonra soru üret
+                    3. Adım: Konu ve zorluk seviyesini seç, teste başla
                   </p>
 
                   <div className="space-y-8 flex-1">
@@ -292,7 +314,7 @@ export function QuestionPractice({
                       </div>
                     </div>
 
-                    {/* AI Butonu — konu seçilmeden devre dışı */}
+                    {/* Testi Başlat — havuzdan anında gelir; havuz boşsa yapay zeka üretir */}
                     <button
                       onClick={soruUret}
                       disabled={soruUretiliyor || !seciliKonu}
@@ -307,18 +329,21 @@ export function QuestionPractice({
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                             <span>
-                              Yapay Zeka Soru Üretiliyor... ({beklemeSaniye} sn)
+                              Soru hazırlanıyor... ({beklemeSaniye} sn)
                               {beklemeSaniye >= 30 && ' — kaliteli sorular biraz zaman alır'}
                             </span>
                           </>
                         ) : (
                           <>
                             <span className="text-xl">✨</span>
-                            <span>{seciliKonu ? 'Yapay Zeka ile Soru Üret' : 'Önce konu seçin'}</span>
+                            <span>{seciliKonu ? 'Testi Başlat' : 'Önce konu seçin'}</span>
                           </>
                         )}
                       </span>
                     </button>
+                    <p className="text-xs text-slate-400 text-center -mt-4">
+                      Sorular havuzdan anında gelir; havuz boşsa yapay zeka yeni soru üretir. Soru çözmek sınırsız ve ücretsizdir.
+                    </p>
                   </div>
                 </>
               )}
@@ -411,6 +436,16 @@ export function QuestionPractice({
                   {difficultyEtiketleri[mevcutSoru.difficulty ?? ''] ??
                     (seciliZorluk === 'baslangic' ? 'Başlangıç' : seciliZorluk === 'orta' ? 'Orta' : 'İleri')}
                 </span>
+                {mevcutSoru.source === 'pool' && (
+                  <span className="px-3 py-1 rounded-lg text-sm font-medium bg-emerald-100 text-emerald-700">
+                    📚 Havuz
+                  </span>
+                )}
+                {mevcutSoru.source === 'generated' && (
+                  <span className="px-3 py-1 rounded-lg text-sm font-medium bg-amber-100 text-amber-700">
+                    ✨ Yeni üretildi
+                  </span>
+                )}
               </div>
               <button
                 onClick={modalKapat}
@@ -471,6 +506,39 @@ export function QuestionPractice({
                     })}
                   </div>
 
+                  {/* V2: Takıldın mı? — Sokratik ipuçları (ücretsiz, kademeli açılır).
+                      İpuçları çözümü ifşa etmez; sorunun ipucusu yoksa (eski havuz
+                      kayıtları) kart hiç render edilmez. */}
+                  {!cevapGoster && ipuclar.length > 0 && (
+                    <div className="bg-sky-50 border border-sky-100 rounded-xl p-4">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <h4 className="font-semibold text-slate-800 flex items-center gap-2">
+                          <svg className="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          </svg>
+                          Takıldın mı?
+                        </h4>
+                        <span className="text-xs text-slate-500">Ücretsizdir — çözümü ifşa etmez, yön gösterir.</span>
+                      </div>
+                      {acilanIpucu > 0 && (
+                        <ol className="mt-3 space-y-2 list-decimal list-inside">
+                          {ipuclar.slice(0, acilanIpucu).map((ipucu, i) => (
+                            <li key={i} className="text-sm text-slate-700">{ipucu}</li>
+                          ))}
+                        </ol>
+                      )}
+                      {acilanIpucu < ipuclar.length && (
+                        <button
+                          onClick={ipucuAc}
+                          disabled={soruUretiliyor}
+                          className="mt-3 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          💡 {acilanIpucu + 1}. İpucu Al (ücretsiz)
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {cevapGoster && (
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                       <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
@@ -482,6 +550,51 @@ export function QuestionPractice({
                       <p className="text-slate-600">{mevcutSoru.explanation}</p>
                     </div>
                   )}
+
+                  {/* V2: Üst Beyin (Özel Hoca) — 1 kredi karşılığı adım adım derin anlatım.
+                      Buton HER ZAMAN açıktır (kullanıcı kararı); ipucu kullanımına bağlı değildir. */}
+                  <div className="border border-purple-200 rounded-xl p-4 bg-white">
+                    {!ustBeyinMetni ? (
+                      <>
+                        <button
+                          onClick={ustBeyinIste}
+                          disabled={ustBeyinIstiyor || soruUretiliyor}
+                          className="w-full py-3 px-4 rounded-xl bg-purple-50 border-2 border-purple-300 hover:bg-purple-100 hover:border-purple-400 text-purple-700 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="flex items-center justify-center gap-2">
+                            {ustBeyinIstiyor ? (
+                              <>
+                                <svg className="animate-spin h-5 w-5 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Üst Beyin anlatımı hazırlanıyor...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-lg">🧠</span>
+                                <span>Üst Beyin Anlatımı İste</span>
+                                <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-xs font-bold">
+                                  1 Kredi
+                                </span>
+                              </>
+                            )}
+                          </span>
+                        </button>
+                        <p className="text-xs text-slate-400 mt-2 text-center">
+                          Yapay zeka özel hoca soruyu adım adım, konunun mantığıyla birlikte anlatır.
+                        </p>
+                      </>
+                    ) : (
+                      <div>
+                        <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                          <span className="text-lg">🧠</span>
+                          Üst Beyin Anlatımı
+                        </h4>
+                        <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{ustBeyinMetni}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Üretim sürerken kilitli gövdenin üstünde spinner örtüsü */}
@@ -496,6 +609,26 @@ export function QuestionPractice({
                 )}
               </div>
 
+              {/* V2: Hatalı soru bildirimi — kitle kaynaklı kalite kontrolü.
+                  2. FARKLI kullanıcının bildirimiyle soru havuzdan otomatik askıya alınır. */}
+              <div className="flex items-center justify-between gap-3 flex-wrap -mt-2">
+                {bildirimDurumu ? (
+                  <p className={`text-sm ${bildirimDurumu === 'askida' ? 'text-emerald-600 font-medium' : 'text-slate-500'}`}>
+                    {bildirimDurumu === 'askida'
+                      ? '✓ Teşekkürler! Soru havuzdan askıya alındı, kimseye tekrar gösterilmeyecek.'
+                      : '✓ Bildirimin alındı — teşekkürler!'}
+                  </p>
+                ) : (
+                  <button
+                    onClick={soruBildir}
+                    disabled={bildiriliyor || soruUretiliyor}
+                    className="text-sm text-slate-400 hover:text-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {bildiriliyor ? 'Gönderiliyor...' : '⚠️ Hatalı Soru Bildir'}
+                  </button>
+                )}
+              </div>
+
               <button
                 onClick={soruUret}
                 disabled={soruUretiliyor || !seciliKonu}
@@ -507,7 +640,7 @@ export function QuestionPractice({
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Sıradaki Soru Üretiliyor... ({beklemeSaniye} sn)</span>
+                    <span>Sıradaki soru hazırlanıyor... ({beklemeSaniye} sn)</span>
                   </span>
                 ) : (
                   'Sıradaki Soru'

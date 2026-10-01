@@ -53,9 +53,10 @@ export function QuotaExhaustedModal({ periodEnd, onClose, onUpgrade }: QuotaExha
             </svg>
           </div>
 
-          <h3 className="text-xl font-bold text-gray-900">Günlük Soru Hakkınız Doldu</h3>
+          <h3 className="text-xl font-bold text-gray-900">Günlük AI Hoca Hakkınız Doldu</h3>
           <p className="text-sm text-gray-600 mt-2">
-            Bugünlük {PLAN_LIMITS.free} soru üretim hakkınızın tamamını kullandınız.
+            Bugünlük {PLAN_LIMITS.free} AI Üst Beyin kredinizin tamamını kullandınız.
+            Soru çözmeye havuzdan sınırsız devam edebilirsiniz.
           </p>
         </div>
 
@@ -77,8 +78,8 @@ export function QuotaExhaustedModal({ periodEnd, onClose, onUpgrade }: QuotaExha
           <div>
             <p className="text-sm font-semibold text-gray-800">
               {periodEnd
-                ? `Soru hakkınız ${formatDate(periodEnd)} tarihinde yenilenecek`
-                : 'Soru hakkınız yarın yenilenecek'}
+                ? `AI krediniz ${formatDate(periodEnd)} tarihinde yenilenecek`
+                : 'AI krediniz yarın yenilenecek'}
             </p>
             {periodEnd && (
               <p className="text-2xl font-bold text-purple-600 mt-1.5">
@@ -94,9 +95,9 @@ export function QuotaExhaustedModal({ periodEnd, onClose, onUpgrade }: QuotaExha
         {/* Yükseltme seçeneği */}
         <div className="mt-5 text-center">
           <p className="text-sm text-gray-600">
-            Beklemek istemiyor musunuz? {PLANS.pro.name} paketine geçerek hemen{' '}
-            <span className="font-semibold text-gray-800">ayda {PLAN_LIMITS.pro} soru</span> hakkı
-            kazanmaya devam edin.
+            Beklemek istemiyor musunuz? {PLANS.pro.name} paketine geçerek her gün{' '}
+            <span className="font-semibold text-gray-800">{PLAN_LIMITS.pro} AI Üst Beyin kredisi</span> ile
+            devam edin.
           </p>
           <div className="mt-4">
             <Button variant="primary" size="lg" fullWidth onClick={onUpgrade}>

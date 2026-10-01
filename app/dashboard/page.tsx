@@ -97,6 +97,16 @@ export default function DashboardPage() {
   // "Son Çözülenler" paneli (gerçek answers verisi; mock değil)
   const [recentAnswers, setRecentAnswers] = useState<RecentAnswer[]>([]);
   const [gunlukSeri, setGunlukSeri] = useState(0);
+  // V2 havuz akışı: oturumda görülen sorular (havuza exclude edilir — tekrar gelmesin)
+  const [gorulenSorular, setGorulenSorular] = useState<string[]>([]);
+  // Açılan Sokratik ipucu sayısı (ipuçları ücretsiz, kademeli açılır)
+  const [acilanIpucu, setAcilanIpucu] = useState(0);
+  // Üst Beyin (Özel Hoca) derin anlatımı — 1 kredi karşılığı
+  const [ustBeyinMetni, setUstBeyinMetni] = useState<string | null>(null);
+  const [ustBeyinIstiyor, setUstBeyinIstiyor] = useState(false);
+  // Hatalı soru bildirimi durumu ('askida' = soru havuzdan otomatik askıya alındı)
+  const [bildirimDurumu, setBildirimDurumu] = useState<null | 'gonderildi' | 'askida'>(null);
+  const [bildiriliyor, setBildiriliyor] = useState(false);
 
   // Initialize userName from localStorage immediately (prevents flash)
   useEffect(() => {
@@ -306,6 +316,10 @@ export default function DashboardPage() {
 
   // "Son Çözülenler" kaydındaki soruyu cevaplarıyla birlikte tekrar görüntüle
   const reviewRecentAnswer = (kayit: RecentAnswer) => {
+    // İnceleme modunda ipucu/Üst Beyin/bildirim state'leri taze başlasın
+    setAcilanIpucu(0);
+    setUstBeyinMetni(null);
+    setBildirimDurumu(null);
     setCurrentQuestion({
       id: kayit.question.id,
       question: kayit.question.question_text,
@@ -323,13 +337,19 @@ export default function DashboardPage() {
     setShowAnswer(true);
   };
 
+  // V2 havuz akışı: soru ARTIK üretilmez, havuzdan GETİRİLİR (kredisiz).
+  // Havuzda uygun soru varsa anında döner; yoksa Gemini üretip havuza ekler.
   const generateQuestion = async () => {
     setIsGeneratingQuestion(true);
     setShowAnswer(false);
     setSelectedAnswer(null);
+    // Yeni soru için ipucu/Üst Beyin/bildirim state'leri taze başlar
+    setAcilanIpucu(0);
+    setUstBeyinMetni(null);
+    setBildirimDurumu(null);
 
     try {
-      const response = await authFetch('/api/questions/generate', {
+      const response = await authFetch('/api/questions/next', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -339,20 +359,15 @@ export default function DashboardPage() {
           examType,
           // Sıradaki sorunun öncekinden farklı olması için mevcut soru metnini gönder
           previous_question: currentQuestion?.question ?? null,
+          // Bu oturumda görülen sorular havuzdan hariç tutulur (mükerrer önleme)
+          exclude: gorulenSorular,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Sunucu hatası' }));
-
-        // Kota bitti: önce yenileme tarihi bilgilendirmesi (ödeme akışı kullanıcı isterse)
-        if (response.status === 402 && errorData.code === 'CREDIT_EXHAUSTED') {
-          setQuotaExhausted({ periodEnd: errorData.data?.period_end ?? null });
-          return;
-        }
-
         console.error('API Error:', errorData.error);
-        alert(`Soru üretilemedi: ${errorData.error || 'Bilinmeyen hata'}`);
+        alert(`Soru alınamadı: ${errorData.error || 'Bilinmeyen hata'}`);
         return;
       }
 
@@ -361,7 +376,59 @@ export default function DashboardPage() {
         setCurrentQuestion(data.data);
         // Soru artık ekranda: çözme süresi sayacını sıfırdan başlat
         questionStartedAtRef.current = Date.now();
-        // Kredi sayacını güncelle
+        // Oturum exclude listesi (route zaten 100 id ile tavanlı)
+        if (typeof data.data.id === 'string') {
+          setGorulenSorular((prev) => [...prev, data.data.id].slice(-100));
+        }
+      } else {
+        console.error('API Error:', data.error);
+        alert(`Soru alınamadı: ${data.error || 'Bilinmeyen hata'}`);
+      }
+    } catch (error) {
+      console.error('Could not fetch question:', error);
+      alert('Soru alınırken bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setIsGeneratingQuestion(false);
+    }
+  };
+
+  // Ücretsiz Sokratik ipucu: bir sonrakini açar (çözüm ifşa etmez, yön gösterir)
+  const ipucuAc = () => {
+    const toplam = currentQuestion?.hints?.length ?? 0;
+    setAcilanIpucu((n) => Math.min(n + 1, toplam));
+  };
+
+  // Üst Beyin (Özel Hoca): 1 kredi karşılığı adım adım derin anlatım.
+  // 402 CREDIT_EXHAUSTED → kota bilgilendirmesi (ödeme akışı kullanıcı isterse)
+  const ustBeyinIste = async () => {
+    // Handler guard: id yoksa / istek sürüyorsa / anlatım zaten varsa dokunma
+    if (!currentQuestion?.id || ustBeyinIstiyor || ustBeyinMetni) return;
+    setUstBeyinIstiyor(true);
+    try {
+      const response = await authFetch('/api/questions/solution', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question_id: currentQuestion.id,
+          selected_answer: selectedAnswer,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Sunucu hatası' }));
+        if (response.status === 402 && errorData.code === 'CREDIT_EXHAUSTED') {
+          setQuotaExhausted({ periodEnd: errorData.data?.period_end ?? null });
+          return;
+        }
+        console.error('API Error:', errorData.error);
+        alert(`Üst Beyin anlatımı alınamadı: ${errorData.error || 'Bilinmeyen hata'}`);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setUstBeyinMetni(data.data.solution);
+        // Kredi sayacını güncelle (üst bardaki bakiye anında düşsün)
         if (typeof data.data.credits_remaining === 'number') {
           setSubscriptionSummary((prev) =>
             prev
@@ -377,13 +444,43 @@ export default function DashboardPage() {
         }
       } else {
         console.error('API Error:', data.error);
-        alert(`Soru üretilemedi: ${data.error || 'Bilinmeyen hata'}`);
+        alert(`Üst Beyin anlatımı alınamadı: ${data.error || 'Bilinmeyen hata'}`);
       }
     } catch (error) {
-      console.error('Could not generate question:', error);
-      alert('Soru üretirken bir hata oluştu. Lütfen tekrar deneyin.');
+      console.error('Could not fetch solution:', error);
+      alert('Üst Beyin anlatımı alınırken bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
-      setIsGeneratingQuestion(false);
+      setUstBeyinIstiyor(false);
+    }
+  };
+
+  // Hatalı soru bildirimi: kitle kaynaklı kalite kontrolü (2. farklı bildirim → soru askıya alınır)
+  const soruBildir = async () => {
+    if (!currentQuestion?.id || bildiriliyor || bildirimDurumu) return;
+    setBildiriliyor(true);
+    try {
+      const response = await authFetch('/api/questions/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question_id: currentQuestion.id }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Sunucu hatası' }));
+        console.error('API Error:', errorData.error);
+        alert(`Bildirim gönderilemedi: ${errorData.error || 'Bilinmeyen hata'}`);
+        return;
+      }
+      const data = await response.json();
+      if (data.success) {
+        setBildirimDurumu(data.data?.status === 'suspended' ? 'askida' : 'gonderildi');
+      } else {
+        alert(`Bildirim gönderilemedi: ${data.error || 'Bilinmeyen hata'}`);
+      }
+    } catch (error) {
+      console.error('Could not report question:', error);
+      alert('Bildirim gönderilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setBildiriliyor(false);
     }
   };
 
@@ -694,10 +791,22 @@ export default function DashboardPage() {
             cevapSec={selectAnswer}
             sonCozulenler={recentAnswers}
             kayitIncele={reviewRecentAnswer}
+            ipuclar={currentQuestion?.hints ?? []}
+            acilanIpucu={acilanIpucu}
+            ipucuAc={ipucuAc}
+            ustBeyinMetni={ustBeyinMetni}
+            ustBeyinIstiyor={ustBeyinIstiyor}
+            ustBeyinIste={ustBeyinIste}
+            bildirimDurumu={bildirimDurumu}
+            bildiriliyor={bildiriliyor}
+            soruBildir={soruBildir}
             modalKapat={() => {
               setCurrentQuestion(null);
               setShowAnswer(false);
               setSelectedAnswer(null);
+              setAcilanIpucu(0);
+              setUstBeyinMetni(null);
+              setBildirimDurumu(null);
             }}
           />
         )}

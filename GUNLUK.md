@@ -2762,3 +2762,29 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 ### Session Bitişi
 - Kullanıcıya uyarı: kendi hesabıyla canlı test ederken 3 yanlış yazarsa hesabı 1 saat kilitlenir — test edecekse 2 yanlış yeter (kalanHak mesajını görür)
 - Ders: fail-open tasarımı deploy sırasını esnetti — kod önce canlıya gidebildi, migration sonra çalıştı, özellik o an aktifleşti
+
+## 30 Eylül 2026 - Çarşamba — ALGORA V2 Faz 1a: Havuz + Üst Beyin + kredi pivotu TAMAMLANDI (deploy bekliyor)
+
+### 🎯 Ürün kararı (BAP danışman toplantısı — pivot)
+- "Anlık üretim" modelinden **"Havuz + Üst Beyin"** modeline geçiş: sorular havuzdan gelir (sınırsız + ücretsiz), kredi artık yalnızca "AI Üst Beyin (Özel Hoca)" derin anlatımında harcanır
+- Kota: free 3/GÜN, pro 20/GÜN, premium 20/GÜN (hepsi günlük; paid_until kolonu satın alma bitişini tutar, period_end günlük kota dönemidir)
+- 3 Sokratik ipucu ücretsiz (çözümü ifşa etmez — Pisagor altın kuralı), Üst Beyin -1 kredi, kitle kaynaklı kalite: 2. FARKlı kullanıcının bildirimiyle soru otomatik askıya alınır
+
+### ✅ Faz 1a (4 iş, hepsi tamam + E2E kanıtlı)
+- ① `database/question_pool_faz1a.sql` (KULLANICI ÇALIŞTIRDI — 51 soruluk havuz): questions'a hints/status/clone_of/intended_for; question_reports tablosu; get_next_pool_question + report_question RPC'leri (üçlü REVOKE); kısmi index
+- ② `/api/questions/next` havuz-ilk route: pool HIT ~0.2 sn kredisiz; MISS → Gemini üretir, ipuçlarıyla havuza ekler (boş kova E2E: 5.8s → HIT 159ms, 36× hızlanma)
+- ③ Kredi pivotu: `database/credit_pivot_gunluk.sql` (⚠️ DEPLOY ANINDA çalıştırılacak), PLAN_LIMITS 3/20/20, rollover v2 (paid_until geçince otomatik free), review route paid_until yazar, tüm paket metinleri V2'ye çevrildi
+- ④ UI: dashboard /next'e bağlandı (kredi düşmez), "Testi Başlat"/"Sıradaki Soru" akışı, kaynak rozeti (📚 Havuz / ✨ Yeni), 💡 kademeli ipucu kartı, 🧠 "Üst Beyin Anlatımı İste — 1 Kredi" (her zaman açık), ⚠️ Hatalı Soru Bildir; yeni `/api/questions/solution` (deduct→Gemini→refund deseni) + `/api/questions/report`
+
+### 🐛 Probe'un yakaladığı gerçek bug
+- report_question RPC jsonb'yi `{success, question_status}` ANAHTARIYLA döndürüyor — route `data`'yı string sanınca askıya alma UI'a hep 'active' olarak yansıyordu (DB davranışı DOĞRU'ydu, 2. bildirimde soru gerçekten suspend oluyordu). Route parse'ı düzeltildi; ALREADY_REPORTED/QUESTION_NOT_FOUND da işlendi
+
+### 🧪 E2E probe (2 test kullanıcısı, temizlikle) 10/10 PASS
+- Pool HIT ✓ · 1. bildirim active ✓ · tekrar bildirim ALREADY_REPORTED ✓ · 2. kullanıcı → suspended ✓ (DB: status=suspended + 2 rapor) · Üst Beyin 200 + kredi tam 1 düştü ✓ · tx izi ✓ · 0 kredi → 402 CREDIT_EXHAUSTED ✓ · sahte Gemini key → 502 + tam iade (kredi net 0, +1 refund tx) ✓
+- Not: canlı DB henüz pivot SQL'siz olduğundan free 20 kredi + 'generation' reason gördü — migration sonrası 3 kredi + 'higher_brain' olur (probe migration-bağımsız yazıldı)
+
+### Session Bitişi
+- **Deploy kuralı (KRİTİK): kod push + `credit_pivot_gunluk.sql` AYNI adımda** — SQL önce çalışırsa eski UI free'i 3 üretime kıstar; kod önce giderse approve route paid_until yazamaz
+- Pivot SQL'e eklendi: deduct_credit artık 'higher_brain' yazar (PackagePanel 'generation' gizlediği için yoksa Üst Beyin harcamaları geçmişte görünmezdi)
+- Açık soru: pro = premium aynı 20/gün — premium'un değer farkı netleşmeli (koçluk Faz 2/3 mü?)
+- "Merhabalar" selamlaması prompt yasaklarına rağmen geldi — ilk-cümle kuralı sıkılaştırıldı (canlıda tekrar gözlenecek)

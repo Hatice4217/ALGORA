@@ -39,8 +39,9 @@ export function PricingSection() {
           </div>
           <ul className="space-y-4 mb-8">
             {[
-              'Günlük 20 AI soru kredisi — her gün yenilenir',
-              'Temel seviye ilerleme takibi',
+              'Sınırsız soru çözümü (soru havuzundan, ücretsiz)',
+              'Günlük 3 AI Üst Beyin kredisi — her gün yenilenir',
+              'Her soruda 3 adet ücretsiz Sokratik ipucu',
               'Platform arayüzüne tam erişim'
             ].map((feature, index) => (
               <li key={index} className="flex items-start gap-3">
@@ -73,10 +74,10 @@ export function PricingSection() {
           </div>
           <ul className="space-y-4 mb-8">
             {[
-              'Aylık 1000 AI soru/token kredisi',
+              'Sınırsız soru çözümü + günlük 20 AI Üst Beyin kredisi',
               'Detaylı yapay zeka konu ve eksik analizi',
-              'Geçmişe dönük performans ve ilerleme grafikleri',
-              'Aylık standart gelişim raporu'
+              'Eksik Kapatma modu: yanlışların klonlanmış hâlleriyle pratik',
+              'Geçmişe dönük performans ve ilerleme grafikleri'
             ].map((feature, index) => (
               <li key={index} className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,7 +108,7 @@ export function PricingSection() {
           </div>
           <ul className="space-y-4 mb-8">
             {[
-              'Sınırsız (Adil kullanım kotalı) AI etkileşimi',
+              'Sınırsız soru çözümü + günlük 20 AI Üst Beyin kredisi',
               'Yapay Zeka Koçluk Sistemi (Haftalık çalışma programı)',
               'Anlık rota hesaplama ve motivasyon bildirimleri',
               'Veliler için haftalık detaylı e-posta raporları'

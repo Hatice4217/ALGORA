@@ -8,12 +8,13 @@ import { PAYMENT_INFO } from '@/lib/subscription-config';
 import { authFetch } from '@/lib/api';
 import { QuotaCountdown } from './QuotaCountdown';
 
-// Kredi hareketi sebep etiketleri (monthly_reset: free'de günlük, ücretlilerde aylık dönem yenilemesi)
-// NOT: 'generation' etiketi tip bütünlüğü için duruyor ama listede GİSTERİLMEZ (aşağıda filtrelenir) —
-// her soru üretimi (-1) listeyi günlük 20 satırla doldurup asıl olayları gömerdi.
+// Kredi hareketi sebep etiketleri (V2: monthly_reset = günlük yenileme — tüm planlar)
+// NOT: 'generation' etiketi tarihsel kayıtlar için duruyor ama listede GÖSTERİLMEZ (aşağıda filtrelenir) —
+// V2 öncesi dönemden kalan eski hareketleri gizli tutar.
 const REASON_LABELS: Record<CreditTransaction['reason'], string> = {
-  generation: 'Soru üretimi',
-  monthly_reset: 'Kredi yenileme',
+  generation: 'Soru üretimi (eski)',
+  higher_brain: 'AI Üst Beyin (Özel Hoca)',
+  monthly_reset: 'Günlük kredi yenileme',
   plan_change: 'Paket değişimi',
   admin_adjust: 'Yönetici düzeltmesi',
   refund: 'Hata iadesi',
@@ -76,7 +77,7 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
             <p className="text-3xl font-black text-purple-600">
               {subscription.credits_remaining}
             </p>
-            <p className="text-sm text-gray-500">/ {subscription.credits_limit} kredi</p>
+            <p className="text-sm text-gray-500">/ {subscription.credits_limit} AI kredisi</p>
           </div>
         </div>
 
@@ -94,15 +95,15 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
             <div className="mt-2 text-sm text-red-600">
               <p>
                 {subscription.plan === 'free'
-                  ? 'Günlük hakkınız doldu — yenilenmesine kalan: '
-                  : 'Krediniz tükendi — yenilenmesine kalan: '}
+                  ? 'Günlük AI krediniz doldu — soru çözmeye devam edebilirsiniz, yenilenmesine kalan: '
+                  : 'AI krediniz tükendi — soru çözmeye devam edebilirsiniz, yenilenmesine kalan: '}
                 <QuotaCountdown
                   periodEnd={subscription.period_end}
                   className="font-bold text-red-700"
                 />
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
-                veya paket yükselterek hemen devam edebilirsiniz.
+                veya AI Üst Beyin kredinizi paket yükselterek artırabilirsiniz.
               </p>
             </div>
           )}

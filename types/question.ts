@@ -11,6 +11,9 @@ export interface Question {
   created_at?: string;
   question_text?: string;
   correct_answer?: number;
+  // V2 havuz akışı: 3'lü Sokratik ipucu (eski havuz sorularında yok) + kaynak rozeti
+  hints?: string[];
+  source?: 'pool' | 'generated';
 }
 
 // Dashboard "Son Çözülenler" panel kaydı (answers JOIN questions, en yeniden eskiye)

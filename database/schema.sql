@@ -96,6 +96,11 @@ CREATE TABLE IF NOT EXISTS questions (
   times_answered INTEGER DEFAULT 0,
   times_correct INTEGER DEFAULT 0,
   created_by UUID REFERENCES auth.users(id),
+  -- V2 havuz alanları (database/question_pool_faz1a.sql):
+  hints JSONB, -- 3'lü Sokratik ipucu dizisi; eski sorularda NULL (gece vardiyası backfill)
+  status TEXT NOT NULL DEFAULT 'active' CONSTRAINT questions_status_check CHECK (status IN ('active', 'suspended', 'rejected')),
+  clone_of UUID REFERENCES questions(id) ON DELETE SET NULL, -- klonun kaynağı (NULL = orijinal)
+  intended_for UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- kişisel klon sahibi (NULL = genel havuz)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -183,6 +188,12 @@ CREATE INDEX IF NOT EXISTS idx_answers_question_id ON answers(question_id);
 CREATE INDEX IF NOT EXISTS idx_study_sessions_user_id ON study_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_answers_created_at ON answers(answered_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_goals_user_id_date ON user_goals (user_id, date);
+-- V2 havuz index'leri (database/question_pool_faz1a.sql)
+CREATE INDEX IF NOT EXISTS idx_questions_pool_lookup
+  ON questions (exam_type, subject, difficulty)
+  WHERE status = 'active' AND clone_of IS NULL AND intended_for IS NULL;
+CREATE INDEX IF NOT EXISTS idx_questions_intended_for
+  ON questions (intended_for) WHERE intended_for IS NOT NULL;
 
 -- ===================================
 -- ROW LEVEL SECURITY (RLS)
@@ -229,6 +240,31 @@ DROP POLICY IF EXISTS "Question creators can update own questions" ON questions;
 CREATE POLICY "Question creators can update own questions"
   ON questions FOR UPDATE
   USING (auth.uid() = created_by);
+
+-- Question Reports Table (V2 kitle kaynaklı kalite kontrol)
+-- 2 FARKLI kullanıcının bildirimi report_question RPC'siyle soruyu askıya alır.
+-- UNIQUE (question_id, user_id) index'i soru-bazlı sayımı da karşılar.
+-- Canlıya kurulum: database/question_pool_faz1a.sql
+CREATE TABLE IF NOT EXISTS question_reports (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  question_id UUID REFERENCES questions(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT question_reports_unique_per_user UNIQUE (question_id, user_id)
+);
+
+ALTER TABLE question_reports ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can insert own reports" ON question_reports;
+CREATE POLICY "Users can insert own reports"
+  ON question_reports FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can view own reports" ON question_reports;
+CREATE POLICY "Users can view own reports"
+  ON question_reports FOR SELECT
+  USING (auth.uid() = user_id);
 
 -- Answers Policies
 DROP POLICY IF EXISTS "Users can view own answers" ON answers;
@@ -441,6 +477,114 @@ BEGIN
   END LOOP;
 END;
 $$;
+
+-- ===================================
+-- V2 SORU HAVUZU RPC'LERİ
+-- (database/question_pool_faz1a.sql — tam açıklamalı sürüm)
+-- ===================================
+
+-- Havuzdan öğrencinin sıradaki sorusu (çözmedikleri + oturumda görülenler hariç;
+-- ipuçlu sorular tercih edilir). Havuz boşsa NULL → route Gemini fallback.
+CREATE OR REPLACE FUNCTION get_next_pool_question(
+  p_user_id uuid,
+  p_exam_type text,
+  p_subject text,
+  p_topic text DEFAULT NULL,
+  p_difficulty text DEFAULT NULL,
+  p_exclude uuid[] DEFAULT '{}'
+)
+RETURNS jsonb
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT jsonb_build_object(
+    'id',            q.id,
+    'exam_type',     q.exam_type,
+    'subject',       q.subject,
+    'topic',         q.topic,
+    'difficulty',    q.difficulty,
+    'question_text', q.question_text,
+    'choices',       q.choices,
+    'correct_answer',q.correct_answer,
+    'explanation',   q.explanation,
+    'hints',         q.hints,
+    'created_at',    q.created_at
+  )
+  FROM questions q
+  WHERE q.status = 'active'
+    AND q.clone_of IS NULL
+    AND q.intended_for IS NULL
+    AND q.exam_type = p_exam_type
+    AND q.subject = p_subject
+    AND (p_difficulty IS NULL OR q.difficulty = p_difficulty)
+    AND (p_topic IS NULL OR p_topic = 'Genel' OR q.topic = p_topic)
+    AND NOT EXISTS (
+      SELECT 1 FROM answers a
+      WHERE a.user_id = p_user_id
+        AND a.question_id = q.id
+    )
+    AND NOT (q.id = ANY (p_exclude))
+  ORDER BY (q.hints IS NOT NULL) DESC, random()
+  LIMIT 1
+$$;
+
+-- Kitle kaynaklı askıya alma: 2 FARKLI kullanıcının bildirimi → status='suspended'
+CREATE OR REPLACE FUNCTION report_question(
+  p_question_id uuid,
+  p_user_id uuid,
+  p_reason text DEFAULT ''
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_status   text;
+  v_distinct int;
+BEGIN
+  SELECT status INTO v_status FROM questions WHERE id = p_question_id;
+  IF v_status IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'QUESTION_NOT_FOUND');
+  END IF;
+
+  INSERT INTO question_reports (question_id, user_id, reason)
+  VALUES (p_question_id, p_user_id, left(coalesce(p_reason, ''), 500))
+  ON CONFLICT (question_id, user_id) DO NOTHING;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'ALREADY_REPORTED');
+  END IF;
+
+  SELECT count(DISTINCT user_id) INTO v_distinct
+  FROM question_reports
+  WHERE question_id = p_question_id;
+
+  IF v_distinct >= 2 THEN
+    UPDATE questions
+    SET status = 'suspended'
+    WHERE id = p_question_id
+      AND status = 'active';
+  END IF;
+
+  SELECT status INTO v_status FROM questions WHERE id = p_question_id;
+
+  RETURN jsonb_build_object('success', true, 'question_status', v_status);
+END;
+$$;
+
+-- RPC yetkileri: yalnızca service_role (üçlü REVOKE zorunlu —
+-- Supabase default-privileges tuzağı)
+REVOKE EXECUTE ON FUNCTION get_next_pool_question(uuid, text, text, text, text, uuid[])
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_next_pool_question(uuid, text, text, text, text, uuid[])
+  TO service_role;
+
+REVOKE EXECUTE ON FUNCTION report_question(uuid, uuid, text)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION report_question(uuid, uuid, text)
+  TO service_role;
 
 -- ===================================
 -- SAMPLE DATA (Optional - for testing)
