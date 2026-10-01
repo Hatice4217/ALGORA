@@ -2818,3 +2818,24 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 - Faz 1a tümüyle canlı ve kanıtlı; tek bekleyen: premium_50_gun.sql çalıştırma + push sonrası canlı kontrol
 - Faz 1b sıradaki: ai_solutions önbellek tablosu + gece vardiyası (ipucu backfill + klon üretimi)
 - Ders: NOT VALID kısıtlar + hızlı-default kolon ekleme kombinasyonu "hayalet ihlal satırları" üretir — pivot sonrası havuz verisinin kısıt-doğrulaması deploy kontrol listesine eklendi
+
+## 1 Ekim 2026 - Perşembe — Kredi Bitince Cooldown (ChatGPT/Gemini modeli)
+
+### 🎯 Ürün kararı (kullanıcı isteği)
+- "Günlük yenilenme geri sayımı kredi BİTİNCE devreye girmeli — GPT/Gemini'deki gibi"
+- Eski davranış: dönem penceresi ilk kullanımda sabitleniyordu → 14:00'te biten kullanıcı pencere 09:00'da açıldıysa 19 saat bekliyordu
+- Yeni davranış: SON kredi (1→0) harcandığı UPDATE'de dönem tükenme anına sabitlenir (period_end = NOW()+24h) → geri sayım tam tükenme anında başlar
+
+### ✅ Uygulama (yalnızca DB — kod değişikliği GEREKMEDİ)
+- `database/kredi_bitince_cooldown.sql` (kullanıcı çalıştırdı): deduct_credit'e CASE — SET ifadeleri ESKİ satır değerlerini gördüğü için `credits_remaining = 1` son krediyi yakalar; dönem yalnızca o düşüşte yeniden sabitlenir (atomik, yarış güvenli, ACL korunur)
+- UI hazır zaten: QuotaExhaustedModal + Paketim çubuğu period_end'i okuyor → RPC pencereyi taşıyınca geri sayımlar otomatik doğru
+- Baseline senkron: subscriptions.sql deduct_credit tanımı güncellendi
+- Kenar durumlar: refund krediyi geri verir (harcanırsa aynı mantık); kredi bitmeden gün geçerse lazy rollover aynen çalışır
+
+### 🧪 Saf RPC probe 7/7 PASS (Gemini çağrılmadı — maliyet sıfır)
+- 3x deduct: 2→1→0 ✓ period_end = tükenme+24s ✓ period_start = tükenme anı ✓ cooldown'da 4. deneme NULL ✓ cooldown sonrası rollover 3 kredi döndürür ✓
+- Temizlik: test kullanıcısı + verileri tamamen silindi
+
+### Session Bitişi
+- Bugün 3 ships: Faz 1a canlıya alındı + premium 50/GÜN + kredi-bitince-cooldown — hepsi canlıda E2E kanıtlı
+- Sıradaki: Faz 1b (ai_solutions önbellek + gece vardiyası), PAYMENT_INFO gerçek IBAN

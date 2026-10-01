@@ -150,6 +150,9 @@ CREATE TRIGGER update_payment_claims_updated_at
 -- Başarılıysa güncel kalan krediyi (integer), kredi yoksa NULL döndürür.
 -- Transaction kaydı aynı işlem içinde yazılır.
 -- V2: krediyi yalnızca Üst Beyin (/api/questions/solution) tüketir → reason 'higher_brain'.
+-- V2.1 (1 Eki 2026 — kredi_bitince_cooldown.sql): SON kredi (1→0) harcanırken
+-- dönem TÜKENME ANINA sabitlenir (period_end = NOW()+24h) → geri sayım kredi
+-- bitince devreye girer (ChatGPT/Gemini modeli). UI değişikliği gerekmez.
 -- Çağrım: service-role client ile RPC (RLS bypass) — app/api/questions/solution/route.ts
 CREATE OR REPLACE FUNCTION deduct_credit(p_user_id uuid)
 RETURNS integer AS $$
@@ -157,7 +160,10 @@ DECLARE
   v_remaining integer;
 BEGIN
   UPDATE subscriptions
-  SET credits_remaining = credits_remaining - 1
+  SET credits_remaining = credits_remaining - 1,
+      period_start = CASE WHEN credits_remaining = 1 THEN NOW() ELSE period_start END,
+      period_end   = CASE WHEN credits_remaining = 1 THEN NOW() + INTERVAL '24 hours'
+                          ELSE period_end END
   WHERE user_id = p_user_id
     AND credits_remaining > 0
   RETURNING credits_remaining INTO v_remaining;
