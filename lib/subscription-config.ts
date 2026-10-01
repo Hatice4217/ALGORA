@@ -7,15 +7,15 @@ import type { PlanId } from '@/types/subscription';
 // HEPSİ GÜNLÜKTÜR (dönem = 1 gün; gece yarısı lazy rollover ile yenilenir):
 //   free    → 3 Üst Beyin / GÜN
 //   pro     → 20 Üst Beyin / GÜN
-//   premium → 20 Üst Beyin / GÜN
+//   premium → 50 Üst Beyin / GÜN (1 Eki 2026: premium değer farkı)
 // DİKKAT: database/subscriptions.sql ve database/credit_pivot_gunluk.sql içindeki
-// rollover/seed fonksiyonlarıyla senkron tutulmalıdır (SQL tarafında 3/20/20).
+// rollover/seed fonksiyonlarıyla senkron tutulmalıdır (SQL tarafında 3/20/50).
 // NOT: Ücretli planın satın alma süresi subscriptions.paid_until'tedir (aylık);
 // period_end ise günlük kota dönemidir — ikisi artık farklı kavramlardır.
 export const PLAN_LIMITS: Record<PlanId, number> = {
   free: 3,
   pro: 20,
-  premium: 20,
+  premium: 50,
 };
 
 // Manuel ödeme (havale/EFT) bilgileri.

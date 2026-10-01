@@ -2788,3 +2788,33 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 - Pivot SQL'e eklendi: deduct_credit artık 'higher_brain' yazar (PackagePanel 'generation' gizlediği için yoksa Üst Beyin harcamaları geçmişte görünmezdi)
 - Açık soru: pro = premium aynı 20/gün — premium'un değer farkı netleşmeli (koçluk Faz 2/3 mü?)
 - "Merhabalar" selamlaması prompt yasaklarına rağmen geldi — ilk-cümle kuralı sıkılaştırıldı (canlıda tekrar gözlenecek)
+
+## 1 Ekim 2026 - Perşembe — V2 Faz 1a CANLIYA ALINDI: deploy + 4-şık havuz bug'ı + premium 50/gün kararı
+
+### 🚀 Deploy (commit 44e565f)
+- Kod push + `credit_pivot_gunluk.sql` aynı adımda (kritik sıra kuralına uyuldu) — Vercel SUCCESS
+- Kullanıcı SQL çıktısı: `deduct_higher_brain_yaziyor: true` (deduct_credit 'higher_brain' yazıyor — pivot kanıtı)
+- Deploy sonrası görsel kontrol: kullanıcı tarayıcıda dashboard'u doğruladı, sorun yok
+
+### 🐛 İlk canlı probe (16/22) gerçek bir veri bug'ı yakaladı
+- **Belirti:** Kullanıcı B'nin bildirimi 500, soru suspend olmuyor + dönen soru 4 şıklı
+- **Kök neden:** Eski dev seed.sql'den kalma 26 soru 4 ŞIKLI; `questions_choices_check` NOT VALID (grandfather'lu) + `ADD COLUMN status DEFAULT 'active'` hızlı-default'u satır yazmadığı için CHECK'e takılmadan 'active' olmuşlar → havuza sızmışlar. Bu satırlarda HER UPDATE (report_question'in suspend'i dahil) 23514 hatasıyla düşüyor → route 500
+- **Panzehir:** `database/havuz_4sik_temzligi.sql` (kullanıcı çalıştırdı): ihlal eden 26 satır DELETE + kısıt VALIDATE (artık tam uygulanıyor). Havuz: 30 soru, hepsi 5 şıklı (2 ipuclu)
+- **Tip tuzağı:** `choices` kolonu **text[]** (jsonb değil) → `array_length(choices, 1)`; `jsonb_array_length(text[])` diye fonksiyon yok
+
+### 🧪 İkinci canlı E2E probe — 21/21 PASS
+- Pool HIT + 5 şık ✓ free seed 3 kredi/GÜNLÜK dönem ✓ Üst Beyin -1 kredi + 'higher_brain' tx ✓
+- Tek bildirim active ✓ already_reported ✓ 2. FARKLI kullanıcı → suspended (DB teyitli) ✓ suspended soru /next'te servis edilmiyor ✓
+- **Temizlik dersi:** /next fallback soru üretince `questions.created_by` test kullanıcısını tutar → auth user DELETE 500 (23503). Çözüm: önce `created_by = NULL` anonimleştir (uygulamanın hesap-silme deseni), sonra auth sil
+
+### 🎯 Ürün kararı: premium değer farkı + plan metinleri standardizasyonu
+- **premium = 50 kredi/GÜN** (pro 20'nin 2,5 katı); free 3 değişmedi (görüş: 3 doğru — free'nin değeri sınırsız havuz+ipucu, 3/gün tam upsell ivcesi noktası)
+- Üç planın vitrin maddeleri standardize: "Havuzdan Soru Çözme: Sınırsız" + "3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz" + "AI Üst Beyin Kredisi (Günlük Limit): N Kredi / Gün"
+- Premium'a "Yakında" etiketli 2 madde: Yapay Zeka Destekli YKS Koçu + Detaylı Gelişim ve Zayıf Konu Analitiği
+- Uygulanan: PLAN_LIMITS (kod) + PLANS (types) + PricingSection (landing) + `database/premium_50_gun.sql` (rollover CASE premium 50 + mevcut satır limitleri) + baseline senkron (credit_pivot_gunluk.sql, subscriptions.sql)
+- ⚠️ premium_50_gun.sql KULLANICI TARAFINDAN SQL EDITOR'DE ÇALIŞTIRILACAK
+
+### Session Bitişi
+- Faz 1a tümüyle canlı ve kanıtlı; tek bekleyen: premium_50_gun.sql çalıştırma + push sonrası canlı kontrol
+- Faz 1b sıradaki: ai_solutions önbellek tablosu + gece vardiyası (ipucu backfill + klon üretimi)
+- Ders: NOT VALID kısıtlar + hızlı-default kolon ekleme kombinasyonu "hayalet ihlal satırları" üretir — pivot sonrası havuz verisinin kısıt-doğrulaması deploy kontrol listesine eklendi

@@ -32,16 +32,16 @@ export function PricingSection() {
         >
           <h3 className="text-2xl font-bold text-gray-900 mb-2">Başlangıç</h3>
           <p className="text-gray-600 mb-6 text-sm leading-relaxed">
-            Sistemi keşfetmek ve yapay zekanın gücünü test etmek isteyenler için.
+            Sistemi keşfetmek isteyenler için temel özellikler ve günlük 3 Üst Beyin anlatım hakkı.
           </p>
           <div className="mb-8">
             <span className="text-4xl font-black text-gray-900">Ücretsiz</span>
           </div>
           <ul className="space-y-4 mb-8">
             {[
-              'Sınırsız soru çözümü (soru havuzundan, ücretsiz)',
-              'Günlük 3 AI Üst Beyin kredisi — her gün yenilenir',
-              'Her soruda 3 adet ücretsiz Sokratik ipucu',
+              'Havuzdan Soru Çözme: Sınırsız',
+              '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz',
+              'AI Üst Beyin Kredisi (Günlük Limit): 3 Kredi / Gün',
               'Platform arayüzüne tam erişim'
             ].map((feature, index) => (
               <li key={index} className="flex items-start gap-3">
@@ -66,7 +66,7 @@ export function PricingSection() {
           </div>
           <h3 className="text-2xl font-bold text-gray-900 mb-2 mt-2">Pro Öğrenci</h3>
           <p className="text-gray-600 mb-6 text-sm leading-relaxed">
-            Düzenli çalışan ve eksiklerini nokta atışı görmek isteyen öğrenciler için optimize edilmiştir.
+            Düzenli çalışan öğrenciler için her gün yenilenen 20 Üst Beyin özel ders hakkı.
           </p>
           <div className="mb-8">
             <span className="text-4xl font-black text-gray-900">₺199</span>
@@ -74,10 +74,9 @@ export function PricingSection() {
           </div>
           <ul className="space-y-4 mb-8">
             {[
-              'Sınırsız soru çözümü + günlük 20 AI Üst Beyin kredisi',
-              'Detaylı yapay zeka konu ve eksik analizi',
-              'Eksik Kapatma modu: yanlışların klonlanmış hâlleriyle pratik',
-              'Geçmişe dönük performans ve ilerleme grafikleri'
+              'Havuzdan Soru Çözme: Sınırsız',
+              '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz',
+              'AI Üst Beyin Kredisi (Günlük Limit): 20 Kredi / Gün'
             ].map((feature, index) => (
               <li key={index} className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,7 +99,7 @@ export function PricingSection() {
         >
           <h3 className="text-2xl font-bold text-gray-900 mb-2">Premium AI Koçluk</h3>
           <p className="text-gray-600 mb-6 text-sm leading-relaxed">
-            Sınav sürecinde bir rehbere ihtiyaç duyan ve sınırları kaldırmak isteyenler için.
+            Derece hedefleyenler için maksimum AI desteği ve çok yakında eklenecek özel koçluk özellikleri.
           </p>
           <div className="mb-8">
             <span className="text-4xl font-black text-gray-900">₺499</span>
@@ -108,10 +107,11 @@ export function PricingSection() {
           </div>
           <ul className="space-y-4 mb-8">
             {[
-              'Sınırsız soru çözümü + günlük 20 AI Üst Beyin kredisi',
-              'Yapay Zeka Koçluk Sistemi (Haftalık çalışma programı)',
-              'Anlık rota hesaplama ve motivasyon bildirimleri',
-              'Veliler için haftalık detaylı e-posta raporları'
+              'Havuzdan Soru Çözme: Sınırsız',
+              '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz',
+              'AI Üst Beyin Kredisi (Günlük Limit): 50 Kredi / Gün',
+              'Yapay Zeka Destekli YKS Koçu (Yakında)',
+              'Detaylı Gelişim ve Zayıf Konu Analitiği (Yakında)'
             ].map((feature, index) => (
               <li key={index} className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
