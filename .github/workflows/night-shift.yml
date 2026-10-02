@@ -1,0 +1,49 @@
+# ALGORA — Gece Vardiyası Tetikleyicisi (Faz 1b)
+#
+# /api/cron/night-shift endpoint'ini az-trafik penceresinde (TR 00:00-06:00 =
+# UTC 21:00-03:00) çağırır: ipucu backfill + klon üretimi.
+# Route kendi içında pencere guard'ı da taşır (çift savunma) — bu workflow
+# yalnızca tetikleyicidir; iş mantığı/bütçe kilidi Vercel tarafındadır.
+#
+# Gereken repo secret: ALGORA_ADMIN_SECRET_KEY (Vercel'deki ADMIN_SECRET_KEY
+# ile AYNI değer).
+#
+# Vercel Cron yerine GitHub Actions tercih sebebi: Vercel Cron günlük TEK
+# atamaya izin verir; gece vardiyası tur başına 2-3 üretim yapabilmek için
+# pencere içinde 6 tetikleme ister.
+
+name: ALGORA Gece Vardiyasi
+
+on:
+  schedule:
+    # UTC 21:00, 22:00, 23:00, 00:00, 01:00, 02:00 (= TR 00:00-03:00+03:00)
+    - cron: '0 21-23,0-2 * * *'
+  # Elle test tetiklemesi (route'ta ?force=1 ile pencere aşılabilir;
+  # dispatch URL'i sabit olduğundan force buradan verilmemiştir)
+  workflow_dispatch:
+
+# Çakışan run'lar kuyruğa girsin, iptal EDİLMESİN (cancel eden run kilidi
+# bırakamadan ölürse 10 dk kilit çürüğüne kadar pencere kaybedilir)
+concurrency:
+  group: night-shift
+  cancel-in-progress: false
+
+jobs:
+  night-shift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gece vardiyasini tetikle
+        run: |
+          http_kod=$(curl -sS -X POST \
+            -H "x-admin-key: ${{ secrets.ALGORA_ADMIN_SECRET_KEY }}" \
+            --max-time 90 \
+            -o /tmp/night_shift_yanit.json \
+            -w '%{http_code}' \
+            "https://algora-sigma.vercel.app/api/cron/night-shift")
+          echo "HTTP $http_kod"
+          echo "--- Yanıt ---"
+          cat /tmp/night_shift_yanit.json || true
+          if [ "$http_kod" != "200" ]; then
+            echo "::error::Gece vardiyası çağrısı başarısız (HTTP $http_kod)"
+            exit 1
+          fi

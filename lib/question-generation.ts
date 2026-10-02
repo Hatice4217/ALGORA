@@ -189,6 +189,10 @@ function normalizeHints(ham: unknown): string[] {
  * Şema dışı/bozuk üretim öğrenciye gösterilmeden elenir; her deneme yeni seed alır.
  * HTTP seviyesindeki Gemini hataları (401/403/429) yeniden denenmez.
  * Başarı: GeneratedQuestion. Tüm denemeler başarısız: throw.
+ *
+ * timeoutMs (opsiyonel): çağıran kendi iç deadline'ına kısa timeout koyabilir
+ * (gece vardiyası cron'u — Vercel platform kill'inin altında kalmak için).
+ * Verilmezse GEMINI_TIMEOUT_MS env / 90 sn varsayılanı geçerli olur.
  */
 export async function generateQuestionViaGemini(params: {
   subject: string;
@@ -196,6 +200,7 @@ export async function generateQuestionViaGemini(params: {
   difficultyText: string;
   examType: string;
   bannedQuestions: string[];
+  timeoutMs?: number;
 }): Promise<GeneratedQuestion> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -214,8 +219,8 @@ export async function generateQuestionViaGemini(params: {
     // maxDuration kill'i fonksiyonu CATCH'SİZ öldürür. Kendi limitimizi platform
     // limitinin ALTINDA tutarsak timeout AbortError'ı catch'e düşer.
     // 2 deneme × 90 sn = 180 sn < Fluid varsayılan limiti (300 sn).
-    // Test/probe override: GEMINI_TIMEOUT_MS env.
-    const geminiTimeoutMs = Number(process.env.GEMINI_TIMEOUT_MS || 90_000);
+    // Test/probe override: GEMINI_TIMEOUT_MS env; çağıran timeoutMs verdiyse o önceliklidir.
+    const geminiTimeoutMs = params.timeoutMs ?? Number(process.env.GEMINI_TIMEOUT_MS || 90_000);
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -311,6 +316,120 @@ export async function generateQuestionViaGemini(params: {
   }
 
   throw new Error('Yapay zekadan geçerli JSON yanıtı alınamadı (tüm denemeler başarısız)');
+}
+
+// ===================================
+// İpucu Backfill (gece vardiyası)
+// ===================================
+//
+// Mevcut bir havuz sorusu için YALNIZCA 3 Sokratik ipucu üretir.
+// Kullanım yeri: /api/cron/night-shift — ipucu-öncesi dönemden kalma
+// (hints NULL) soruları gece gece doldurur. Pedagojik altın kural
+// SYSTEM_PROMPT'takiyla aynı: ipuçları çözümü ifşa ETMEZ.
+
+// Ipucu üretimi için ayrı sistem prompt'u — küçük iş, küçük şema
+const HINTS_SYSTEM_PROMPT = `Sen Türkiye'deki üniversite sınavlarına (TYT, AYT) hazırlık yapan öğrenciler için soru hazırlayan ekibin ipucu uzmanısın.
+
+Aşağıdaki JSON formatında VE SADECE bu formatta yanıt vermelisin:
+{
+  "ipuclari": ["1. yönlendirici ipucu", "2. yönlendirici ipucu", "3. yönlendirici ipucu"]
+}
+
+KURALLAR:
+- "ipuclari" TAM 3 öğe içermelidir
+- İPUCULAR ASLA doğrudan çözüm adımı vermeyecek veya doğru cevabı ifşa etmeyecek (PEDAGOJİK ALTIN KURAL).
+- Gerçek bir öğretmenin takılan öğrenciye verdiği YÖNLENDİRİCİ tavsiyeler (Sokratik ipucu) gibi yazılacak.
+- Kademeli ilerle: 1. ipucu hafif bir bakış açısı sunar; 2. ipucu ilgili kavramı/kuralı hatırlatır; 3. ipucu öğrenciyi çözümün hemen eşiğine getirir AMA cevabı ASLA söylemez.
+- KÖTÜ İPUCU ÖRNEĞİ (YASAK): "Pisagor teoremini kullanıp 3'ün karesi ile 4'ün karesini toplayıp 5 bulmalısın."
+- İYİ İPUCU ÖRNEĞİ (İSTENEN): "Burada bir dik üçgen oluştuğunu fark ettin mi? Kenar uzunlukları arasındaki ilişkiyi kurmak için eski bir Yunan matematikçisinin ünlü teoremi işine yarayabilir, bir dene!"
+- TÜRKÇE YAZIM KURALLARI: kusursuz Türkçe yaz; ç, ğ, ı, İ, ö, ş, ü karakterlerini eksiksiz kullan ("degeri" değil "değeri").
+- Matematiksel ifadeleri DÜZ METİN yaz; $, \\, LaTeX kodları KULLANMA. Üsleri ^ ile yaz, √ yerine "karekök" yaz.
+- Yanıtı SADECE JSON olarak ver, markdown/code block kullanma, JSON dışında açıklama ekleme.`;
+
+/**
+ * Mevcut bir soru için Gemini'den 3 Sokratik ipucu üretir (tek deneme).
+ * Şema: {"ipuclari": [3 string]}. 3 sağlam ipucu çıkaramazsa THROW eder —
+ * çağıran (gece vardiyası) hints'i NULL bırakır, sonraki gece tekrar denenir.
+ * HTTP seviyesindeki Gemini hataları GeminiUpstreamError olarak fırlar.
+ */
+export async function generateHintsViaGemini(params: {
+  subject: string;
+  topic: string;
+  question: string;
+  choices: string[];
+  correctAnswer: number;
+  explanation: string;
+  timeoutMs?: number;
+}): Promise<string[]> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY tanımlı değil');
+  }
+
+  const harfler = ['A', 'B', 'C', 'D', 'E'];
+  const prompt = `${HINTS_SYSTEM_PROMPT}
+
+Aşağıdaki MEVCUT soru için ipuçları üret (yeni soru üretme — yalnızca ipuçları):
+
+SORU (${params.subject} - ${params.topic}):
+${params.question}
+
+SEÇENEKLER:
+${params.choices.map((secenek, i) => `${harfler[i]}) ${secenek}`).join('\n')}
+
+DOĞRU CEVAP: ${harfler[params.correctAnswer] ?? '?'}
+(Doğru cevabı biliyorsun ama ipuçlarında ASLA ifşa etmiyorsun — yalnızca ipucu kalitesini garanti etmek için elinde.)
+
+SORUNUN AÇIKLAMASI (ipucu yönünü bilmek için; açıklamayı ipuçlarında KOPYALAMAYA/CÖZÜMLEMEYE kullanma):
+${params.explanation}
+
+Yanıtı KESİNLİKLE JSON formatında ver.`;
+
+  const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
+  const geminiTimeoutMs = params.timeoutMs ?? Number(process.env.GEMINI_TIMEOUT_MS || 90_000);
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      // API key URL query param yerine header ile gönderilir (loglarda görünmez)
+      'x-goog-api-key': apiKey,
+    },
+    signal: AbortSignal.timeout(geminiTimeoutMs),
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        seed: Math.floor(Math.random() * 2147483647),
+        maxOutputTokens: 800,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    console.error('generateHints: Gemini upstream hatası:', response.status, JSON.stringify(errorData).slice(0, 500));
+    if (response.status === 401 || response.status === 403) {
+      throw new GeminiUpstreamError('Gemini API anahtarı geçersiz', 401);
+    }
+    if (response.status === 429) {
+      throw new GeminiUpstreamError('API kullanım limiti aşıldı', 429);
+    }
+    throw new GeminiUpstreamError('İpucu üretimi şu anda kullanılamıyor', 502);
+  }
+
+  const data = await response.json();
+  const aiResponse: string | undefined = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!aiResponse) {
+    throw new Error('İpucu üretimi boş yanıt döndürdü');
+  }
+
+  const parsed = extractJson(aiResponse);
+  const hints = parsed ? normalizeHints(parsed.ipuclari ?? parsed.hints) : [];
+  if (hints.length !== 3) {
+    throw new Error(`İpucu üretimi 3 sağlam ipucu döndürmedi (${hints.length}/3)`);
+  }
+  return hints;
 }
 
 // HTTP statüsü taşıyan upstream hatası — route, istemciye uygun statüyü çevirir
