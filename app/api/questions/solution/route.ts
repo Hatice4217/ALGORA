@@ -7,8 +7,12 @@
 // Kredi akışı (generate route'unun kanıtlanmış deseni):
 //   rollover (günlük reset) → kredi kontrolü → deduct (Gemini ÖNCESİ,
 //   atomik) → Gemini → hata olursa refund.
-// (Faz 1b: ai_solutions önbellek tablosu eklenerek tekrar istekler bedava
-//  dönecek — şu an her istek taze Gemini çağrısıdır.)
+//
+// ÖNBELLEK (Faz 1b): anlatım (question_id, user_id) başına ai_solutions'a
+// yazılır. Tekrar istekler 402 KONTROLÜNDEN ÖNCE yakalanır — kredisi
+// bitmiş öğrenci bile daha önce aldığı anlatımı ücretsiz izleyebilir
+// (V2 kararı: ödediği şeyi kaybetmez). Önbellek yazımı sadece service-role
+// (RLS yazma politikası yok); okuma hatası/miss normal Gemini akışına düşer.
 
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -127,6 +131,35 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Abonelik bilgisi alınamadı' }, { status: 500 });
       }
       subscription = seeded;
+    }
+
+    // 3.5 ÖNBELEK OKUMA — 402 kontrolünden ÖNCE: bu öğrenci bu sorunun
+    // anlatımını daha önce aldıysa BEDAVA döner (deduct YOK, Gemini YOK).
+    // Tablo henüz yoksa (migration öncesi deploy) hata loglanıp normal
+    // akış devam eder — önbellek silinmez, eskisi gibi çalışır.
+    try {
+      const { data: cachedSolution, error: cacheError } = await adminClient
+        .from('ai_solutions')
+        .select('solution')
+        .eq('question_id', question_id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!cacheError && cachedSolution?.solution) {
+        console.log('solution: önbellek İSABET — kredisiz teslim (question:', question_id + ')');
+        return NextResponse.json({
+          success: true,
+          data: {
+            solution: cachedSolution.solution,
+            credits_remaining: subscription.credits_remaining,
+            cached: true,
+          },
+        });
+      }
+      if (cacheError) {
+        console.error('solution: önbellek okuma hatası (normal akışa devam):', cacheError.message);
+      }
+    } catch (cacheException) {
+      console.error('solution: önbellek okuma istisnası (normal akışa devam):', cacheException);
     }
 
     if (subscription.credits_remaining <= 0) {
@@ -279,10 +312,33 @@ ANLATIM KURALLARI:
       throw new GeminiUpstreamError('Üst Beyin anlatımı şu anda kullanılamıyor', 502);
     }
 
+    const temizAnlatim = cleanMathText(anlatim.trim());
+
+    // 6. ÖNBELEK YAZMA — anlatımı (question_id, user_id)'ye kaydet.
+    // ignoreDuplicates: yarışta satır varsa dokunma (ilk anlatım kazanır).
+    // Yazma hatası yanıtı BOZMAZ — öğrenci anlatımını alır, sadece log kalır.
+    try {
+      const { error: cacheWriteError } = await adminClient
+        .from('ai_solutions')
+        .upsert(
+          {
+            question_id,
+            user_id: user.id,
+            solution: temizAnlatim,
+          },
+          { onConflict: 'question_id,user_id', ignoreDuplicates: true }
+        );
+      if (cacheWriteError) {
+        console.error('solution: önbellek yazma hatası (yanıt etkilenmez):', cacheWriteError.message);
+      }
+    } catch (cacheWriteException) {
+      console.error('solution: önbellek yazma istisnası (yanıt etkilenmez):', cacheWriteException);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
-        solution: cleanMathText(anlatim.trim()),
+        solution: temizAnlatim,
         credits_remaining: creditDeducted,
       },
     });
