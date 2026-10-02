@@ -2925,3 +2925,39 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 ### 📌 Session Bitişi
 - Durum: havuz temiz + 2 tık akışı canlıda; yeni üretimlerin ipuçlu geldiği ilk gerçek çözmede görülecek (✨ Yeni üretildi rozeti + 3 ipucu)
 - `database/havuz_ipucu_temizligi.sql` commit'lenmeyi bekliyor
+
+## 2 Ekim 2026 - Cuma — DemoModal V2 uyumu canlıda + branş akışı tarayıcı testi PASS
+
+### 🎯 Tetikleyici
+- Branş-öncelikli 2 tık akışının tarayıcı testi + commit hedefi; session başında commit'in zaten yapıldığı (66e6eb4, deploy SUCCESS) görüldü — kalan iş unutulmuş DemoModal değişiklikleriydi
+
+### ✅ Uygulama (commit `824c92c`, deploy SUCCESS)
+- `DemoModal.tsx` V2 ürün uyumu: ÖSYM 5 şık (A-E), kademeli 3 Sokratik ipucu (`acilanIpucu` state — her basışta bir sonraki, çözüm ifşa etmez), 📚 Havuz rozeti, TYT/ders rozet düzeni gerçek soru modalıyla uyumlu
+- Mock metrikler kaldırıldı: XP/Saniye-Soru → Günlük Seri + ∞ Soru Hakkı (gerçek dashboard metrikleri); "soru çözmek sınırsız, kredi yalnızca 🧠 Üst Beyin" mesajı eklendi
+- `database/havuz_ipucu_temizligi.sql` kayıt amaçlı commit'lendi; GUNLUK 1 Ekim kaydı dahil
+- Build + lint (21 bilinen warning, 0 error) + tsc temiz; çalışma ağacı temiz
+
+### 🔍 Doğrulama (kullanıcı tarayıcı testi — canlı)
+- **Branş akışı PASS:** Türkçe→direkt TYT, Matematik→6'lı chooser, ⚙️ detay penceresi (tür değişince konu sıfırlanıyor), İngilizce→YDT, Sıradaki Soru exclude, üretim kilidi/banner, hızlı başlat reset kuralı (konu '' + zorluk 'orta'), mobil dar viewport
+- **Landing demosu PASS:** 5 şık + kademeli ipucu butonu + yeni metrik kartları
+
+### 📌 Session Bitişi
+- Durum: V2 Faz 1a + UX iyileştirmeleri TAMAMEN canlıda ve doğrulanmış; sıradaki adım Faz 1b (ai_solutions önbellek tablosu + gece vardiyası: ipucu backfill + klon üretimi)
+
+## 2 Ekim 2026 - Cuma — Faz 1b: ai_solutions önbelleği + gece vardiyası + klon UI + paid_until
+
+### 🎯 Tetikleyici
+- Faz 1b planının uygulanması (4 mantıksal commit): Üst Beyin tekrar izleme bedavasınca, ipucu-öncesi havuz sorularına gece backfill'i, yanlış cevaplardan kişisel klon (Duolingo, MAX 2 tur), Paketim'de plan bitiş tarihi
+
+### ✅ Uygulama
+- **`ai_solutions` önbelleği (commit `44372be`):** PK (question_id,user_id), RLS FORCE + yalnız SELECT politikası (payment_claims deseni — yazma sadece service-role). Solution route'ta okuma 402'den ÖNCE (0 krediyle bile izlenebilir), yazma `ignoreDuplicates:true` upsert, hata yanıtı bozmaz. `database/ai_solutions_cache.sql` KULLANICI ÇALIŞTIRACAK.
+- **Gece vardiyası (commit `6b0ba6e`):** `/api/cron/night-shift` (yalnız POST) — admin key 404 maskesi, UTC 21-02 pencere guardı (`?force=1` aşar), `night_shift_lock` satır-kilidi (claim/release SECURITY DEFINER RPC, üçlü REVOKE, 10 dk çürük eşiği; PostgREST random()/koşullu upsert yokluğu → RPC), iç deadline 50 sn, MAX 4 Gemini çağrısı. İş 1: hints NULL + aktif + clone_of NULL sorulara 3 Sokratik ipucu (`generateHintsViaGemini` — 3 sağlam yoksa throw, NULL kalır sonraki gece; UPDATE `.is('hints',null)` yarış-güvenli). İş 2: son 48s yanlış cevaplardan max 1 klon/tur — root=`clone_of ?? id`, tur sayacı (kök başına ≥2 klon atla), bekleyen cevaplanmamış klon varsa atla, banned = orijinal+klon metinleri, insert `created_by:NULL` (23503 kapalı). `generateQuestionViaGemini`'ye opsiyonel `timeoutMs`. `.github/workflows/night-shift.yml`: cron `0 21-23,0-2 * * *` + dispatch + concurrency (cancel YOK). `database/gece_vardiyasi_kilidi.sql` KULLANICI ÇALIŞTIRACAK + repo secret `ALGORA_ADMIN_SECRET_KEY` (Vercel ADMIN_SECRET_KEY ile aynı) KULLANICI TANIMLAYACAK.
+- **Eksiklerini Kapat UI (commit `46df895`):** `PendingClone` tipi + `dbHelpers.getPendingClones` (RLS SELECT USING(true) yeterli — yeni politika gerekmedi; cevaplananlar JS'te elenir) + dashboard `bekleyenKlonlar` state/`klonAc` handler'ı (reviewRecentAnswer deseni + `questionStartedAtRef` reset; cevap kaydında liste yenilenir) + QuestionPractice amber kart (🎯 + N rozet + ders·konu satırları + Çöz; boşken hiç render edilmez).
+- **Paketim paid_until (commit `4b3c0e1f` civarı):** 1. durum kartında `plan !== 'free' && paid_until` iken "Paket Bitiş" satırı (formatDate); "Yenilenme" = kredi dönemi etiket ayrımı korundu.
+
+### 🔍 Doğrulama
+- tsc + lint (21 bilinen warning, 0 error) + build temiz — `/api/cron/night-shift` route manifest'te.
+- Canlı probe'lar SQL'ler çalıştıktan + deploy sonrası: (1) aynı soruda 2. solution çağrısı `cached:true` + kredi değişmez; (2) gündüz key'li cron POST → `pencere_disi`, key'siz → 404; (3) dispatch + Actions logunda özet JSON; (4) klon E2E: yanlış cevap → night-shift(force) → `intended_for`+`created_by NULL` satırı → banner → çöz → düşer → 3. tur sınırı; (5) üst üste dispatch → 2. `kilitli`; (6) ücretli test kullanıcısında Paket Bitiş görünür, free'de görünmez.
+
+### 📌 Session Bitişi
+- Durum: Faz 1b kodu 4 commit'te tamam; çalışma ağacı temiz. Kullanıcı adımları: 2 SQL (ai_solutions_cache, gece_vardiyasi_kilidi) + GH repo secret + push/deploy kararı.

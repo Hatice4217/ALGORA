@@ -78,6 +78,13 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                 </>
               )}
             </p>
+            {/* Ücretli planın satın alma bitişi (paid_until). "Yenilenme" = günlük
+                kredi dönemi (period_end) etiketiyle karışmasın — ayrı satır. */}
+            {subscription.plan !== 'free' && subscription.paid_until && (
+              <p className="text-sm text-gray-600 mt-0.5">
+                Paket Bitiş: <span className="font-medium text-gray-800">{formatDate(subscription.paid_until)}</span>
+              </p>
+            )}
           </div>
           <div className="text-right">
             <p className="text-3xl font-black text-purple-600">
