@@ -24,7 +24,7 @@ import { getSubjects } from '../../lib/constants/syllabus';
 
 import type { SubscriptionSummary, PaidPlanId } from '../../types/subscription';
 
-import type { Question, RecentAnswer } from '../../types/question';
+import type { Question, RecentAnswer, PendingClone } from '../../types/question';
 
 // Type definitions for dashboard
 interface SubjectStat {
@@ -112,6 +112,8 @@ export default function DashboardPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   // "Son Çözülenler" paneli (gerçek answers verisi; mock değil)
   const [recentAnswers, setRecentAnswers] = useState<RecentAnswer[]>([]);
+  // V2 Faz 1b: bekleyen kişisel klonlar ("Eksiklerini Kapat" banner'ı)
+  const [bekleyenKlonlar, setBekleyenKlonlar] = useState<PendingClone[]>([]);
   const [gunlukSeri, setGunlukSeri] = useState(0);
   // V2 havuz akışı: oturumda görülen sorular (havuza exclude edilir — tekrar gelmesin)
   const [gorulenSorular, setGorulenSorular] = useState<string[]>([]);
@@ -190,6 +192,18 @@ export default function DashboardPage() {
       }
     } catch (seriError) {
       console.log('Günlük seri alınamadı:', seriError);
+    }
+  };
+
+  // "Eksiklerini Kapat" klon listesi (cevaplanan klonlar listeden düşer)
+  const guncelleBekleyenKlonlar = async (userId: string) => {
+    try {
+      const klonData = await dbHelpers.getPendingClones(userId);
+      if (klonData.data) {
+        setBekleyenKlonlar(klonData.data);
+      }
+    } catch (klonError) {
+      console.log('Bekleyen klonlar alınamadı:', klonError);
     }
   };
 
@@ -319,6 +333,9 @@ export default function DashboardPage() {
           // Günlük seri
           guncelleGunlukSeri(user.id);
 
+          // Bekleyen kişisel klonlar ("Eksiklerini Kapat")
+          guncelleBekleyenKlonlar(user.id);
+
           // Paket bilgisi
           fetchSubscription();
         } // Close if (user) block
@@ -351,6 +368,32 @@ export default function DashboardPage() {
     });
     setSelectedAnswer(kayit.selected_answer);
     setShowAnswer(true);
+  };
+
+  // "Eksiklerini Kapat": bekleyen kişisel klonu çözülmek üzere açar.
+  // Klon sıradan soru gibi akar — cevap kaydı/istatistik/Üst Beyin aynı yoldan.
+  const klonAc = (klon: PendingClone) => {
+    if (isGeneratingQuestion) return;
+    // Taze soru: ipucu/Üst Beyin/bildirim state'leri sıfırdan başlar
+    setAcilanIpucu(0);
+    setUstBeyinMetni(null);
+    setBildirimDurumu(null);
+    setCurrentQuestion({
+      id: klon.id,
+      question: klon.question_text,
+      choices: klon.choices,
+      correctAnswer: klon.correct_answer,
+      explanation: klon.explanation,
+      subject: klon.subject,
+      topic: klon.topic,
+      difficulty: klon.difficulty,
+      exam_type: klon.exam_type,
+      hints: Array.isArray(klon.hints) ? klon.hints : undefined,
+    });
+    setSelectedAnswer(null);
+    setShowAnswer(false);
+    // Klon çözülecek bir YENİ soru: süre sayacı şimdi başlar
+    questionStartedAtRef.current = Date.now();
   };
 
   // V2 havuz akışı: soru ARTIK üretilmez, havuzdan GETİRİLİR (kredisiz).
@@ -576,6 +619,8 @@ export default function DashboardPage() {
           }
           // Seri kartını da tazele (bugünün cevabı seriye anında işlensin)
           guncelleGunlukSeri(user.id);
+          // Cevaplanan klon varsa "Eksiklerini Kapat" banner'ından düşsün
+          guncelleBekleyenKlonlar(user.id);
         }
       } catch (recordError) {
         console.log('Could not save answer, but updating statistics:', recordError);
@@ -825,6 +870,8 @@ export default function DashboardPage() {
             soruUret={() => generateQuestion()}
             cevapSec={selectAnswer}
             sonCozulenler={recentAnswers}
+            bekleyenKlonlar={bekleyenKlonlar}
+            klonAc={klonAc}
             kayitIncele={reviewRecentAnswer}
             ipuclar={currentQuestion?.hints ?? []}
             acilanIpucu={acilanIpucu}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getSubjectColor } from '../../lib/utils';
 import { getTopics } from '../../lib/constants/syllabus';
-import type { RecentAnswer } from '../../types/question';
+import type { RecentAnswer, PendingClone } from '../../types/question';
 
 interface Question {
   question: string;
@@ -52,6 +52,10 @@ interface QuestionPracticeProps {
   cevapSec: (index: number) => void;
   sonCozulenler: RecentAnswer[];
   kayitIncele: (kayit: RecentAnswer) => void;
+  // V2 Faz 1b: bekleyen kişisel klonlar ("Eksiklerini Kapat" kartı —
+  // boşken hiç render edilmez) + klonu çözülmek üzere açan handler
+  bekleyenKlonlar: PendingClone[];
+  klonAc: (klon: PendingClone) => void;
   // V2: Sokratik ipuçları (ücretsiz, kademeli) + Üst Beyin (-1 kredi) + bildirim
   ipuclar: string[];
   acilanIpucu: number;
@@ -101,6 +105,8 @@ export function QuestionPractice({
   cevapSec,
   sonCozulenler,
   kayitIncele,
+  bekleyenKlonlar,
+  klonAc,
   ipuclar,
   acilanIpucu,
   ipucuAc,
@@ -207,6 +213,52 @@ export function QuestionPractice({
                   <span className="text-sm font-medium text-purple-700">
                     Soru hazırlanıyor... ({beklemeSaniye} sn)
                   </span>
+                </div>
+              )}
+
+              {/* V2 Faz 1b: "Eksiklerini Kapat" — gece vardiyasının yanlış
+                  cevaplardan ürettiği bekleyen kişisel klonlar. Liste boşken
+                  kart HİÇ render edilmez. Klon tıklanınca sıradan soru gibi
+                  akar (modal kilit pattern'i aynen geçerli). */}
+              {bekleyenKlonlar.length > 0 && (
+                <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+                    <h3 className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                      <span className="text-base">🎯</span>
+                      Eksiklerini Kapat
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-xs font-bold">
+                      {bekleyenKlonlar.length}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-700 mb-3">
+                    Dün yanlış yaptığın sorulardan özel türevler hazırlandı — çözünce listeden düşer.
+                  </p>
+                  <ul className="space-y-2">
+                    {bekleyenKlonlar.map((klon) => (
+                      <li
+                        key={klon.id}
+                        className="flex items-center justify-between gap-3 bg-white/70 rounded-lg px-3 py-2"
+                      >
+                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${getSubjectColor(klon.subject)} text-white`}>
+                            {klon.subject}
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+                            {klon.exam_type}
+                          </span>
+                          <span className="text-xs text-slate-600 truncate">{klon.topic}</span>
+                        </div>
+                        <button
+                          onClick={() => klonAc(klon)}
+                          disabled={soruUretiliyor}
+                          className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                        >
+                          Çöz
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 

@@ -1,4 +1,5 @@
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import type { PendingClone } from '../types/question';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -515,6 +516,60 @@ export const dbHelpers = {
       },
       { data: null, error: 'Bağlantı yok' },
       'getRecentAnswers'
+    );
+  },
+
+  // V2 Faz 1b "Eksiklerini Kapat": kullanıcının BEKLEYEN kişisel klonları
+  // (intended_for = kullanıcı, clone_of dolu, aktif). RLS questions SELECT
+  // USING(true) olduğundan yeni politika GEREKMEZ; cevaplanan klonlar JS'te
+  // elenir (getRecentAnswers deseni — answers RLS zaten kendi satırları).
+  getPendingClones: async (userId: string, limit: number = 10, client?: SupabaseClient) => {
+    const db = client || supabase!;
+    return withConnectionCheck(
+      async (): Promise<{ data: PendingClone[] | null; error: string | null }> => {
+        try {
+          const { data: klonlar, error: klonError } = await db
+            .from('questions')
+            .select('id, subject, topic, difficulty, exam_type, question_text, choices, correct_answer, explanation, hints, created_at')
+            .eq('intended_for', userId)
+            .not('clone_of', 'is', null)
+            .eq('status', 'active')
+            .order('created_at', { ascending: true })
+            .limit(limit);
+
+          if (klonError) {
+            console.log('getPendingClones hatası:', klonError.message);
+            return { data: null, error: klonError.message };
+          }
+          if (!klonlar || klonlar.length === 0) {
+            return { data: [], error: null };
+          }
+
+          // Cevaplanmış klonları ele (banner'dan düşsün) — answers yalnız
+          // kendi satırlarımızı döndürür, question_id kontrolü JS'te.
+          const klonIdler = klonlar.map((k: { id: string }) => k.id);
+          const { data: cevaplar, error: cevapError } = await db
+            .from('answers')
+            .select('question_id')
+            .eq('user_id', userId)
+            .in('question_id', klonIdler);
+          if (cevapError) {
+            console.log('getPendingClones cevap sorgusu hatası:', cevapError.message);
+            // Cevaplanamayanı varsay: klonları göster (yanlış eksiltme daha güvenli)
+            return { data: klonlar as unknown as PendingClone[], error: null };
+          }
+          const cevaplananlar = new Set((cevaplar ?? []).map((c: { question_id: string }) => c.question_id));
+          const bekleyenler = (klonlar as unknown as PendingClone[]).filter(
+            (k) => !cevaplananlar.has(k.id)
+          );
+          return { data: bekleyenler, error: null };
+        } catch (error) {
+          console.log('getPendingClones istisnası:', error);
+          return { data: null, error: 'Bekleyen klonlar alınamadı' };
+        }
+      },
+      { data: null, error: 'Bağlantı yok' },
+      'getPendingClones'
     );
   },
 

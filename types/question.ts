@@ -34,6 +34,23 @@ export interface RecentAnswer {
   };
 }
 
+// V2 Faz 1b "Eksiklerini Kapat": gece vardiyasının ürettiği BEKLEYEN kişisel
+// klon (intended_for = öğrenci, clone_of dolu). Yalnızca cevaplanmamışlar
+// listelenir (dbHelpers.getPendingClones cevaplananları JS'te eler).
+export interface PendingClone {
+  id: string;
+  subject: string;
+  topic: string;
+  difficulty: string; // beginner | intermediate | advanced
+  exam_type: string; // TYT | AYT | YDT
+  question_text: string;
+  choices: string[];
+  correct_answer: number;
+  explanation: string;
+  hints: string[] | null;
+  created_at: string;
+}
+
 // Settings Types
 export interface UserProfile {
   id?: string;
