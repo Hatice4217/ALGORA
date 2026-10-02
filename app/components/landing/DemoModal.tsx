@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '@/app/components/ui/Modal';
-import { ChevronRight, CheckCircle2, XCircle, Target, TrendingUp, Sparkles, ArrowRight, RotateCcw } from 'lucide-react';
+import { CheckCircle2, XCircle, TrendingUp, Sparkles, ArrowRight, RotateCcw, Lightbulb } from 'lucide-react';
 
 interface DemoStep {
   id: string;
@@ -15,12 +15,12 @@ const demoSteps: DemoStep[] = [
   {
     id: 'intro',
     title: 'ALGORA\'ya Hoş Geldin! 👋',
-    description: 'Sana ALGORA\'nın nasıl çalıştığını gösterelim. Gerçek bir soru çözecek ve yapay zeka destekli geri bildirim alacaksın.',
+    description: 'Ders kartına dokun, soru anında açılır — üstelik sınırsız ve ücretsiz. Şimdi gerçek deneyimi kısaca göstelim.',
     type: 'intro'
   },
   {
     id: 'question',
-    title: 'Soru 1: Matematik',
+    title: 'Soru: TYT Matematik',
     description: '',
     type: 'question'
   },
@@ -33,31 +33,43 @@ const demoSteps: DemoStep[] = [
   {
     id: 'final',
     title: 'Harika! 🎉',
-    description: 'ALGORA ile YKS sınavına en iyi şekilde hazırlan. Ücretsiz hesabını oluştur, ilk sorunuzu hemen üret!',
+    description: 'ALGORA ile YKS sınavına en iyi şekilde hazırlan. Ücretsiz hesabını oluştur, ders kartına dokun ve ilk sorunu anında çöz!',
     type: 'final'
   }
 ];
 
+// Demo sorusu gerçek ürün formatını yansıtır: ÖSYM standardı 5 şık (A-E) +
+// çözümü ifşa etmeyen 3 Sokratik ipucu
 const demoQuestion = {
+  examType: 'TYT',
   subject: 'Matematik',
-  topic: 'Türev',
+  topic: 'Oran-Orantı ve Problemler',
   difficulty: 'Orta',
-  question: 'f(x) = 2x² - 3x + 1 fonksiyonunun x = 2 noktasındaki türev değeri kaçtır?',
+  question: 'Bir sınıftaki öğrencilerin 3/5\'i kız, geri kalan 12 öğrenci erkektir. Buna göre sınıftaki toplam öğrenci sayısı kaçtır?',
   choices: [
-    { id: 'A', text: '3' },
-    { id: 'B', text: '5' },
-    { id: 'C', text: '7' },
-    { id: 'D', text: '9' }
+    { id: 'A', text: '24' },
+    { id: 'B', text: '27' },
+    { id: 'C', text: '30' },
+    { id: 'D', text: '32' },
+    { id: 'E', text: '36' }
   ],
-  correctAnswer: 'B',
-  explanation: `f(x) = 2x² - 3x + 1 fonksiyonunun türevini alalım:
+  correctAnswer: 'C',
+  explanation: `Sınıfı kesimlere ayıralım:
 
-f'(x) = 4x - 3
+Kızlar toplamın 3/5'i ise erkekler "geri kalan" kesimdir:
+1 - 3/5 = 2/5
 
-x = 2 için:
-f'(2) = 4(2) - 3 = 8 - 3 = 5
+Bu kesim 12 öğrenciye eşit:
+(2/5) × toplam = 12
+toplam = 12 × 5/2 = 30
 
-Cevap: 5 (B şıkkı) ✅`
+Cevap: 30 (C şıkkı) ✅`,
+  // Sokratik ipuçları: çözümü ifşa ETMEZ, yön gösterir (ücretsiz)
+  hints: [
+    'Öğrencileri kesimlere ayır: kızlar bir kesim, erkekler "geri kalan" kesim. Erkeklerin kesimi toplamın kaçta kaçı olur?',
+    'Bir kesimin gerçek sayısını biliyorsan, bu bilgiyi toplamı bulmak için nasıl kullanabilirsin?',
+    'Kesim ile kesim sayısı arasındaki çarpanı oran olarak düşün: hangi sayıyı hangiyle eşleştireceğin önemli.'
+  ]
 };
 
 interface DemoModalProps {
@@ -70,6 +82,8 @@ export function DemoModal({ isOpen, onClose }: DemoModalProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  // Kademeli ipucu: 0 = hiç açılmamış, her basışta bir sonraki açılır (max 3)
+  const [acilanIpucu, setAcilanIpucu] = useState(0);
 
   useEffect(() => {
     if (isOpen) {
@@ -77,6 +91,7 @@ export function DemoModal({ isOpen, onClose }: DemoModalProps) {
       setSelectedAnswer(null);
       setShowResult(false);
       setIsAnimating(false);
+      setAcilanIpucu(0);
     }
   }, [isOpen]);
 
@@ -98,6 +113,7 @@ export function DemoModal({ isOpen, onClose }: DemoModalProps) {
     setSelectedAnswer(null);
     setShowResult(false);
     setIsAnimating(false);
+    setAcilanIpucu(0);
   };
 
   const currentStepData = demoSteps[currentStep];
@@ -139,18 +155,23 @@ export function DemoModal({ isOpen, onClose }: DemoModalProps) {
           {/* Question Step */}
           {currentStepData.type === 'question' && !showResult && (
             <div className="space-y-6">
-              {/* Question Header */}
+              {/* Question Header — gerçek soru modalındaki rozet düzeniyle uyumlu */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {demoQuestion.subject} - {demoQuestion.topic}
-                  </h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-3 py-1 rounded-lg text-sm font-bold bg-purple-100 text-purple-700">
+                      {demoQuestion.examType}
+                    </span>
+                    <span className="px-3 py-1 rounded-lg text-sm font-medium bg-blue-500 text-white">
+                      {demoQuestion.subject}
+                    </span>
+                  </div>
                   <p className="text-sm text-gray-500 mt-1">
-                    Zorluk: {demoQuestion.difficulty}
+                    {demoQuestion.topic} · Zorluk: {demoQuestion.difficulty}
                   </p>
                 </div>
-                <div className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg font-medium text-sm">
-                  Soru 1/1
+                <div className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg font-medium text-sm">
+                  📚 Havuz
                 </div>
               </div>
 
@@ -161,7 +182,7 @@ export function DemoModal({ isOpen, onClose }: DemoModalProps) {
                 </p>
               </div>
 
-              {/* Choices */}
+              {/* Choices — ÖSYM standardı 5 şık */}
               <div className="space-y-3">
                 {demoQuestion.choices.map((choice) => (
                   <button
@@ -194,6 +215,32 @@ export function DemoModal({ isOpen, onClose }: DemoModalProps) {
                   </button>
                 ))}
               </div>
+
+              {/* Sokratik ipuçları — ücretsiz, kademeli, çözümü ifşa etmez */}
+              <div className="bg-sky-50 border border-sky-100 rounded-xl p-4">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <Lightbulb className="w-5 h-5 text-sky-600" />
+                    Takıldın mı?
+                  </h4>
+                  <span className="text-xs text-gray-500">Ücretsizdir — çözümü ifşa etmez, yön gösterir.</span>
+                </div>
+                {acilanIpucu > 0 && (
+                  <ol className="mt-3 space-y-2 list-decimal list-inside">
+                    {demoQuestion.hints.slice(0, acilanIpucu).map((ipucu, i) => (
+                      <li key={i} className="text-sm text-gray-700">{ipucu}</li>
+                    ))}
+                  </ol>
+                )}
+                {acilanIpucu < demoQuestion.hints.length && (
+                  <button
+                    onClick={() => setAcilanIpucu((n) => n + 1)}
+                    className="mt-3 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold transition-colors"
+                  >
+                    💡 {acilanIpucu + 1}. İpucu Al (ücretsiz)
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -217,10 +264,7 @@ export function DemoModal({ isOpen, onClose }: DemoModalProps) {
                   `}>
                     {isCorrect ? 'Tebrikler! Doğru Cevap 🎉' : 'Yanlış Cevap 😔'}
                   </h3>
-                  <p className={`
-                    text-sm mt-1
-                    {isCorrect ? 'text-green-700' : 'text-red-700'}
-                  `}>
+                  <p className={`text-sm mt-1 ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
                     {isCorrect
                       ? 'Harika gidiyorsun! Bu konuyu iyi anlamışsın.'
                       : `Doğru cevap: ${demoQuestion.correctAnswer} şıkkı (${demoQuestion.choices.find(c => c.id === demoQuestion.correctAnswer)?.text})`
@@ -237,6 +281,10 @@ export function DemoModal({ isOpen, onClose }: DemoModalProps) {
                 </pre>
               </div>
 
+              <p className="text-xs text-gray-400 text-center">
+                Üyelere özel: 🧠 Üst Beyin anlatımı soruyu adım adım, konunun mantığıyla anlatır.
+              </p>
+
               <button
                 onClick={handleNextStep}
                 className="w-full py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 transition-all"
@@ -247,7 +295,7 @@ export function DemoModal({ isOpen, onClose }: DemoModalProps) {
             </div>
           )}
 
-          {/* Stats Step */}
+          {/* Stats Step — gerçek dashboard metrikleri (XP gibi var olmayan ölçüm yok) */}
           {currentStepData.type === 'stats' && (
             <div className="space-y-6">
               <div className="text-center space-y-3">
@@ -256,11 +304,11 @@ export function DemoModal({ isOpen, onClose }: DemoModalProps) {
                   İlerlemenizi Takip Edin
                 </h3>
                 <p className="text-gray-600">
-                  ALGORA, her sorunu analiz eder ve sana detaylı istatistikler sunar
+                  ALGORA her çözümü analiz eder; branş bazlı başarı, günlük seri ve eksiklerini tek ekranda takip edersin
                 </p>
               </div>
 
-              {/* Mock Stats */}
+              {/* Demo Stats */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-purple-50 rounded-xl">
                   <div className="text-3xl font-bold text-purple-600">1</div>
@@ -270,15 +318,19 @@ export function DemoModal({ isOpen, onClose }: DemoModalProps) {
                   <div className="text-3xl font-bold text-green-600">{isCorrect ? '100' : '0'}%</div>
                   <div className="text-sm text-gray-600">Başarı Oranı</div>
                 </div>
-                <div className="p-4 bg-blue-50 rounded-xl">
-                  <div className="text-3xl font-bold text-blue-600">{isCorrect ? '15' : '20'}</div>
-                  <div className="text-sm text-gray-600">Saniye/Soru</div>
-                </div>
                 <div className="p-4 bg-orange-50 rounded-xl">
-                  <div className="text-3xl font-bold text-orange-600">+{isCorrect ? '10' : '0'}</div>
-                  <div className="text-sm text-gray-600">XP Puanı</div>
+                  <div className="text-3xl font-bold text-orange-600">1 gün</div>
+                  <div className="text-sm text-gray-600">Günlük Seri</div>
+                </div>
+                <div className="p-4 bg-blue-50 rounded-xl">
+                  <div className="text-3xl font-bold text-blue-600">∞</div>
+                  <div className="text-sm text-gray-600">Soru Hakkı</div>
                 </div>
               </div>
+
+              <p className="text-xs text-gray-400 text-center">
+                Soru çözmek sınırsız ve ücretsizdir; günlük krediler yalnızca 🧠 Üst Beyin anlatımlarında kullanılır.
+              </p>
 
               <button
                 onClick={handleNextStep}

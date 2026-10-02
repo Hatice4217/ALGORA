@@ -2899,3 +2899,29 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 ### 📌 Session Bitişi
 - Durum: kod tamam + build/lint/chunk doğrulaması geçti; **tarayıcı testleri kullanıcıda bekliyor** (Türkçe→direkt, Matematik→chooser→TYT, ⚙️→AYT+konu+İleri, İngilizce→YDT, Sıradaki Soru exclude, üretim kilidi/banner, mobil dar viewport)
 - Commit/push ve deploy: kullanıcı kararı bekliyor
+
+## 1 Ekim 2026 - Perşembe — Havuz ipucu temizliği: defolu (ipuçsuZ) sorular kaldırıldı
+
+### 🎯 Tetikleyici
+- Kullanıcı canlı testte: "Matematik TYT'de ipucu butonları yok" — branş bazında başka risk var mı analizi istendi
+
+### 🔍 Analiz (service-role PostgREST probe)
+- **Kök neden:** ipuçları soruyla BİRLİKTE üretiliyor (V2 Faz 1a); havuzun 34 sorudan 28'i (%82) ipucu-öncesi dönemden → `hints NULL` → UI kartı render etmiyor (`ipuclar.length > 0` bilinçli kontrolü). Branş hatası değil, veri eksikliği
+- Sıfır ipuçlu branşlar: Matematik/TYT (0/7), Fizik/TYT, Kimya/AYT, Tarih/TYT, Biyoloji/AYT, İngilizce/YDT; kısmi: Coğrafya/AYT, Din Kültürü/TYT, Türk Dili/AYT, Türkçe/TYT
+- 28 eksik sorudan 17'sine cevap verilmiş — kullanıcı: "o kullanıcılar hep tester, defolu soru istemiyorum" → silme kararı (istatistik/FK kaygısı geçersiz, gerçek kullanıcı yok)
+
+### ✅ Uygulama
+- `database/havuz_ipucu_temizligi.sql` (idempotent, transaction'lı): önce defolu sorulara bağlı `answers`, sonra soruların kendisi (jsonb_typeof CASE guard'ı — hints dizi-olmayabilir); doğrulama + branş özeti sorguları dahil
+- KULLANICI Supabase SQL Editor'de çalıştırdı → 28 soru + 17 cevap kaydı silindi
+
+### 🔍 Doğrulama (temizlik sonrası probe)
+- Havuz **6 soru, 6/6 TAM, 0 ipuçsuZ**: Türk Dili ve Edebiyatı/AYT ×2, Biyoloji/TYT, Coğrafya/AYT, Din Kültürü/TYT, Türkçe/TYT
+- Havuz artık %100 ipuçlu; tükenen branşlar Gemini fallback'inden İPUÇLU üretip havuza yazar → self-healing
+
+### 🧠 Çıkarım
+- "Özellik görünmüyor" şikayetinde önce veri kapsamasını ölç (UI koşulu bilinçliyse eksik veri sessiz davranır); branş bazlı gruplama sorumluyu (veri mi kod mu) anında ele verir
+- Probe: service-role PostgREST, `node -e` escaping tuzaklarından kaçınmak için script DOSYASI (sonrasında sil)
+
+### 📌 Session Bitişi
+- Durum: havuz temiz + 2 tık akışı canlıda; yeni üretimlerin ipuçlu geldiği ilk gerçek çözmede görülecek (✨ Yeni üretildi rozeti + 3 ipucu)
+- `database/havuz_ipucu_temizligi.sql` commit'lenmeyi bekliyor
