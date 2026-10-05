@@ -44,11 +44,13 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     id: 'pro',
     name: 'Pro Öğrenci',
     price: 199,
-    description: 'Düzenli çalışan öğrenciler için her gün yenilenen 20 Üst Beyin özel ders hakkı.',
+    description: 'Düzenli çalışan öğrenciler için her gün yenilenen 15 Üst Beyin özel ders hakkı.',
     features: [
       'Havuzdan Soru Çözme: Sınırsız',
       '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz',
-      'AI Üst Beyin Kredisi (Günlük Limit): 20 Kredi / Gün',
+      'AI Üst Beyin Kredisi (Günlük Limit): 15 Kredi / Gün',
+      'Hata Teşhisi & Çeldirici Analizi (Yakında)',
+      'Eksik Kapatma Takvimi — Aralıklı Tekrar (Yakında)',
     ],
     highlighted: true,
   },
@@ -60,9 +62,11 @@ export const PLANS: Record<PlanId, PlanConfig> = {
     features: [
       'Havuzdan Soru Çözme: Sınırsız',
       '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz',
-      'AI Üst Beyin Kredisi (Günlük Limit): 50 Kredi / Gün',
+      'AI Üst Beyin Kredisi (Günlük Limit): 30 Kredi / Gün',
       'Yapay Zeka Destekli YKS Koçu (Yakında)',
       'Detaylı Gelişim ve Zayıf Konu Analitiği (Yakında)',
+      'Kaynak Yükleme & Çoklu Sentez — RAG (Yakında)',
+      'AI Sınav Komutanı — Yol Haritası (Yakında)',
     ],
   },
 };

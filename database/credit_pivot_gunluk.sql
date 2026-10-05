@@ -33,14 +33,14 @@ ALTER TABLE public.subscriptions ADD COLUMN IF NOT EXISTS paid_until timestamptz
 -- 2) MEVCUT ÜCRETLİ ABONELERİN GEÇİŞİ (backfill + anlık günlük kotaya geçiş)
 -- ===================================
 -- paid_until = eski period_end (satın alma süreleri KORUNUR);
--- kotalar hemen yeni günlük limite çekilir (pro 20 / premium 50), dönem yarın yenilenir.
+-- kotalar hemen yeni günlük limite çekilir (pro 15 / premium 30), dönem yarın yenilenir.
 -- Idempotent: paid_until dolu satırlara dokunmaz.
 -- Not: period_end'i geçmiş ücretli abonelerde paid_until geçmiş kalır →
 -- ilk rollover'da otomatik free'e düşer (doğru davranış).
 UPDATE public.subscriptions
 SET paid_until = period_end,
-    credits_remaining = CASE plan WHEN 'premium' THEN 50 ELSE 20 END,
-    credits_limit = CASE plan WHEN 'premium' THEN 50 ELSE 20 END,
+    credits_remaining = CASE plan WHEN 'premium' THEN 30 ELSE 15 END,
+    credits_limit = CASE plan WHEN 'premium' THEN 30 ELSE 15 END,
     period_start = NOW(),
     period_end = NOW() + INTERVAL '1 day'
 WHERE plan IN ('pro', 'premium')
@@ -51,7 +51,7 @@ WHERE plan IN ('pro', 'premium')
 -- ===================================
 -- Akış (dönem bitmişse):
 --   a) Ücretli plan ve paid_until geçmiş/NULL → free'e düşür (3 kredi, 1 gün)
---   b) Değilse günlük reset: kredi = plan limiti (free 3 / pro 20 / premium 50)
+--   b) Değilse günlük reset: kredi = plan limiti (free 3 / pro 15 / premium 30)
 -- Yarış koruması aynen korunur: UPDATE ... WHERE period_end < NOW() —
 -- paralel isteklerde yalnızca biri resetler (canlıda 10/10 paralel testle kanıtlandı).
 -- 'monthly_reset' reason değeri tarihsel uyumluluk için KORUNDU (etiket: "Kredi yenileme").
@@ -97,10 +97,10 @@ BEGIN
   END IF;
 
   -- (b) Normal GÜNLÜK reset — tüm planlar
-  -- PLAN_LIMITS ile senkron: free 3 / pro 20 / premium 50
+  -- PLAN_LIMITS ile senkron: free 3 / pro 15 / premium 30
   v_limit := CASE v_row.plan
-    WHEN 'pro' THEN 20
-    WHEN 'premium' THEN 50
+    WHEN 'pro' THEN 15
+    WHEN 'premium' THEN 30
     ELSE 3
   END;
 

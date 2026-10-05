@@ -66,7 +66,7 @@ export function PricingSection() {
           </div>
           <h3 className="text-2xl font-bold text-gray-900 mb-2 mt-2">Pro Öğrenci</h3>
           <p className="text-gray-600 mb-6 text-sm leading-relaxed">
-            Düzenli çalışan öğrenciler için her gün yenilenen 20 Üst Beyin özel ders hakkı.
+            Düzenli çalışan öğrenciler için her gün yenilenen 15 Üst Beyin özel ders hakkı.
           </p>
           <div className="mb-8">
             <span className="text-4xl font-black text-gray-900">₺199</span>
@@ -76,7 +76,9 @@ export function PricingSection() {
             {[
               'Havuzdan Soru Çözme: Sınırsız',
               '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz',
-              'AI Üst Beyin Kredisi (Günlük Limit): 20 Kredi / Gün'
+              'AI Üst Beyin Kredisi (Günlük Limit): 15 Kredi / Gün',
+              'Hata Teşhisi & Çeldirici Analizi (Yakında)',
+              'Eksik Kapatma Takvimi — Aralıklı Tekrar (Yakında)'
             ].map((feature, index) => (
               <li key={index} className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,9 +111,11 @@ export function PricingSection() {
             {[
               'Havuzdan Soru Çözme: Sınırsız',
               '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz',
-              'AI Üst Beyin Kredisi (Günlük Limit): 50 Kredi / Gün',
+              'AI Üst Beyin Kredisi (Günlük Limit): 30 Kredi / Gün',
               'Yapay Zeka Destekli YKS Koçu (Yakında)',
-              'Detaylı Gelişim ve Zayıf Konu Analitiği (Yakında)'
+              'Detaylı Gelişim ve Zayıf Konu Analitiği (Yakında)',
+              'Kaynak Yükleme & Çoklu Sentez — RAG (Yakında)',
+              'AI Sınav Komutanı — Yol Haritası (Yakında)'
             ].map((feature, index) => (
               <li key={index} className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

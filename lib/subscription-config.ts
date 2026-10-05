@@ -6,16 +6,17 @@ import type { PlanId } from '@/types/subscription';
 // SINIRSIZ ve ÜCRETSİZDİR; kredi yalnızca derin çözüm/anlatım talebinde düşer.
 // HEPSİ GÜNLÜKTÜR (dönem = 1 gün; gece yarısı lazy rollover ile yenilenir):
 //   free    → 3 Üst Beyin / GÜN
-//   pro     → 20 Üst Beyin / GÜN
-//   premium → 50 Üst Beyin / GÜN (1 Eki 2026: premium değer farkı)
+//   pro     → 15 Üst Beyin / GÜN (5 Eki 2026: V2 fiyatlama matrisi başlangıç değerleri)
+//   premium → 30 Üst Beyin / GÜN (5 Eki 2026: V2 fiyatlama matrisi başlangıç değerleri)
 // DİKKAT: database/subscriptions.sql ve database/credit_pivot_gunluk.sql içindeki
-// rollover/seed fonksiyonlarıyla senkron tutulmalıdır (SQL tarafında 3/20/50).
+// rollover/seed fonksiyonlarıyla senkron tutulmalıdır (SQL tarafında 3/15/30 —
+// canlıya uygulama: database/kredi_15_30.sql).
 // NOT: Ücretli planın satın alma süresi subscriptions.paid_until'tedir (aylık);
 // period_end ise günlük kota dönemidir — ikisi artık farklı kavramlardır.
 export const PLAN_LIMITS: Record<PlanId, number> = {
   free: 3,
-  pro: 20,
-  premium: 50,
+  pro: 15,
+  premium: 30,
 };
 
 // Manuel ödeme (havale/EFT) bilgileri.

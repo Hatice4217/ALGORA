@@ -246,10 +246,10 @@ BEGIN
     RETURN v_row;
   END IF;
 
-  -- (b) Normal GÜNLÜK reset — PLAN_LIMITS ile senkron: free 3 / pro 20 / premium 50
+  -- (b) Normal GÜNLÜK reset — PLAN_LIMITS ile senkron: free 3 / pro 15 / premium 30
   v_limit := CASE v_row.plan
-    WHEN 'pro' THEN 20
-    WHEN 'premium' THEN 50
+    WHEN 'pro' THEN 15
+    WHEN 'premium' THEN 30
     ELSE 3
   END;
 
