@@ -55,13 +55,22 @@ Fonksiyon `STABLE`, `SECURITY DEFINER`, üçlü REVOKE'lıdır (`PUBLIC`, `anon`
 > doğru çalıştığının kanıtıdır. Havuz ve kullanıcı tabanı büyüdükçe ölçümler
 > anlamlılaşır; aşağıdaki tablo tarih tarih doldurulur.
 
-### Ölçüm 1 — _(tarih: bekliyor)_
+### Ölçüm 1 — 5 Ekim 2026 (sistem doğrulama ölçümü)
 
-_(Kullanıcı `get_kr20(5)` çıktısını buraya işleyecek)_
+**Sonuç: Satır döndürmedi ("No rows returned") — veri yok.**
+
+- `SELECT count(*) FROM answers;` → **0**. Sistem 5 Ekim veri kazası sonrası gerçek
+  kullanıcı verisiyle sıfırlandı; E2E probe'larının cevapları da temizlik cascade'iyle
+  silindi. `p_min_cevap` eşiğine (5) giren madde bulunmadığından fonksiyon boş küme
+  döndürdü — **küçük havuz/veri guard'ının tasarlandığı gibi çalıştığının kanıtı.**
+- `get_kr20` SQL'inin kurulumu doğrulandı (üçlü REVOKE: `anon`/`authenticated`
+  çalıştıramıyor — `false/false` teyitli; yalnız SQL Editor sahibi + `service_role`).
+- **KR-20 sayısal ölçümü, deney dönemi verisiyle (80–100 öğrenci, ön/son test) yapılacak.**
+  BAP formundaki vaat ölçümü bu dönemde karşılanır.
 
 | Sınav Türü | Ders | k (soru) | Cevap Sayısı | Ort. p | KR-20 | Yorum |
 |---|---|---|---|---|---|---|
-| — | — | — | — | — | — | İlk ölçüm bekliyor |
+| — | — | — | 0 | — | — | Veri yok (guard doğrulandı); ölçüm deney dönemine ertelendi |
 
 ## Sınırlılıklar (raporda açıkça belirtilir)
 

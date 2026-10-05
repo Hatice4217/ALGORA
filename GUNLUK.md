@@ -3101,3 +3101,28 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### 📌 Session Bitişi
 - Faz 2 canlıda TAMAM. Bekleyen kullanıcı adımları: (1) `database/kr20_olcumu.sql` Supabase SQL Editor'de çalıştırma → çıktı `docs/KR20_RAPORU.md` ölçüm tablosuna işlenecek; (2) tarayıcı testi (kart tıkı → Otomatik rozet, ⚙️ override, mobil 2x2 zorluk grid'i + radar etiketleri). Kalan teknik borç: B1 (Upstash Redis global rate limit) + generate route'taki deduct_credit artığı
+
+## [5 Ekim 2026 - Pazar] (V2 Fiyatlama Matrisi Kararları + Kredi 15/30 Pivotu)
+
+### 🎯 Tetikleyici
+- Kullanıcı V2 akademik/teknik özellik matrisini paylaştı (Free/Pro ₺199/Premium ₺499; ~19 modüllük yol haritası). Kararlar: (1) matris bir PLAN/yol haritasıdır — canlıdaki ile birebir eşleşme beklenmez; (2) ücretli krediler başlangıç için **Pro 15/gün, Premium 30/gün**; (3) henüz kodlanmamış özellikler vitrinde **"Yakında" etiketiyle** görünür (bekleme/takip etkisi bilinçli tercih — satılmayan vaadi değil açık yol haritası).
+- Danışman geri bildirimi (kısmen benimsendi): matristeki adaptif zorluk/radar/eksik-kapatma Free kolonunda ❌ görünüyor olsa da bu HEDEF durum — canlıda üçü de herkese açık kalıyor; plan-gating ayrı bir ürün kararı gerektirir, bilinçli olarak yapılmadı.
+
+### ✅ Kredi 15/30 Pivotu (kod + SQL + UI senkron)
+- `lib/subscription-config.ts` PLAN_LIMITS: `free 3 / pro 15 / premium 30` (tek kaynak — QuotaExhaustedModal + admin review approve otomatik düzeldi)
+- `types/subscription.ts` PLANS + `app/components/landing/PricingSection.tsx`: kredi metinleri 15/30; açıklama metinleri güncellendi
+- **Yakında maddeleri eklendi:** Pro'ya "Hata Teşhisi & Çeldirici Analizi", "Eksik Kapatma Takvimi — Aralıklı Tekrar"; Premium'a mevcut YKS Koçu + Analitiğ yanına "Kaynak Yükleme & Çoklu Sentez (RAG)", "AI Sınav Komutanı — Yol Haritası"
+- `database/kredi_15_30.sql` (yeni): rollover_subscription CASE 15/30 (CREATE OR REPLACE, ACL korunur) + mevcut pro/premium satırlarının credits_limit'i anında çekilir (kalan kredi dokunulmaz — kullanıcı lehine) + doğrulama bloğu (eski_20_kaldi / eski_50_kaldi false beklenir)
+- Baseline senkron: `subscriptions.sql` + `credit_pivot_gunluk.sql` içindeki aynı fonksiyon ve pivot CASE'leri 15/30'a eşitlendi (grep: eski 20/50 izi sıfır)
+
+### ✅ Deploy + Canlı Uygulama
+- Commit `f6dff7a` push → Vercel deploy SUCCESS. Kullanıcı `kredi_15_30.sql`'i çalıştırdı; doğrulama çıktısı beklendiği gibi: pro 15 / premium 30, eski değerler fonksiyon gövdesinden tamamen gitmiş
+
+### 📌 Session Bitişi
+- Kredi ekonomisi canlıda 3/15/30. Bekleyen: KR-20 ilk ölçüm çıktısı (`get_kr20()` — SQL çalıştılmış görünüyordu, SELECT çıktısı rapora işlenecek), tarayıcı testleri (Otomatik zorluk + radar + yeni vitrin maddeleri), teknik borç B1 (Upstash) + generate route deduct_credit artığı
+
+## [5 Ekim 2026 - Pazar] (KR-20 Ölçüm 1 — Sistem Doğrulama)
+
+- Kullanıcı `get_kr20()` (varsayılan `p_min_cevap=5`) çalıştırdı → **"No rows returned"**; `SELECT count(*) FROM answers` → **0**. Veri kazası sonrası gerçek kullanıcı verisi yok; probe cevapları temizlik cascade'iyle silinmişti → madde eşiğini geçen soru yok, boş küme guard'ın tasarımlandığı gibi çalıştığının kanıtı
+- `kr20_olcumu.sql` kurulum teyitli: `has_function_privilege` → `anon=false, authenticated=false` (üçlü REVOKE etkili)
+- `docs/KR20_RAPORU.md` Ölçüm 1 kaydı dolduruldu: sayısal KR-20 ölçümü **deney dönemine (80-100 öğrenci, ön/son test) ertelendi** — BAP vaadi bu dönemde karşılanır
