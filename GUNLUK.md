@@ -3126,3 +3126,21 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 - Kullanıcı `get_kr20()` (varsayılan `p_min_cevap=5`) çalıştırdı → **"No rows returned"**; `SELECT count(*) FROM answers` → **0**. Veri kazası sonrası gerçek kullanıcı verisi yok; probe cevapları temizlik cascade'iyle silinmişti → madde eşiğini geçen soru yok, boş küme guard'ın tasarımlandığı gibi çalıştığının kanıtı
 - `kr20_olcumu.sql` kurulum teyitli: `has_function_privilege` → `anon=false, authenticated=false` (üçlü REVOKE etkili)
 - `docs/KR20_RAPORU.md` Ölçüm 1 kaydı dolduruldu: sayısal KR-20 ölçümü **deney dönemine (80-100 öğrenci, ön/son test) ertelendi** — BAP vaadi bu dönemde karşılanır
+
+## [5 Ekim 2026 - Pazar] (Aboneliğim Paneli Sekmeli Yapı + Vitrin Açıklamaları + Yol Haritası)
+
+### 🎯 Tetikleyici
+- Kullanıcı geri bildirimi: geçmiş her zaman görünmesin → Paketim paneli 3 sekmeye bölünsün (Paketim / Paketler / Geçmiş Kullanımlarım); paket özellikleri açıklayıcı dille yazılsın; kart boyutları eşit olsun; her değişiklikte responsive uygulanmalı. Hasan Hoca revizyon listesi + matris Yakında'ları birleşik yol haritası istendi.
+
+### ✅ Yapılanlar (commit zinciri, hepsi deploy SUCCESS)
+- **Sekmeli yapı** (`8828a2f`): PackagePanel split-screen'den 3 sekmeli yapıya; geçmiş yalnız kendi sekmesinde; premium'a "✓ Mevcut Paketiniz" + düşük paket koruması
+- **Paketler kartlarına açıklamalar + eşit boyut** (`1d84367`): ozellikAciklamasi helper'ı, CTA mt-auto ile alta hizalama
+- **Landing + tek kaynak + jenerik cümle temizliği** (`7fa0e25`): açıklama haritası types/subscription.ts'a taşındı (panel+vitrin ortak); kart başlığı altı jenerik açıklama cümleleri kaldırıldı; landing 3 kartı flex+mt-auto eşit boyut
+- **Üst boşluk** (`e3fa651`): panel -mt-4 (32px→16px) — kullanıcının "ana placeholder" olarak gördüğü gri boşluk
+- **Ana sekme adı** (`2749861`): "Paketim" → "Aboneliğim" (üst menü + mobil menü + kredi pill tooltip; alt sekme adları aynı)
+- Kullanıcı kararı: Yakında maddelerinin tekrarlayan açıklama metni KALIYOR (kaldırma denemesi geri alındı)
+
+### 📌 Yol Haritası (`docs/YOL_HARITASI.md`)
+- 17 madde, kolay→zor, gün tahminli + checkbox; Hasan Hoca 6 maddesinin durum tespiti tablosu
+- **YENİ madde 4: Araştırma Modu** — BAP deneyi için kritik: deney/kontrol ayrımı ödeme durumundan bağımsız olmalı. `user_profiles.research_group` (NULL/'deney'/'kontrol') + kredi/gating baypası + admin atama route'u; şimdilik etkisiz ama gating'li özellikler gelmeden altyapısı şart (~yarım-1 gün)
+- Sıradaki: madde 1 (Avatar + gizli çıkış) kullanıcı onayıyla başlayacak
