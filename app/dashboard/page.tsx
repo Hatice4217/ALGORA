@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button } from '../components/ui/Button';
 import { Logo } from '../components/ui/Logo';
 import { MobileMenu, HamburgerButton } from '../../components/MobileMenu';
 import { hesaplaGunlukSeri } from '../../lib/utils';
@@ -13,6 +12,7 @@ import { AnalysisPanel } from '../../components/dashboard/AnalysisPanel';
 import { QuestionPractice } from '../../components/dashboard/QuestionPractice';
 import { SettingsPanel } from '../../components/dashboard/SettingsPanel';
 import { PackagePanel, UpgradeModal } from '../../components/dashboard/PackagePanel';
+import { ProfileAvatar } from '../../components/dashboard/ProfileAvatar';
 import { QuotaExhaustedModal } from '../../components/dashboard/QuotaExhaustedModal';
 import { DailyGoals } from '../../components/dashboard/DailyGoals';
 import { ExamCountdown } from '../../components/dashboard/ExamCountdown';
@@ -22,6 +22,7 @@ import { SessionGuard } from '../../components/dashboard/SessionGuard';
 import { authFetch } from '../../lib/api';
 import { getSubjects } from '../../lib/constants/syllabus';
 
+import { PLANS } from '../../types/subscription';
 import type { SubscriptionSummary, PaidPlanId } from '../../types/subscription';
 
 import type { Question, RecentAnswer, PendingClone } from '../../types/question';
@@ -714,12 +715,14 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {/* Masaüstü: Kredi sayacı + Çıkış Butonu */}
-            <div className="hidden md:flex items-center gap-3">
+            {/* Sağ üst: kredi pill'i (masaüstü) + profil avatarı (Yol Haritası
+                madde 1: belirgin çıkış butonu kaldırıldı — çıkış avatar menüsünde
+                ince kırmızı link olarak yaşar) + mobil hamburger */}
+            <div className="flex items-center gap-3">
               {subscriptionSummary?.subscription && (
                 <button
                   onClick={() => setActiveTab('package')}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-sm font-semibold transition-colors"
+                  className="hidden md:flex items-center gap-1.5 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-sm font-semibold transition-colors"
                   title="Aboneliğim sekmesine git"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -728,16 +731,22 @@ export default function DashboardPage() {
                   {subscriptionSummary.subscription.credits_remaining} / {subscriptionSummary.subscription.credits_limit}
                 </button>
               )}
-              <Button variant="outline" size="md" onClick={handleLogout}>
-                Çıkış Yap
-              </Button>
+              <ProfileAvatar
+                userName={userName}
+                planName={
+                  subscriptionSummary?.subscription
+                    ? PLANS[subscriptionSummary.subscription.plan].name
+                    : null
+                }
+                creditsRemaining={subscriptionSummary?.subscription?.credits_remaining ?? null}
+                creditsLimit={subscriptionSummary?.subscription?.credits_limit ?? null}
+                onLogout={handleLogout}
+              />
+              <HamburgerButton
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                isOpen={isMobileMenuOpen}
+              />
             </div>
-
-            {/* Mobil Hamburger Butonu */}
-            <HamburgerButton
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              isOpen={isMobileMenuOpen}
-            />
           </div>
 
           {/* Sekmeler — yalnızca tablet/masaüstünde; mobilde hamburger menüden erişilir */}
@@ -821,7 +830,7 @@ export default function DashboardPage() {
                   setIsMobileMenuOpen(false);
                   handleLogout();
                 }}
-                className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-all font-medium"
+                className="w-full text-left px-4 py-2 text-sm font-normal text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
               >
                 Çıkış Yap
               </button>
