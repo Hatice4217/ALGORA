@@ -693,7 +693,7 @@ export default function DashboardPage() {
     { id: 'overview' as const, label: 'Genel Bakış' },
     { id: 'practiceRoom' as const, label: 'Dinamik Soru Bankası' },
     { id: 'analysis' as const, label: 'Analizler' },
-    { id: 'package' as const, label: 'Paketim' },
+    { id: 'package' as const, label: 'Aboneliğim' },
     { id: 'settings' as const, label: 'Ayarlar' },
   ];
 
@@ -720,7 +720,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => setActiveTab('package')}
                   className="flex items-center gap-1.5 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-sm font-semibold transition-colors"
-                  title="Paketim sekmesine git"
+                  title="Aboneliğim sekmesine git"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.343a1 1 0 00-1.414 0l-.707.707a1 1 0 001.414 1.414l.707-.707a1 1 0 000-1.414zM10 7a3 3 0 100 6 3 3 0 000-6zM3 9a1 1 0 100 2h1a1 1 0 100-2H3zM17 9a1 1 0 110 2h-1a1 1 0 110-2h1z" />
