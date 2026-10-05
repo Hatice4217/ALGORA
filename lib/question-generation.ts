@@ -11,7 +11,7 @@
 // 3 ipucu ASLA çözüm adımı vermeyecek / doğru cevabı ifşa etmeyecek —
 // öğretmenin yönlendirici tavsiyeleri (Sokratik nudges) gibi yazılacak.
 
-import { isSpecificTopic } from './constants/syllabus';
+import { isKnownTopic } from './constants/syllabus';
 
 // Zorluk seviyelerini prompt için Türkçe'ye çevirme
 export const difficultyMap: Record<string, string> = {
@@ -120,9 +120,11 @@ function buildPrompt(params: {
 }): string {
   const { subject, topic, difficultyText, examType, bannedQuestions } = params;
 
-  // Konu odağı: yalnızca somut bir konu seçildiyse eklenir ('Genel'/boş → eklenmez)
-  const topicFocusBlock = isSpecificTopic(topic)
-    ? `\n\nKONU ODAĞI: Soru YALNIZCA "${topic}" konusuyla ilgili olmalı. Soru, bu konunun bilgisini/uygulamasını test etmeli; başka konulardan bağımsız soru üretme.`
+  // Konu odağı (G1 onarımı): yalnızca MEB müfredat listesindeki somut konu
+  // eklenir; whitelist dışı metin 'Genel' davranışına düşer (prompt'a sızmaz)
+  const bilinenKonu = isKnownTopic(examType, subject, topic) ? topic.trim() : '';
+  const topicFocusBlock = bilinenKonu
+    ? `\n\nKONU ODAĞI: Soru YALNIZCA "${bilinenKonu}" konusuyla ilgili olmalı. Soru, bu konunun bilgisini/uygulamasını test etmeli; başka konulardan bağımsız soru üretme.`
     : '';
 
   const antiRepeatBlock = bannedQuestions.length > 0
@@ -133,7 +135,7 @@ function buildPrompt(params: {
 
   return `${SYSTEM_PROMPT}
 
-Öğrenciye MEB müfredatına uygun, ${examType} sınavı ${subject} dersinin '${topic || 'Genel'}' kazanımından, ${difficultyText} zorluk seviyesinde bir YKS sorusu üret.${topicFocusBlock}${antiRepeatBlock}
+Öğrenciye MEB müfredatına uygun, ${examType} sınavı ${subject} dersinin '${bilinenKonu || 'Genel'}' kazanımından, ${difficultyText} zorluk seviyesinde bir YKS sorusu üret.${topicFocusBlock}${antiRepeatBlock}
 
 ÖNEMLİ: Matematiksel ifadeleri DÜZ METİN olarak yaz, $, \\, LaTeX kodları KULLANMA.
 Örnek: "x kare 2 artı x" yerine "x² + 2x", "karekök 16" yerine "4", "x küçük eşit 5" yerine "x <= 5" gibi.

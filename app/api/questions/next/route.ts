@@ -17,7 +17,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../../../lib/supabase';
 import { rateLimit } from '../../../../lib/rate-limit';
-import { getSubjects } from '../../../../lib/constants/syllabus';
+import { getSubjects, getTopics } from '../../../../lib/constants/syllabus';
 import {
   difficultyMap,
   difficultyToDb,
@@ -135,6 +135,14 @@ export async function POST(request: Request) {
     }
     const effectiveExamType = typeof rawExamType === 'string' ? rawExamType : 'TYT';
     const safeTopic = typeof topic === 'string' ? topic.trim().slice(0, TOPIC_MAX_LENGTH) : '';
+    // G1 onarımı: dolu konu MEB müfredat whitelist'inde olmalı — arayüz yalnız
+    // dropdown'dan liste değeri gönderir; buraya düşen istek üretimdir → 400
+    if (safeTopic && !getTopics(effectiveExamType, subject).includes(safeTopic)) {
+      return NextResponse.json(
+        { error: 'Geçersiz konu. Lütfen listeden bir konu seçin.' },
+        { status: 400 }
+      );
+    }
     const safePreviousQuestion =
       typeof previous_question === 'string'
         ? previous_question.trim().slice(0, PREVIOUS_QUESTION_MAX_LENGTH)

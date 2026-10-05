@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../../../../lib/supabase';
 import { PLAN_LIMITS } from '../../../../lib/subscription-config';
 import { rateLimit } from '../../../../lib/rate-limit';
-import { getSubjects, isSpecificTopic } from '../../../../lib/constants/syllabus';
+import { getSubjects, isKnownTopic } from '../../../../lib/constants/syllabus';
 
 // Yapay zekaya gönderilecek katı sistem promptu
 const SYSTEM_PROMPT = `Sen Türkiye'deki üniversite sınavlarına (TYT, AYT) hazırlık yapan öğrenciler için soru üreten bir yapay zeka asistanısın.
@@ -219,7 +219,10 @@ export async function POST(request: Request) {
       );
     }
     const effectiveExamType: string = typeof rawExamType === 'string' ? rawExamType : 'TYT';
-    const safeTopic = typeof topic === 'string' ? topic.trim().slice(0, TOPIC_MAX_LENGTH) : '';
+    const rawTopic = typeof topic === 'string' ? topic.trim().slice(0, TOPIC_MAX_LENGTH) : '';
+    // G1 onarımı: dolu ama MEB whitelist'inde olmayan konu 'Genel'e düşer
+    // (ham metin prompt'a ve DB'ye sızmaz)
+    const safeTopic = isKnownTopic(effectiveExamType, subject, rawTopic) ? rawTopic : '';
     const safePreviousQuestion =
       typeof previous_question === 'string'
         ? previous_question.trim().slice(0, PREVIOUS_QUESTION_MAX_LENGTH)
@@ -280,9 +283,9 @@ export async function POST(request: Request) {
           .join('\n')}\nBu sorularla aynı veya benzer bir soru KESİNLİKLE üretme. Farklı sayılar, farklı bağlam/kurgu ve mümkünse farklı bir alt konu kullanarak tamamen YENİ bir soru üret.`
       : `\n\nÇEŞİTLİLİK: Yaygın bilinen örnek soruları değil, özgün bir soru üret. Sayı değerlerini ve kurguyu çeşitlendir.`;
 
-    // Konu odağı: yalnızca somut bir konu seçildiyse eklenir ('Genel'/boş → eklenmez,
-    // eski istekler ve varsayılan akış aynen çalışır — geriye dönük uyum)
-    const topicFocusBlock = isSpecificTopic(safeTopic)
+    // Konu odağı: yalnızca whitelist'ten geçen somut konu eklenir ('Genel'/boş →
+    // eklenmez, eski istekler ve varsayılan akış aynen çalışır — geriye dönük uyum)
+    const topicFocusBlock = safeTopic
       ? `\n\nKONU ODAĞI: Soru YALNIZCA "${safeTopic}" konusuyla ilgili olmalı. Soru, bu konunun bilgisini/uygulamasını test etmeli; başka konulardan bağımsız soru üretme.`
       : '';
 

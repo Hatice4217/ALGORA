@@ -226,10 +226,14 @@ CREATE POLICY "Users can update own profile"
   USING (auth.uid() = user_id);
 
 -- Questions Policies
+-- B2 onarımı (zaafiyet raporu 5 Eki): yalnız genel havuz (intended_for NULL)
+-- + kullanıcının kendi kişisel klonları görünür — başkasının klonu ifşa edilmez.
+-- Kurulum: database/questions_klon_politikasi.sql
 DROP POLICY IF EXISTS "Anyone can view questions" ON questions;
-CREATE POLICY "Anyone can view questions"
+DROP POLICY IF EXISTS "Pool public, clones private" ON questions;
+CREATE POLICY "Pool public, clones private"
   ON questions FOR SELECT
-  USING (true);
+  USING (intended_for IS NULL OR intended_for = auth.uid());
 
 DROP POLICY IF EXISTS "Authenticated users can insert questions" ON questions;
 CREATE POLICY "Authenticated users can insert questions"

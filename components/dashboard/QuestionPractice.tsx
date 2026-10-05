@@ -66,6 +66,9 @@ interface QuestionPracticeProps {
   bildirimDurumu: null | 'gonderildi' | 'askida';
   bildiriliyor: boolean;
   soruBildir: () => void;
+  // T2-UX1 onarımı: alert() yerine inline hata banner'ı (bağlantı hatası vb.)
+  hataMesaji: string | null;
+  hataKapat: () => void;
   modalKapat: () => void;
 }
 
@@ -116,6 +119,8 @@ export function QuestionPractice({
   bildirimDurumu,
   bildiriliyor,
   soruBildir,
+  hataMesaji,
+  hataKapat,
   modalKapat,
 }: QuestionPracticeProps) {
   // İki türlü dersin kartına basılınca açılan "TYT mi, AYT mi?" chooser'ı
@@ -202,6 +207,24 @@ export function QuestionPractice({
                 Ders kartına dokun — soru havuzdan anında açılır (varsayılan: tüm konular, orta
                 zorluk). İstersen ⚙️ ile konu ve zorluk seçebilirsin.
               </p>
+
+              {/* Hata banner'ı (T2-UX1): soru modalı KAPALIYKEN üretim hatası
+                  burada görünür (modal açıkken modal içinde gösterilir) */}
+              {hataMesaji && !mevcutSoru && (
+                <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 flex items-start gap-3">
+                  <span className="text-base leading-none mt-0.5 shrink-0">⚠️</span>
+                  <p className="flex-1 text-sm text-red-700">{hataMesaji}</p>
+                  <button
+                    onClick={hataKapat}
+                    aria-label="Hatayı kapat"
+                    className="p-1 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-100 transition-colors shrink-0"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
 
               {/* Hızlı yolda üretim geri bildiriminin tek yeri: inline bekleme banner'ı */}
               {soruUretiliyor && (
@@ -575,6 +598,24 @@ export function QuestionPractice({
 
             {/* Modal Content */}
             <div className="p-6 space-y-6">
+              {/* Hata banner'ı (T2-UX1): modal açıkken işlem hatası (bağlantı
+                  kopması, API hatası) alert yerine burada tatlıca görünür */}
+              {hataMesaji && (
+                <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 flex items-start gap-3">
+                  <span className="text-base leading-none mt-0.5 shrink-0">⚠️</span>
+                  <p className="flex-1 text-sm text-red-700">{hataMesaji}</p>
+                  <button
+                    onClick={hataKapat}
+                    aria-label="Hatayı kapat"
+                    className="p-1 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-100 transition-colors shrink-0"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+
               {/* Soru gövdesi — yeni soru üretilirken eski soruyla etkileşim fiziksel olarak kesilir */}
               <div className="relative">
                 <div className={`space-y-6 ${soruUretiliyor ? 'opacity-50 pointer-events-none select-none' : ''}`}>

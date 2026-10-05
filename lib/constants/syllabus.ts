@@ -58,7 +58,20 @@ export function getTopics(exam: string, subject: string): string[] {
   return MEB_SYLLABUS[exam as ExamType]?.[subject] ?? [];
 }
 
-/** Konu "somut" mu? (boş = üretim prompt'unda konu odağı yok, 'Genel' davranışı) */
+/** Konu "somut" mu? (boş = üretim prompt'unda konu odağı yok, 'Genel' davranışı).
+ *  Bu YALNIZCA boşluk kontrolüdür — müfredat kontrolü için isKnownTopic. */
 export function isSpecificTopic(topic: string | null | undefined): boolean {
   return !!topic && topic.trim().length > 0;
+}
+
+/** Konu bu sınav+dersin MEB müfredat listesinde mi? (G1 onarımı — gerçek
+ *  whitelist: API sınırından gelen keyfi konu metni buraya takılır, prompt'a
+ *  ve questions.topic sütununa asla ham sızmaz) */
+export function isKnownTopic(
+  exam: string,
+  subject: string,
+  topic: string | null | undefined
+): boolean {
+  if (!topic) return false;
+  return getTopics(exam, subject).includes(topic.trim());
 }

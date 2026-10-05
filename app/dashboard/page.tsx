@@ -125,6 +125,9 @@ export default function DashboardPage() {
   // Hatalı soru bildirimi durumu ('askida' = soru havuzdan otomatik askıya alındı)
   const [bildirimDurumu, setBildirimDurumu] = useState<null | 'gonderildi' | 'askida'>(null);
   const [bildiriliyor, setBildiriliyor] = useState(false);
+  // İşlem hatası (T2-UX1 onarımı): alert() yerine inline banner — kopuk bağlantı
+  // vb. durumlarda tarayıcı diyaloğu yerine arayüz içinde tatlı bildirim
+  const [hataMesaji, setHataMesaji] = useState<string | null>(null);
 
   // Initialize userName from localStorage immediately (prevents flash)
   useEffect(() => {
@@ -415,6 +418,7 @@ export default function DashboardPage() {
     setAcilanIpucu(0);
     setUstBeyinMetni(null);
     setBildirimDurumu(null);
+    setHataMesaji(null);
 
     try {
       const response = await authFetch('/api/questions/next', {
@@ -435,7 +439,7 @@ export default function DashboardPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Sunucu hatası' }));
         console.error('API Error:', errorData.error);
-        alert(`Soru alınamadı: ${errorData.error || 'Bilinmeyen hata'}`);
+        setHataMesaji(`Soru alınamadı: ${errorData.error || 'Bilinmeyen hata'}`);
         return;
       }
 
@@ -450,11 +454,11 @@ export default function DashboardPage() {
         }
       } else {
         console.error('API Error:', data.error);
-        alert(`Soru alınamadı: ${data.error || 'Bilinmeyen hata'}`);
+        setHataMesaji(`Soru alınamadı: ${data.error || 'Bilinmeyen hata'}`);
       }
     } catch (error) {
       console.error('Could not fetch question:', error);
-      alert('Soru alınırken bir hata oluştu. Lütfen tekrar deneyin.');
+      setHataMesaji('Bağlantı hatası — internet bağlantını kontrol edip tekrar deneyebilirsin.');
     } finally {
       setIsGeneratingQuestion(false);
     }
@@ -495,6 +499,7 @@ export default function DashboardPage() {
     // Handler guard: id yoksa / istek sürüyorsa / anlatım zaten varsa dokunma
     if (!currentQuestion?.id || ustBeyinIstiyor || ustBeyinMetni) return;
     setUstBeyinIstiyor(true);
+    setHataMesaji(null);
     try {
       const response = await authFetch('/api/questions/solution', {
         method: 'POST',
@@ -512,7 +517,7 @@ export default function DashboardPage() {
           return;
         }
         console.error('API Error:', errorData.error);
-        alert(`Üst Beyin anlatımı alınamadı: ${errorData.error || 'Bilinmeyen hata'}`);
+        setHataMesaji(`Üst Beyin anlatımı alınamadı: ${errorData.error || 'Bilinmeyen hata'}`);
         return;
       }
 
@@ -535,11 +540,11 @@ export default function DashboardPage() {
         }
       } else {
         console.error('API Error:', data.error);
-        alert(`Üst Beyin anlatımı alınamadı: ${data.error || 'Bilinmeyen hata'}`);
+        setHataMesaji(`Üst Beyin anlatımı alınamadı: ${data.error || 'Bilinmeyen hata'}`);
       }
     } catch (error) {
       console.error('Could not fetch solution:', error);
-      alert('Üst Beyin anlatımı alınırken bir hata oluştu. Lütfen tekrar deneyin.');
+      setHataMesaji('Bağlantı hatası — internet bağlantını kontrol edip tekrar deneyebilirsin.');
     } finally {
       setUstBeyinIstiyor(false);
     }
@@ -549,6 +554,7 @@ export default function DashboardPage() {
   const soruBildir = async () => {
     if (!currentQuestion?.id || bildiriliyor || bildirimDurumu) return;
     setBildiriliyor(true);
+    setHataMesaji(null);
     try {
       const response = await authFetch('/api/questions/report', {
         method: 'POST',
@@ -558,18 +564,18 @@ export default function DashboardPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Sunucu hatası' }));
         console.error('API Error:', errorData.error);
-        alert(`Bildirim gönderilemedi: ${errorData.error || 'Bilinmeyen hata'}`);
+        setHataMesaji(`Bildirim gönderilemedi: ${errorData.error || 'Bilinmeyen hata'}`);
         return;
       }
       const data = await response.json();
       if (data.success) {
         setBildirimDurumu(data.data?.status === 'suspended' ? 'askida' : 'gonderildi');
       } else {
-        alert(`Bildirim gönderilemedi: ${data.error || 'Bilinmeyen hata'}`);
+        setHataMesaji(`Bildirim gönderilemedi: ${data.error || 'Bilinmeyen hata'}`);
       }
     } catch (error) {
       console.error('Could not report question:', error);
-      alert('Bildirim gönderilirken bir hata oluştu. Lütfen tekrar deneyin.');
+      setHataMesaji('Bağlantı hatası — internet bağlantını kontrol edip tekrar deneyebilirsin.');
     } finally {
       setBildiriliyor(false);
     }
@@ -882,6 +888,8 @@ export default function DashboardPage() {
             bildirimDurumu={bildirimDurumu}
             bildiriliyor={bildiriliyor}
             soruBildir={soruBildir}
+            hataMesaji={hataMesaji}
+            hataKapat={() => setHataMesaji(null)}
             modalKapat={() => {
               setCurrentQuestion(null);
               setShowAnswer(false);
@@ -889,6 +897,7 @@ export default function DashboardPage() {
               setAcilanIpucu(0);
               setUstBeyinMetni(null);
               setBildirimDurumu(null);
+              setHataMesaji(null);
             }}
           />
         )}

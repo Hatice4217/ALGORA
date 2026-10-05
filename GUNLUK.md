@@ -2984,3 +2984,58 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### 📌 Session Bitişi
 - Durum: **V2 Faz 1b TAMAMEN canlıda ve uçtan uca doğrulanmış** (önbellek + gece vardiyası + klon akışı + guard'lar). Gece schedule (TR 00-06, 6 tetikleme) kendi kendine çalışacak. Kullanıcı sinyali bekleme: "zaafiyet testi" talimatı ve "canlıya açma vakti" ilanı
+
+## [5 Ekim 2026 - Pazar] (Zaafiyet Testi Tur 2 + Ek Prob Turu — 28/28 PASS)
+
+### 🎯 Tetikleyici
+- Kullanıcı 6 senaryoluk test planı attı: Sihirli Hafıza, Fakir Öğrenci (cache-before-credit), Korsan Öğrenci (F12 replay), Bulaşıcı State, Linç Girişimi, Kopuk Uçurtma + "sonra kendi testlerin ve faz güncelleme planı"
+
+### ✅ Sonuçlar (tam rapor: `docs/SECURITY_PENTEST_RAPORU_2026-10-05.md` Tur 2 bölümü)
+- **28/28 PASS + ek prob turu temiz.** Kritik/orta YENİ bulgu yok; tek gözlem T2-UX1 (aşağıda)
+- **Test 1 (Sihirli Hafıza) GEÇTİ:** Üst Beyin 3→2 kredi + tx `-1 higher_brain` (6.2sn Gemini); tekrar `cached:true` + kredi SABİT + 1.5sn + aynı metin
+- **Test 2 (Fakir Öğrenci) GEÇTİ:** kredi 0 + cache'li soru → 402 DEĞİL 200 `cached:true` bedava — önbellek okuma (solution route 141-157) 402'den (165) ÖNCE, kod sırası kanıtlı
+- **Korsan Öğrenci GEÇTİ:** 0 kredi + cache'siz → 402 CREDIT_EXHAUSTED, metin sızmadı; token'sız 401, sahte UUID 404, bozuk UUID 400, seçenek dışı 400
+- **Bulaşıcı State KOD DÜZEYİNDE GEÇTİ:** `dersBaslat` (page.tsx:469-484) ozellikler'siz çağrıda konu '' + zorluk 'orta' zorluyor — yapışkan state yok (tarayıcı görsel teyidi kullanıcıya ait)
+- **Linç GEÇTİ:** 1. bildirim active; aynı kullanıcı `already_reported:true` + DB tek satır; 2. kullanıcı → suspended; havuz RPC'den `null`
+- **Kopuk Uçurtma ÇÖKME YOK:** catch + finally üretim kilidini açıyor, modal sağlam. Gözlem **T2-UX1:** hata `alert()` ile — jenerik mesaj, blocking dialog; "internetini kontrol et" tarzı inline banner önerildi (onarım adayı)
+- **Ek prob (benim turum):** header'lar 6/6 canlıda (script'teki 2 ❌ benim case-compare hatam, curl gerçeği gösterdi); admin 404 maskesi 3/3; anon RPC EXECUTE 4/4 permission denied; subscriptions UPDATE 0 satır (free/3 kaldı) + credit_transactions INSERT RLS reddi
+
+### 🧹 Temizlik + YENİ DERS
+- Sorular/kullanıcılar temizlendi; **ama `listUsers()` + JS e-posta filtresi BU KEZ DE sessiz boş döndü** → silme döngüsü boş çalıştı, kullanıcılar duruyordu; bağımsız yöründe (signIn reddi) yakalandı, kesin UUID ile silinip kanıtlandı
+- **PANZEHİR v2 (kalıcı):** probe temizliğinde silme başarısını listUsers ile ASLA doğrulama — createUser yanıtındaki kesin UUID'yi sakla, onunla sil, signIn reddiyle kanıtla
+
+### 📌 Session Bitişi
+- Zaafiyet testi TUR 2 tamam: 28/28 + ek tur, kritik yok. Açık onarım listesi: B2 (questions SELECT politikası) > B1 (global rate limit) > G1 (konu whitelist) > T2-UX1 (alert→inline hata). Kullanıcıya faz güncelleme planı sunuldu — karar bekleniyor
+
+## [5 Ekim 2026 - Pazar] (Faz 1c Sertleştirme — B2 + T2-UX1 + G1 uygulandı)
+
+### 🎯 Tetikleyici
+- Kullanıcı: "commite gerek yok fazlardan düzenlemelere başlayabiliriz" — onarım listesi sırayla (B2 > T2-UX1 > G1; B1 Upstash altyapı kararı ayrı bekliyor)
+
+### ✅ B2 — questions SELECT kişisellik politikası
+- `database/questions_klon_politikasi.sql` (KULLANICI ÇALIŞTIRACAK): "Anyone can view questions" USING(true) → "Pool public, clones private" `USING (intended_for IS NULL OR intended_for = auth.uid())`
+- `database/schema.sql` baseline eşitlendi. Etkilenme analizi temiz: /next+/solution+report+cron service-role; get_next_pool_question SECURITY DEFINER; getPendingClones `.eq('intended_for', userId)`; getRecentAnswers embed (genel+hangi kendi klonu); subject_breakdown view security_invoker ama yalnız kendi answers'ları join eder
+
+### ✅ T2-UX1 — alert() → inline hata banner'ı
+- dashboard/page.tsx: `hataMesaji` state; 9 alert() kaldırıldı (üretim 3, Üst Beyin 3, bildirim 3); catch yolları "Bağlantı hatası — internet bağlantını kontrol edip tekrar deneyebilirsin."; her akış başında + modalKapat'ta temizlenir
+- QuestionPractice.tsx: kırmızı banner (⚠️ + mesaj + X) modal İÇİNDE ve modal kapalıyken ana panelde (çift render korunur, `!mevcutSoru` koşuluyla)
+
+### ✅ G1 — konu MEB whitelist'i
+- syllabus.ts: `isKnownTopic(exam, subject, topic)` gerçek liste kontrolü (isSpecificTopic boşluk-check olarak kaldı, yorum düzeltildi)
+- `/next` route: dolu konu listede değilse **400** (dropdown dışı istek = üretim)
+- `generate` route + `question-generation.ts buildPrompt`: whitelist dışı konu **'Genel'e coercion** (prompt'a ve DB'ye ham metin sızmaz)
+- ⚠️ Gözlem: generate route'ta hâlâ deduct_credit var (V2 kararına aykırı) — ayrı görev adayı, dokunulmadı
+
+### 🔍 Doğrulama
+- tsc 0 hata; eslint 0 hata (3 önceden var olan warning); production build SUCCESS
+
+### 📌 Session Bitişi
+- Kod tarafı Faz 1c 3/4 tamam (B1 Upstash beklemede). Kullanıcı adımları: `questions_klon_politikasi.sql` çalıştırma + commit/push kararı; deploy sonrası anon klon sızma probe'u tekrarlanacak
+
+### 🔍 B2 Canlı Doğrulama (SQL çalıştırıldıktan sonra)
+- Kullanıcı `questions_klon_polistikasını` çalıştırdı → pg_policies çıktısı: `Pool public, clones private / SELECT / ((intended_for IS NULL) OR (intended_for = auth.uid()))` teyitli
+- **Probe 6/6 (efektif):** B, A'nın klonunu `.not('intended_for','is',null)` ile sorguladı → **0 satır** (politikadan önce 1 geliyordu); A kendi klonunu görüyor; B genel havuzu görüyor (11); getPendingClones deseni (clone_of dolu gerçek klonla) çalışıyor; /next 200 + klonu servis etmiyor
+- Probe dersleri: (1) benim ilk klon satırım clone_of NULL yazdım → desen testi yanlış-FAIL, düzgünüyle PASS; (2) /next fallback `created_by=test kullanıcı` yazınca FK kullanıcı silmesini engelledi → `created_by=NULL` anonimleştirme yine şart oldu; üretilen soru global havuzda kaldı (havuz 11→12, meşru soru)
+
+### 📌 Faz 1c Durum Güncellemesi
+- B2 TAMAMEN KAPALI (DB politikası canlı + kanıtlı). Kod tarafı (T2-UX1 + G1) build temiz, commit/push bekliyor — deploy sonrası G1'in 400/coercion davranışı canlıda tekrar doğrulanacak
