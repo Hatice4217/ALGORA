@@ -58,7 +58,7 @@ async function adaptifZorlukCoz(
       .from('answers')
       .select('is_correct, question:questions(subject, exam_type)')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+      .order('answered_at', { ascending: false })
       .limit(200);
     if (error) {
       console.error('next: adaptif zorluk sorgusu hatası (intermediate e dönüldü):', error.message);

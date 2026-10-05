@@ -55,7 +55,7 @@ AS $$
     WHERE q.status = 'active'
       AND q.clone_of IS NULL
       AND q.exam_type IS NOT NULL
-    ORDER BY a.user_id, a.question_id, a.created_at ASC
+    ORDER BY a.user_id, a.question_id, a.answered_at ASC
   ),
   madde AS (
     -- Soru başına p/q istatistikleri (en az p_min_cevap öğrenci koşulu)
