@@ -67,7 +67,7 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
       : 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 -mt-4">
       {/* Sekme başlıkları — üç ana bölüm, aynı anda yalnız biri görünür */}
       <div className="grid grid-cols-3 gap-1.5 bg-gray-100 rounded-xl p-1.5" role="tablist">
         {BOLUMLER.map((b) => (
