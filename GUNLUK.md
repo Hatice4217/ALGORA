@@ -2961,3 +2961,26 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### 📌 Session Bitişi
 - Durum: Faz 1b kodu 4 commit'te tamam; çalışma ağacı temiz. Kullanıcı adımları: 2 SQL (ai_solutions_cache, gece_vardiyasi_kilidi) + GH repo secret + push/deploy kararı.
+
+## 5 Ekim 2026 - Pazartesi — Faz 1b CANLIYA AÇILDI: push + deploy + kanlı E2E + veri kazası
+
+### 🎯 Tetikleyici
+- Kullanıcı kararı: "faz 1b'yi çıkaralım push yapalım fazları bitirelim" — 4 commit'in push'ı, SQL'ler, secret, canlı doğrulama zinciri
+
+### ✅ Uygulama / Canlıya Çıkış
+- Push `824c92c..78048e0` → Vercel deploy SUCCESS (06:12 UTC)
+- Kullanıcı adımları tamam: `ai_solutions_cache.sql` + `gece_vardiyasi_kilidi.sql` çalıştırıldı (RLS politika + RPC grant matrisi anon F/service T teyitli), Vercel `ADMIN_SECRET_KEY` YENİ değerle yenilendi (Production+Preview + redeploy) — eski değer kopyalanamazdı, `openssl rand -hex 32` ile yenisi üretildi; GitHub secret `ALGORA_ADMIN_SECRET_KEY` aynı değere kuruldu
+
+### 🔍 Doğrulama (hepsi canlı, probe scriptleri `probe_faz1b_*.mjs`)
+- **Night-shift guard'ları:** key'siz/yanlış key → 404 maskesi; GET → 405 (varlık kanıtı); doğru key gündüz → `pencere_disi` skip; local `.env.local` key'i canlıyla eşleşmiyordu (404'e düştü) — canlı key Vercel dashboard kaynağıdır
+- **Önbellek E2E 8/8 PASS:** test kullanıcısı → abonelik seed 3 kredi → /next havuz isabeti (Türkçe/Genel, source=pool) → Üst Beyin 1. çağrı 3→2 kredi + `-1 (higher_brain)` tx → 2. çağrı `cached:true` + kredi DEĞİŞMEDİ → ai_solutions satırı DB'de
+- **Gece vardiyası gerçek tur (`?force=1`):** `clones_created:1`, 1 Gemini çağrısı, 5.4 sn; ipucu backfill 0/0 (havuz 11/11 zaten ipuçlu)
+- **Klon E2E 10/10 PASS:** klon satırı (clone_of=kök, intended_for=test kullanıcısı, created_by NULL, 5 şık, 3 ipucu, aktif, kökten farklı metin) + banner bekleyen durumu + genel havuza sızmıyor + 2. force turu `bekleyen_var:1, clones_created:0, gemini 0` (çift-klon savunması kanıtlı)
+
+### 🔴 VERİ KAZASI (benim hatam — şeffaf kayıt)
+- Temizlik scriptinde `auth.admin.listUsers({ query: 'probe1b_' })` filtresi ÇALIŞMADI → tüm kullanıcılar listelendi → döngü 4 gerçek hesap dahil herkesi sildi (auth + answers, subscriptions, user_profiles, user_goals, credit_transactions, study_sessions, kişisel klon)
+- Zarar sınırlaması: sistem henüz teste kapalı, kaybolan yalnızca kullanıcının KENDİ deneme hesaplarının verisi; soru havuzu (11), şemalar, Faz 1b yapısı sağlam. Free plan → PITR yok → veri geri gelmiyor; Google ile tekrar giriş hesabı sıfır free abonelikle yeniden oluşturur (trigger)
+- **PANZEHİR (kalıcı kural):** yıkıcı scriptlerde ÖNCE dry-run — silinecek liste yazdırılıp TEYİT edilmeden delete döngüsü ASLA çalıştırılmaz; supabase-js `listUsers` query filtresine güvenilmez (JS tarafında e-posta ön ekine göre elenir)
+
+### 📌 Session Bitişi
+- Durum: **V2 Faz 1b TAMAMEN canlıda ve uçtan uca doğrulanmış** (önbellek + gece vardiyası + klon akışı + guard'lar). Gece schedule (TR 00-06, 6 tetikleme) kendi kendine çalışacak. Kullanıcı sinyali bekleme: "zaafiyet testi" talimatı ve "canlıya açma vakti" ilanı
