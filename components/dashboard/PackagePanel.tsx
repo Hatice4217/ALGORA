@@ -31,12 +31,47 @@ const formatDateTime = (value: string) =>
     minute: '2-digit',
   });
 
+// Paketim sekmesindeki özellik maddelerine açıklayıcı alt metinler.
+// Anahtarlar types/subscription.ts > PLANS features dizileriyle birebir eşleşir;
+// eşleşmeyen madde açıklamasız kalır (sessiz yutulur, hata üretmez).
+const OZELLIK_ACIKLAMALARI: Record<string, string> = {
+  'Havuzdan Soru Çözme: Sınırsız':
+    'Binlerce onaylanmış soruluk havuzdan dilediğiniz kadar soru çözersiniz — kredi harcamaz.',
+  '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz':
+    'Takıldığınız soruda çözümü ifşa etmeyen, sizi adım adım düşündüren 3 kademeli ipucu.',
+  'Platform arayüzüne tam erişim':
+    'Analiz paneli, hedefler, günlük seri ve tüm ders araçlarına erişiminiz tamdır.',
+};
+
+// Kredi maddesi plana göre farklı yazıldığı için ("N Kredi / Gün") baştan eşleşir
+const ozellikAciklamasi = (madde: string): string => {
+  if (madde.startsWith('AI Üst Beyin Kredisi')) {
+    return 'Kredi yalnızca "Üst Beyin" tam çözüm anlatımında harcanır ve her gün otomatik yenilenir. Soru çözmek ve ipucu almak kredi istemez.';
+  }
+  if (madde.endsWith('(Yakında)')) {
+    return 'Bu özellik geliştirme aşamasında — çıktığında paketinizde otomatik açılır.';
+  }
+  return OZELLIK_ACIKLAMALARI[madde] ?? '';
+};
+
 interface PackagePanelProps {
   summary: SubscriptionSummary | null;
   onUpgrade: (plan: PaidPlanId) => void;
 }
 
+// Sekmeli yapı (5 Eki 2026, kullanıcı kararı): tek uzun akış yerine üç başlık —
+// geçmiş yalnızca ilgili sekmede görünür, paket vitrini tam genişliğe çıkar.
+type PanelBolumu = 'paketim' | 'paketler' | 'gecmis';
+
+const BOLUMLER: Array<{ id: PanelBolumu; etiket: string }> = [
+  { id: 'paketim', etiket: 'Paketim' },
+  { id: 'paketler', etiket: 'Paketler' },
+  { id: 'gecmis', etiket: 'Geçmiş Kullanımlarım' },
+];
+
 export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
+  const [bolum, setBolum] = useState<PanelBolumu>('paketim');
+
   if (!summary?.subscription) {
     return (
       <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-600">
@@ -55,172 +90,229 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
       : 0;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)] gap-8 items-start lg:items-stretch lg:h-full">
-      {/* SOL SÜTUN: mevcut durum + bekleyen talep + kullanım geçmişi.
-          Premium'da sağ sütun boşalacağı için sol tam genişliğe çıkar. */}
-      <div className={`space-y-4 lg:h-full lg:min-h-0 lg:flex lg:flex-col ${subscription.plan !== 'premium' ? 'lg:col-span-7' : 'lg:col-span-12'}`}>
-      {/* 1. Durum kartı */}
-      <div className="bg-white rounded-2xl shadow-sm p-6 lg:shrink-0">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <p className="text-sm text-gray-500 mb-1">Mevcut Paket</p>
-            <h2 className="text-2xl font-bold text-gray-900">{planConfig.name}</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              {subscription.credits_remaining > 0 ? (
-                'Krediler her gün yenilenir — geri sayım kredi bitince başlar'
-              ) : (
-                <>
-                  Yenilenme: {formatDate(subscription.period_end)} ·{' '}
-                  <QuotaCountdown
-                    periodEnd={subscription.period_end}
-                    className="font-medium text-purple-600"
-                  />
-                </>
-              )}
-            </p>
-            {/* Ücretli planın satın alma bitişi (paid_until). "Yenilenme" = günlük
-                kredi dönemi (period_end) etiketiyle karışmasın — ayrı satır. */}
-            {subscription.plan !== 'free' && subscription.paid_until && (
-              <p className="text-sm text-gray-600 mt-0.5">
-                Paket Bitiş: <span className="font-medium text-gray-800">{formatDate(subscription.paid_until)}</span>
-              </p>
-            )}
-          </div>
-          <div className="text-right">
-            <p className="text-3xl font-black text-purple-600">
-              {subscription.credits_remaining}
-            </p>
-            <p className="text-sm text-gray-500">/ {subscription.credits_limit} AI kredisi</p>
-          </div>
-        </div>
+    <div className="space-y-4">
+      {/* Sekme başlıkları — üç ana bölüm, aynı anda yalnız biri görünür */}
+      <div className="grid grid-cols-3 gap-1.5 bg-gray-100 rounded-xl p-1.5" role="tablist">
+        {BOLUMLER.map((b) => (
+          <button
+            key={b.id}
+            role="tab"
+            aria-selected={bolum === b.id}
+            onClick={() => setBolum(b.id)}
+            className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+              bolum === b.id
+                ? 'bg-white text-purple-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {b.etiket}
+          </button>
+        ))}
+      </div>
 
-        {/* Kredi progress bar */}
-        <div className="mt-4">
-          <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                percent <= 10 ? 'bg-red-500' : percent <= 30 ? 'bg-orange-400' : 'bg-purple-600'
-              }`}
-              style={{ width: `${percent}%` }}
-            ></div>
+      {/* ═══ SEKME 1: Paketim — mevcut durum + bekleyen talep + paketin özellikleri ═══ */}
+      {bolum === 'paketim' && (
+        <>
+          {/* 1. Durum kartı */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Mevcut Paket</p>
+                <h2 className="text-2xl font-bold text-gray-900">{planConfig.name}</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {subscription.credits_remaining > 0 ? (
+                    'Krediler her gün yenilenir — geri sayım kredi bitince başlar'
+                  ) : (
+                    <>
+                      Yenilenme: {formatDate(subscription.period_end)} ·{' '}
+                      <QuotaCountdown
+                        periodEnd={subscription.period_end}
+                        className="font-medium text-purple-600"
+                      />
+                    </>
+                  )}
+                </p>
+                {/* Ücretli planın satın alma bitişi (paid_until). "Yenilenme" = günlük
+                    kredi dönemi (period_end) etiketiyle karışmasın — ayrı satır. */}
+                {subscription.plan !== 'free' && subscription.paid_until && (
+                  <p className="text-sm text-gray-600 mt-0.5">
+                    Paket Bitiş:{' '}
+                    <span className="font-medium text-gray-800">
+                      {formatDate(subscription.paid_until)}
+                    </span>
+                  </p>
+                )}
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-black text-purple-600">
+                  {subscription.credits_remaining}
+                </p>
+                <p className="text-sm text-gray-500">/ {subscription.credits_limit} AI kredisi</p>
+              </div>
+            </div>
+
+            {/* Kredi progress bar */}
+            <div className="mt-4">
+              <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    percent <= 10 ? 'bg-red-500' : percent <= 30 ? 'bg-orange-400' : 'bg-purple-600'
+                  }`}
+                  style={{ width: `${percent}%` }}
+                ></div>
+              </div>
+              {subscription.credits_remaining <= 0 && (
+                <div className="mt-2 text-sm text-red-600">
+                  <p>
+                    {subscription.plan === 'free'
+                      ? 'Günlük AI krediniz doldu — soru çözmeye devam edebilirsiniz, yenilenmesine kalan: '
+                      : 'AI krediniz tükendi — soru çözmeye devam edebilirsiniz, yenilenmesine kalan: '}
+                    <QuotaCountdown
+                      periodEnd={subscription.period_end}
+                      className="font-bold text-red-700"
+                    />
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    veya AI Üst Beyin kredinizi paket yükselterek artırabilirsiniz.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-          {subscription.credits_remaining <= 0 && (
-            <div className="mt-2 text-sm text-red-600">
-              <p>
-                {subscription.plan === 'free'
-                  ? 'Günlük AI krediniz doldu — soru çözmeye devam edebilirsiniz, yenilenmesine kalan: '
-                  : 'AI krediniz tükendi — soru çözmeye devam edebilirsiniz, yenilenmesine kalan: '}
-                <QuotaCountdown
-                  periodEnd={subscription.period_end}
-                  className="font-bold text-red-700"
-                />
-              </p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                veya AI Üst Beyin kredinizi paket yükselterek artırabilirsiniz.
+
+          {/* 2. Bekleyen talep kartı */}
+          {pending_claim && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+              <div className="flex items-start gap-3">
+                <svg
+                  className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  ></path>
+                </svg>
+                <div>
+                  <h3 className="font-semibold text-amber-800">Ödeme talebiniz onay bekliyor</h3>
+                  <p className="text-sm text-amber-700 mt-1">
+                    {PLANS[pending_claim.plan].name} paketi için oluşturduğunuz talep inceleniyor.
+                    Onaydan sonra paketiniz ve kredileriniz anında aktif olur.
+                    {pending_claim.created_at && ` (Talep: ${formatDateTime(pending_claim.created_at)})`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 3. Paketinin özellikleri — açıklayıcı dille */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h3 className="font-semibold text-gray-900 mb-1">Paketinin Özellikleri</h3>
+            <p className="text-xs text-gray-500 mb-4">{planConfig.description}</p>
+            <ul className="space-y-4">
+              {planConfig.features.map((feature, i) => {
+                const aciklama = ozellikAciklamasi(feature);
+                return (
+                  <li key={i} className="flex items-start gap-3">
+                    <svg
+                      className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      ></path>
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{feature}</p>
+                      {aciklama && <p className="text-xs text-gray-500 mt-0.5">{aciklama}</p>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </>
+      )}
+
+      {/* ═══ SEKME 2: Paketler — satış vitrini, tam genişlik ═══ */}
+      {bolum === 'paketler' && (
+        <>
+          {subscription.plan === 'premium' && (
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-5 flex items-start gap-3">
+              <svg
+                className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              <p className="text-sm text-green-800">
+                Şu an <span className="font-semibold">en üst pakettesiniz</span> — Premium AI
+                Koçluk. Tüm özelliklere erişiyorsunuz.
               </p>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* 2. Bekleyen talep kartı */}
-      {pending_claim && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 lg:shrink-0">
-          <div className="flex items-start gap-3">
-            <svg
-              className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            <div>
-              <h3 className="font-semibold text-amber-800">
-                Ödeme talebiniz onay bekliyor
-              </h3>
-              <p className="text-sm text-amber-700 mt-1">
-                {PLANS[pending_claim.plan].name} paketi için oluşturduğunuz talep inceleniyor.
-                Onaydan sonra paketiniz ve kredileriniz anında aktif olur.
-                {pending_claim.created_at && ` (Talep: ${formatDateTime(pending_claim.created_at)})`}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Kullanım geçmişi — lg'de kalan yüksekliği doldurur, liste kendi içinde kayar */}
-      <div className="bg-white rounded-2xl shadow-sm p-6 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
-        <h3 className="font-semibold text-gray-900 mb-4">Kullanım Geçmişi</h3>
-        {history.length === 0 ? (
-          <p className="text-sm text-gray-500">Gösterilecek kredi hareketi yok.</p>
-        ) : (
-          <div className="max-h-72 overflow-y-auto pr-2 thin-scrollbar lg:max-h-none lg:flex-1 lg:min-h-0">
-            {/* İç kaydırma: liste uzasa bile sayfayı aşağı itmesin — upgrade kartları erişilebilir kalsın */}
-            <ul className="divide-y divide-gray-100">
-              {history.map((tx) => (
-                <li key={tx.id} className="py-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{REASON_LABELS[tx.reason]}</p>
-                    {tx.created_at && (
-                      <p className="text-xs text-gray-500">{formatDateTime(tx.created_at)}</p>
-                    )}
-                  </div>
-                  <span
-                    className={`text-sm font-bold ${
-                      tx.amount > 0 ? 'text-green-600' : 'text-gray-700'
-                    }`}
-                  >
-                    {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-      </div>
-
-      {/* SAĞ SÜTUN: satış vitrini — başlıksız, kartlar alt alta dikey sıralanır */}
-      {subscription.plan !== 'premium' && (
-        <div className="lg:col-span-5 lg:h-full lg:min-h-0 lg:overflow-y-auto thin-scrollbar lg:pr-2">
-          <div className="flex flex-col gap-4">
-            {(['pro', 'premium'] as PaidPlanId[])
-              .filter((id) => id !== subscription.plan)
-              .map((id) => {
-                const config = PLANS[id];
-                return (
-                  <div
-                    key={id}
-                    className={`bg-white rounded-2xl p-5 ${
-                      config.highlighted ? 'border-2 border-purple-500 shadow-lg' : 'border border-gray-200'
-                    }`}
-                  >
-                    <h4 className="text-base font-bold text-gray-900">{config.name}</h4>
-                    <p className="text-xl font-black text-gray-900 mt-1">
-                      ₺{config.price}
-                      <span className="text-sm font-normal text-gray-500 ml-1">/ ay</span>
-                    </p>
-                    <ul className="mt-2 space-y-1.5 mb-4">
-                      {config.features.map((feature, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                          <svg
-                            className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
+          <div className="grid md:grid-cols-2 gap-4 items-start">
+            {(['pro', 'premium'] as PaidPlanId[]).map((id) => {
+              const config = PLANS[id];
+              const mevcutPaket = id === subscription.plan;
+              const dusukPaket = id === 'pro' && subscription.plan === 'premium';
+              return (
+                <div
+                  key={id}
+                  className={`bg-white rounded-2xl p-5 ${
+                    config.highlighted ? 'border-2 border-purple-500 shadow-lg' : 'border border-gray-200'
+                  }`}
+                >
+                  <h4 className="text-base font-bold text-gray-900">{config.name}</h4>
+                  <p className="text-xl font-black text-gray-900 mt-1">
+                    ₺{config.price}
+                    <span className="text-sm font-normal text-gray-500 ml-1">/ ay</span>
+                  </p>
+                  <ul className="mt-2 space-y-1.5 mb-4">
+                    {config.features.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                        <svg
+                          className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M5 13l4 4L19 7"
+                          ></path>
+                        </svg>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  {mevcutPaket ? (
+                    <span className="block text-center text-sm font-semibold text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                      ✓ Mevcut Paketiniz
+                    </span>
+                  ) : dusukPaket ? (
+                    <span className="block text-center text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                      Mevcut paketinizin altında kalır
+                    </span>
+                  ) : (
                     <Button
                       variant={config.highlighted ? 'primary' : 'outline'}
                       size="sm"
@@ -229,10 +321,43 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                     >
                       Bu Pakete Geç
                     </Button>
-                  </div>
-                );
-              })}
+                  )}
+                </div>
+              );
+            })}
           </div>
+        </>
+      )}
+
+      {/* ═══ SEKME 3: Geçmiş Kullanımlarım — kredi hareketleri, tam genişlik ═══ */}
+      {bolum === 'gecmis' && (
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <h3 className="font-semibold text-gray-900 mb-4">Kredi Hareketleri</h3>
+          {history.length === 0 ? (
+            <p className="text-sm text-gray-500">Gösterilecek kredi hareketi yok.</p>
+          ) : (
+            <div className="max-h-[60vh] overflow-y-auto pr-2 thin-scrollbar">
+              <ul className="divide-y divide-gray-100">
+                {history.map((tx) => (
+                  <li key={tx.id} className="py-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{REASON_LABELS[tx.reason]}</p>
+                      {tx.created_at && (
+                        <p className="text-xs text-gray-500">{formatDateTime(tx.created_at)}</p>
+                      )}
+                    </div>
+                    <span
+                      className={`text-sm font-bold ${
+                        tx.amount > 0 ? 'text-green-600' : 'text-gray-700'
+                      }`}
+                    >
+                      {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -311,7 +436,7 @@ export function UpgradeModal({ plan, onClose, onClaimed }: UpgradeModalProps) {
           aria-label="Kapat"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
 
@@ -430,7 +555,7 @@ export function UpgradeModal({ plan, onClose, onClaimed }: UpgradeModalProps) {
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
             </div>
             <h3 className="text-xl font-bold text-gray-900">Talebiniz Alındı</h3>
