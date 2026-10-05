@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/app/components/ui/Button';
-import { PLANS } from '@/types/subscription';
+import { PLANS, ozellikAciklamasi } from '@/types/subscription';
 import type { SubscriptionSummary, PaidPlanId, CreditTransaction } from '@/types/subscription';
 import { PAYMENT_INFO } from '@/lib/subscription-config';
 import { authFetch } from '@/lib/api';
@@ -30,29 +30,6 @@ const formatDateTime = (value: string) =>
     hour: '2-digit',
     minute: '2-digit',
   });
-
-// Paketim sekmesindeki özellik maddelerine açıklayıcı alt metinler.
-// Anahtarlar types/subscription.ts > PLANS features dizileriyle birebir eşleşir;
-// eşleşmeyen madde açıklamasız kalır (sessiz yutulur, hata üretmez).
-const OZELLIK_ACIKLAMALARI: Record<string, string> = {
-  'Havuzdan Soru Çözme: Sınırsız':
-    'Binlerce onaylanmış soruluk havuzdan dilediğiniz kadar soru çözersiniz — kredi harcamaz.',
-  '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz':
-    'Takıldığınız soruda çözümü ifşa etmeyen, sizi adım adım düşündüren 3 kademeli ipucu.',
-  'Platform arayüzüne tam erişim':
-    'Analiz paneli, hedefler, günlük seri ve tüm ders araçlarına erişiminiz tamdır.',
-};
-
-// Kredi maddesi plana göre farklı yazıldığı için ("N Kredi / Gün") baştan eşleşir
-const ozellikAciklamasi = (madde: string): string => {
-  if (madde.startsWith('AI Üst Beyin Kredisi')) {
-    return 'Kredi yalnızca "Üst Beyin" tam çözüm anlatımında harcanır ve her gün otomatik yenilenir. Soru çözmek ve ipucu almak kredi istemez.';
-  }
-  if (madde.endsWith('(Yakında)')) {
-    return 'Bu özellik geliştirme aşamasında — çıktığında paketinizde otomatik açılır.';
-  }
-  return OZELLIK_ACIKLAMALARI[madde] ?? '';
-};
 
 interface PackagePanelProps {
   summary: SubscriptionSummary | null;
@@ -209,10 +186,10 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
             </div>
           )}
 
-          {/* 3. Paketinin özellikleri — açıklayıcı dille */}
+          {/* 3. Paketinin özellikleri — açıklayıcı dille (jenerik açıklama
+              cümlesi kaldırıldı: madde altı metinler işi yapıyor) */}
           <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h3 className="font-semibold text-gray-900 mb-1">Paketinin Özellikleri</h3>
-            <p className="text-xs text-gray-500 mb-4">{planConfig.description}</p>
+            <h3 className="font-semibold text-gray-900 mb-4">Paketinin Özellikleri</h3>
             <ul className="space-y-4">
               {planConfig.features.map((feature, i) => {
                 const aciklama = ozellikAciklamasi(feature);

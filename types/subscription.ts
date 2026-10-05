@@ -71,6 +71,29 @@ export const PLANS: Record<PlanId, PlanConfig> = {
   },
 };
 
+// Paket özellik maddelerine açıklayıcı alt metinler (PackagePanel + landing
+// PricingSection ortak kullanır — tek kaynak). Anahtarlar yukarıdaki PLANS
+// features dizileriyle birebir eşleşir; eşleşmeyen madde açıklamasız kalır.
+const PLAN_OZELLIK_ACIKLAMALARI: Record<string, string> = {
+  'Havuzdan Soru Çözme: Sınırsız':
+    'Binlerce onaylanmış soruluk havuzdan dilediğiniz kadar soru çözersiniz — kredi harcamaz.',
+  '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz':
+    'Takıldığınız soruda çözümü ifşa etmeyen, sizi adım adım düşündüren 3 kademeli ipucu.',
+  'Platform arayüzüne tam erişim':
+    'Analiz paneli, hedefler, günlük seri ve tüm ders araçlarına erişiminiz tamdır.',
+};
+
+// Kredi maddesi plana göre farklı yazıldığı için ("N Kredi / Gün") baştan eşleşir
+export function ozellikAciklamasi(madde: string): string {
+  if (madde.startsWith('AI Üst Beyin Kredisi')) {
+    return 'Kredi yalnızca "Üst Beyin" tam çözüm anlatımında harcanır ve her gün otomatik yenilenir. Soru çözmek ve ipucu almak kredi istemez.';
+  }
+  if (madde.endsWith('(Yakında)')) {
+    return 'Bu özellik geliştirme aşamasında — çıktığında paketinizde otomatik açılır.';
+  }
+  return PLAN_OZELLIK_ACIKLAMALARI[madde] ?? '';
+}
+
 // subscriptions tablosu satırı
 export interface Subscription {
   id?: string;
