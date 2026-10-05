@@ -14,7 +14,7 @@
 // her fallback üretimi havuzu doldurur, aynı kova sonraki istekte HIT döner.
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../../../../lib/supabase';
 import { rateLimit } from '../../../../lib/rate-limit';
 import { getSubjects, getTopics } from '../../../../lib/constants/syllabus';
@@ -35,6 +35,56 @@ const PREVIOUS_QUESTION_MAX_LENGTH = 2000;
 // Oturumda görülen sorular: havuz RPC'sine exclude olarak geçilir (mükerrer önleme)
 const EXCLUDE_MAX_ITEMS = 100;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// 'otomatik' zorluk çözümlendikten sonra RPC/prompt'un anladığı gerçek DB
+// değerleriyle Türkçe metin eşlemesi (Gemini prompt'una "Otomatik" sızmasın)
+const dbZorlukMetni: Record<string, string> = {
+  beginner: 'Başlangıç',
+  intermediate: 'Orta',
+  advanced: 'İleri',
+};
+
+// Adaptif zorluk: öğrencinin bu ders+sınav türündeki son cevaplarına göre
+// gerçek DB zorluk değeri seçilir. Hata/istisnada intermediate (fail-open —
+// akış asla durmaz, sadece uyarlamaz).
+async function adaptifZorlukCoz(
+  adminClient: SupabaseClient,
+  userId: string,
+  subject: string,
+  examType: string
+): Promise<string> {
+  try {
+    const { data, error } = await adminClient
+      .from('answers')
+      .select('is_correct, question:questions(subject, exam_type)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) {
+      console.error('next: adaptif zorluk sorgusu hatası (intermediate e dönüldü):', error.message);
+      return 'intermediate';
+    }
+    // JS tarafında ders+sınav filtresi (getDifficultyStats deseni) — ilk 8 pencere
+    const pencere: boolean[] = [];
+    for (const raw of (data || []) as unknown as Array<{
+      is_correct: boolean;
+      question: { subject: string; exam_type: string } | null;
+    }>) {
+      if (raw.question?.subject === subject && raw.question.exam_type === examType) {
+        pencere.push(raw.is_correct);
+        if (pencere.length >= 8) break;
+      }
+    }
+    if (pencere.length < 4) return 'intermediate';
+    const oran = pencere.filter(Boolean).length / pencere.length;
+    if (oran >= 0.75) return 'advanced';
+    if (oran <= 0.4) return 'beginner';
+    return 'intermediate';
+  } catch (exception) {
+    console.error('next: adaptif zorluk istisnası (intermediate e dönüldü):', exception);
+    return 'intermediate';
+  }
+}
 
 // get_next_pool_question RPC dönüş şeması (jsonb — fonksiyonda explicit alan listesi)
 interface PoolQuestion {
@@ -116,7 +166,8 @@ export async function POST(request: Request) {
       typeof subject !== 'string' ||
       typeof difficulty !== 'string' ||
       !VALID_SUBJECTS.includes(subject) ||
-      !Object.hasOwn(difficultyMap, difficulty)
+      // 'otomatik' yalnızca bu route'ta yorumlanır — difficultyMap'e girmesin
+      (difficulty !== 'otomatik' && !Object.hasOwn(difficultyMap, difficulty))
     ) {
       return NextResponse.json(
         { error: 'Geçersiz ders veya zorluk seviyesi.' },
@@ -159,8 +210,12 @@ export async function POST(request: Request) {
         ).slice(0, EXCLUDE_MAX_ITEMS)
       : [];
 
-    const difficultyText = difficultyMap[difficulty] || difficulty;
-    const dbDifficulty = difficultyToDb[difficulty] || difficulty;
+    // 'otomatik' → adaptif çözümleme; aksi halde klasik eşleme
+    const dbDifficulty =
+      difficulty === 'otomatik'
+        ? await adaptifZorlukCoz(adminClient, user.id, subject, effectiveExamType)
+        : difficultyToDb[difficulty] || difficulty;
+    const difficultyText = dbZorlukMetni[dbDifficulty] ?? 'Orta';
     const startedAt = Date.now();
 
     // 3. HAVUZ-İLK — RPC null dönerse fallback'e düşer

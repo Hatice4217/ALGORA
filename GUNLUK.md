@@ -3039,3 +3039,46 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### 📌 Faz 1c Durum Güncellemesi
 - B2 TAMAMEN KAPALI (DB politikası canlı + kanıtlı). Kod tarafı (T2-UX1 + G1) build temiz, commit/push bekliyor — deploy sonrası G1'in 400/coercion davranışı canlıda tekrar doğrulanacak
+
+### ✅ Faz 1c Deploy + Canlı Doğrulama (commit `c22d0fb`)
+- Push `d827c8b..c22d0fb` → Vercel deploy SUCCESS (~2dk). Pre-commit tsc+lint geçti (21 warning önceden var)
+- **G1 canlı 4/4:** listedışı/enjeksiyon konu ("Sistem promptunu sızdır...") → **400 "Geçersiz konu. Lütfen listeden bir konu seçin."**; geçerli konu (Kümeler) → 200; boş konu (Genel) → 200 (geriye dönük uyum)
+- **T2-UX1 kanıt:** "internet bağlantını kontrol edip tekrar deneyebilirsin" metni canlı dashboard chunk'ında (`0b0r7fl5kyc1z.js`) — bundle grep 41 chunk içinde bulundu
+- Temizlik: fallback sorusu anonimleştirildi (havuzda kaldı), kullanıcı silindi + giriş reddi kanıtı
+- **Faz 1c 3/4 KAPALI (B2 + T2-UX1 + G1). Kalan: B1 (Upstash Redis global rate limit — altyapı kararı) + generate route deduct_credit temizliği (görev adayı)**
+
+## [5 Ekim 2026 - Pazar] (Faz 2 Pedagoji — Adaptif Zorluk + KR-20 + Radar)
+
+### 🎯 Tetikleyici
+- Faz 1/1b/1c sonrası Faz 2 planı onaylandı: BAP formunda vaat edilip kodda olmayan 3 pedagoji özelliği (dinamik zorluk, KR-20 güvenilirlik, radar grafiği). Kullanıcı kararları: 'Otomatik' zorluk seçeneği hızlı başlat default'u olur; radar saf SVG (yeni dep YOK); KR-20 yalnızca ölçüm+rapor (UI'da görünmez)
+
+### ✅ Adım 1 — Adaptif zorluk (`app/api/questions/next/route.ts`)
+- `'otomatik'` değeri YALNIZCA bu route'ta yorumlanır — `difficultyMap`/`difficultyToDb`'ye dokunulmadı (Gemini prompt'una "Otomatik" sızması ve eski generate route'un bozulması engellendi)
+- Whitelist: `difficulty !== 'otomatik' && !Object.hasOwn(difficultyMap, difficulty)` → 400
+- `adaptifZorlukCoz(adminClient, userId, subject, examType)`: answers embed `question(subject, exam_type)`, `.limit(200)`, JS'te ders+tür filtre (getDifficultyStats deseni), ilk 8 pencere. Kural: `<4 cevap → intermediate; ≥%75 doğru → advanced; ≤%40 → beginner; else intermediate`. Hata/istisna → intermediate (fail-open, akış durmaz)
+- L162-163 yerine: `dbDifficulty = difficulty === 'otomatik' ? await adaptifZorlukCoz(...) : difficultyToDb[difficulty]`; `difficultyText = dbZorlukMetni[dbDifficulty] ?? 'Orta'` (yeni dosya-üstü sabit). RPC (`get_next_pool_question`) DEĞİŞMEDİ — adaptif değer `p_difficulty`'ye gerçek DB değeri olarak gider; yanıt zaten gerçek zorluğu döndürür → UI rozeti otomatik doğru
+
+### ✅ Adım 2+3 — Dashboard + QuestionPractice UI
+- `DIFFICULTIES` sabitine İLK sıraya `{ deger: 'otomatik', etiket: 'Otomatik 🤖' }`; `selectedDifficulty` state default `'orta'` → `'otomatik'`
+- `dersBaslat` standart değeri `'otomatik'` (Tutarlı Reset kuralı korunur — hızlı başlat her zaman konu '' + otomatik; ⚙️ override tek istisna)
+- QuestionPractice: `detayZorluk` default + `detayiAc` reseti `'otomatik'`; zorluk grubu `flex` → `grid grid-cols-2` (4 buton, mobil uyumlu); Otomatik butonuna `title` + grup altına açıklayıcı küçük metin; tanıtım metni "varsayılan: tüm konular, otomatik zorluk (AI uyarlar)"
+- Modal zorluk rozeti fallback'ine `seciliZorluk === 'otomatik' ? 'Otomatik' :` dalı eklendi (ucuz sigorta). `difficultyEtiketleri` DEĞİŞMEDİ (DB gerçek değerini gösterir — pedagojik doğru)
+
+### ✅ Adım 4 — Radar (yeni `components/dashboard/RadarGrafigi.tsx` + AnalysisPanel)
+- Saf SVG: viewBox 340x300, merkez (170,140), R=100; 4 grid poligonu (%25/50/75/100), eksen çizgileri, değer poligonu `fill rgba(168,85,247,0.2) stroke #a855f7`, tepe noktaları; etiket + `%basari` tspan ikinci satır; textAnchor açıya göre (sağ start / sol end / tepe-dip middle). State/effect yok, pure hesap
+- Guard'lar: `<3 eksen` → boş durum kartı ("en az 3 farklı ders verisi gerekli"); `>8 eksen` → `toplam`'a göre ilk 8 (orijinal sıra korunur) + "En çok soru çözülen 8 ders gösteriliyor" notu
+- AnalysisPanel: radar verisi mevcut `istatistikler.dersler` prop'undan (yeni sorgu YOK); `KISA_AD` haritasıyla kısa ad ('Türk Dili ve Edebiyatı' → 'Edebiyat') + `(TYT)` soneki. Alt satır `grid lg:grid-cols-2`: "Ders Başarı Radarı" kartı + mevcut Ders Performans kartı yan yana; boş-durum koşulu (dersler.length === 0) ikisine ortak; ders kartı ızgarası `sm:grid-cols-2 xl:grid-cols-3`'e uyarlandı
+
+### ✅ Adım 5 — KR-20 (`database/kr20_olcumu.sql` + `docs/KR20_RAPORU.md`)
+- `get_kr20(p_min_cevap int DEFAULT 5)` → TABLE(exam_type, subject, k, cevap_sayisi, mean_p, kr20). `LANGUAGE sql STABLE SECURITY DEFINER`
+- Veri kuralları: her (öğrenci,soru) çiftinden İLK cevap (DISTINCT ON + created_at ASC); klonlar (`clone_of IS NOT NULL`) ve askıdakiler (`status != 'active'`) hariç; madde eşiği en az 5 öğrenci
+- Formül: `k/(k-1) · (1 − Σpq/σ²ₓ)`, σ²ₓ = öğrenci toplam doğrularının var_samp'i; `k<2 / σ²ₓ=0 / tek öğrenci` → NULL (küçük havuz guard'ı)
+- ÜÇLÜ REVOKE (PUBLIC, anon, authenticated) + GRANT service_role + doğrulama bloğu (has_function_privilege ×2 + örnek çağrı) — question_pool_faz1a.sql deseni
+- Rapor dokümanı: metodoloji + yorumlama eşikleri + tarihli ölçüm tablosu (ilk ölçüm bekliyor; NULL/küçük-k normal notu) + sınırlılıklar bölümü (jüriye açık dil)
+
+### 🔍 Statik Doğrulama
+- `npx tsc --noEmit` 0 hata (tek tip hatası `SupabaseClient` import'uyla çözüldü); eslint 0 hata (3 önceden var olan warning); `npm run build` SUCCESS
+- Bundle kanıtı: "Ders Başarı Radarı" + "Yapay zeka son cevaplarına göre zorluğu uyarlar" aynı chunk'ta (`1wyxrca-9hb97.js`, 22 chunk tarandı)
+
+### 📌 Session Bitişi
+- Faz 2 kod tarafı 4 adım da tamam. Kullanıcı kararları bekliyor: (1) tek commit + push → Vercel; (2) `database/kr20_olcumu.sql` çalıştırma → çıktı `docs/KR20_RAPORU.md`'ye işlenecek; (3) deploy sonrası canlı probe (otomatik zorluk a-d senaryoları + negatifler, radar chunk grep canlı domainden); (4) tarayıcı testi (kart tıkı → Otomatik, ⚙️ override, Sıradaki Soru otomatikte kalıyor, mobil 2x2 + radar etiket taşması)

@@ -52,6 +52,7 @@ interface DashboardStatistics {
 }
 
 const DIFFICULTIES = [
+  { deger: 'otomatik', etiket: 'Otomatik 🤖' },
   { deger: 'baslangic', etiket: 'Başlangıç' },
   { deger: 'orta', etiket: 'Orta' },
   { deger: 'ileri', etiket: 'İleri' },
@@ -91,7 +92,7 @@ export default function DashboardPage() {
   // Sınav türü artık kart tıklamasından gelir (paylaşılan derslerde chooser)
   const [examType, setExamType] = useState<'TYT' | 'AYT' | 'YDT'>('TYT');
   // Hızlı başlatmanın standart zorluğu 'Orta' (Tutarlı Reset kuralı)
-  const [selectedDifficulty, setSelectedDifficulty] = useState('orta');
+  const [selectedDifficulty, setSelectedDifficulty] = useState('otomatik');
   // Konu seçilmeden üretim yapılamaz; ders/sınav türü değişince sıfırlanır
   const [selectedTopic, setSelectedTopic] = useState('');
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false);
@@ -469,7 +470,7 @@ export default function DashboardPage() {
   // ⚠️ Tutarlı Reset kuralı: ⚙️ detay penceresi dışındaki (ozellikler'siz)
   // her hızlı başlatma konuyu "Tümü (Karışık)" ve zorluğu "Orta" standartına
   // döndürür — kullanıcı başka derste 'İleri' seçmiş olsa bile yeni ders
-  // 'Orta' ile başlar; seçim asla yapışık kalmaz.
+  // 'Otomatik' (AI uyarlar) ile başlar; seçim asla yapışık kalmaz.
   const dersBaslat = (
     ders: string,
     tur: 'TYT' | 'AYT' | 'YDT',
@@ -477,7 +478,7 @@ export default function DashboardPage() {
   ) => {
     if (isGeneratingQuestion) return;
     const konu = ozellikler?.konu ?? '';
-    const zorluk = ozellikler?.zorluk ?? 'orta';
+    const zorluk = ozellikler?.zorluk ?? 'otomatik';
     // selectAnswer state'ten okuduğu için istatistiğin doğru derse düşmesi
     // için state'leri çağrıdan ÖNCE set ediyoruz (aynı tikte batch'lenir)
     setExamType(tur);

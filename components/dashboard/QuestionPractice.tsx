@@ -42,7 +42,7 @@ interface QuestionPracticeProps {
   cevapGoster: boolean;
   seciliCevap: number | null;
   // Hızlı başlatma: kart tıklaması → (gerekirse tür seçimi) → soru anında açılır.
-  // ozellikler'siz çağrı Tutarlı Reset kuralıyla konu '' + zorluk 'orta' uygular.
+  // ozellikler'siz çağrı Tutarlı Reset kuralıyla konu '' + zorluk 'otomatik' uygular.
   dersBaslat: (
     ders: string,
     tur: 'TYT' | 'AYT' | 'YDT',
@@ -129,7 +129,7 @@ export function QuestionPractice({
   const [detayKarti, setDetayKarti] = useState<DersKarti | null>(null);
   const [detayTur, setDetayTur] = useState<'TYT' | 'AYT' | 'YDT'>('TYT');
   const [detayKonu, setDetayKonu] = useState('');
-  const [detayZorluk, setDetayZorluk] = useState('orta');
+  const [detayZorluk, setDetayZorluk] = useState('otomatik');
   // Üretim beklenirken geçen süre (saniye) — kullanıcının bekleyiş hissini yönetir
   const [beklemeSaniye, setBeklemeSaniye] = useState(0);
 
@@ -172,7 +172,7 @@ export function QuestionPractice({
   };
 
   // ⚙️ penceresi: güncel examType kartın türlerindense o, değilse kartın ilk türü;
-  // konu/zorluk her açılışta standarttan (Tümü + Orta) başlar
+  // konu/zorluk her açılışta standarttan (Tümü + Otomatik) başlar
   const detayiAc = (kart: DersKarti) => {
     if (soruUretiliyor) return;
     setDetayKarti(kart);
@@ -182,7 +182,7 @@ export function QuestionPractice({
         : kart.turler[0]
     );
     setDetayKonu('');
-    setDetayZorluk('orta');
+    setDetayZorluk('otomatik');
   };
 
   // ⚙️ penceresinden başlatma: seçilen konu/zorluk ozellikler ile gider
@@ -204,8 +204,8 @@ export function QuestionPractice({
                 Soru Çözmeye Başla
               </h2>
               <p className="text-slate-500 mb-6 text-sm">
-                Ders kartına dokun — soru havuzdan anında açılır (varsayılan: tüm konular, orta
-                zorluk). İstersen ⚙️ ile konu ve zorluk seçebilirsin.
+                Ders kartına dokun — soru havuzdan anında açılır (varsayılan: tüm konular, otomatik
+                zorluk — AI uyarlar). İstersen ⚙️ ile konu ve zorluk seçebilirsin.
               </p>
 
               {/* Hata banner'ı (T2-UX1): soru modalı KAPALIYKEN üretim hatası
@@ -509,17 +509,22 @@ export function QuestionPractice({
                 </select>
               </div>
 
-              {/* Zorluk */}
+              {/* Zorluk — 4 seçenek (Otomatik dahil): dar ekranda 2x2 ızgara */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-3">
                   Zorluk Seviyesi
                 </label>
-                <div className="bg-slate-100 p-1.5 rounded-xl flex">
+                <div className="bg-slate-100 p-1.5 rounded-xl grid grid-cols-2 gap-1">
                   {ZORLUKLER.map((zorluk) => (
                     <button
                       key={zorluk.deger}
                       onClick={() => setDetayZorluk(zorluk.deger)}
-                      className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-all ${
+                      title={
+                        zorluk.deger === 'otomatik'
+                          ? 'Yapay zeka son cevaplarına göre zorluğu uyarlar'
+                          : undefined
+                      }
+                      className={`w-full py-2.5 px-4 rounded-lg font-medium text-sm transition-all ${
                         detayZorluk === zorluk.deger
                           ? 'bg-white text-purple-700 shadow-sm'
                           : 'text-slate-600 hover:text-slate-800'
@@ -529,6 +534,9 @@ export function QuestionPractice({
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-slate-400 mt-2">
+                  Otomatik: yapay zeka son cevaplarına göre zorluğu uyarlar.
+                </p>
               </div>
 
               {/* Başlat — konu opsiyonel olduğundan koşulsuz aktif */}
@@ -573,7 +581,13 @@ export function QuestionPractice({
                 )}
                 <span className="px-3 py-1 rounded-lg text-sm font-medium bg-slate-100 text-slate-600">
                   {difficultyEtiketleri[mevcutSoru.difficulty ?? ''] ??
-                    (seciliZorluk === 'baslangic' ? 'Başlangıç' : seciliZorluk === 'orta' ? 'Orta' : 'İleri')}
+                    (seciliZorluk === 'otomatik'
+                      ? 'Otomatik'
+                      : seciliZorluk === 'baslangic'
+                      ? 'Başlangıç'
+                      : seciliZorluk === 'orta'
+                      ? 'Orta'
+                      : 'İleri')}
                 </span>
                 {mevcutSoru.source === 'pool' && (
                   <span className="px-3 py-1 rounded-lg text-sm font-medium bg-emerald-100 text-emerald-700">

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { authHelpers, dbHelpers } from '../../lib/supabase';
 import { getSubjects } from '../../lib/constants/syllabus';
 import { useGoals, todayStr, type Goal } from './GoalsProvider';
+import { RadarGrafigi } from './RadarGrafigi';
 
 // 'YYYY-MM-DD' → "27 Eylül" (farklı yılsa yıl eklenir)
 const formatGun = (dateStr: string): string => {
@@ -47,6 +48,11 @@ interface SubjectStat {
   dogru: number;
   basari: number;
 }
+
+// Radar eksenlerinde yer kazandıran kısa ders adları (yalnız uzunlar)
+const KISA_AD: Record<string, string> = {
+  'Türk Dili ve Edebiyatı': 'Edebiyat',
+};
 
 interface AnalysisPanelProps {
   istatistikler: {
@@ -228,6 +234,13 @@ export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
     ? istatistikler.dersler.reduce((a, b) => (b.basari < a.basari ? b : a))
     : null;
 
+  // Radar eksenleri: ders başına tek satır, kısa ad + tür sonekiyle
+  const radarEksenleri = istatistikler.dersler.map((ders) => ({
+    etiket: `${KISA_AD[ders.ders] ?? ders.ders} (${ders.examType})`,
+    basari: ders.basari,
+    toplam: ders.toplam,
+  }));
+
   return (
     // Masaüstünde sayfa kaydırması yok: 1. satır üst blok (auto), 2. satır performans
     // kartı kalan yüksekliği doldurur — taşan içerik kartların içinde kayar
@@ -284,29 +297,40 @@ export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
         <ZorlukAnaliziKarti />
       </div>
 
-      {/* Ders Performans Analizi — rozetler + progress bar ızgarası tek kartta */}
+      {/* ALT SATIR (Faz 2): Ders Başarı Radarı + Ders Performans yan yana;
+          boş-durum koşulu ikisine ortak */}
       {istatistikler.dersler.length > 0 ? (
-        <div className="md:col-span-2 bg-white rounded-2xl shadow-sm p-6 lg:min-h-0 lg:flex lg:flex-col">
-          {/* Header: başlık + dinamik özet rozetleri */}
-          <div className="flex items-center justify-between gap-3 mb-5 flex-wrap lg:shrink-0">
-            <h2 className="font-semibold text-gray-900">Ders Performans Analizi</h2>
-            <div className="flex items-center gap-2 flex-wrap">
-              {enBasarili && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 border border-green-200 text-sm font-medium text-green-700">
-                  🏆 En Başarılı: {enBasarili.ders} ({enBasarili.examType})
-                </span>
-              )}
-              {odaklanilacak && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-sm font-medium text-orange-700">
-                  📈 Odaklanılmalı: {odaklanilacak.ders} ({odaklanilacak.examType})
-                </span>
-              )}
+        <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:min-h-0">
+          {/* Ders Başarı Radarı — saf SVG, mevcut dersler verisinden türetilir */}
+          <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col">
+            <h2 className="font-semibold text-gray-900 mb-3">Ders Başarı Radarı</h2>
+            <div className="flex-1 flex items-center justify-center">
+              <RadarGrafigi eksenler={radarEksenleri} />
             </div>
           </div>
 
-          {/* Body: ders kartları yan yana (xl'de 5 sütun); ders sayısı artarsa ızgara kendi içinde kayar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 max-h-[300px] overflow-y-auto thin-scrollbar pr-2 lg:flex-1 lg:min-h-0">
-            {istatistikler.dersler.map((ders) => (
+          {/* Ders Performans Analizi — rozetler + progress bar ızgarası */}
+          <div className="bg-white rounded-2xl shadow-sm p-6 lg:min-h-0 lg:flex lg:flex-col">
+            {/* Header: başlık + dinamik özet rozetleri */}
+            <div className="flex items-center justify-between gap-3 mb-5 flex-wrap lg:shrink-0">
+              <h2 className="font-semibold text-gray-900">Ders Performans Analizi</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                {enBasarili && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 border border-green-200 text-sm font-medium text-green-700">
+                    🏆 En Başarılı: {enBasarili.ders} ({enBasarili.examType})
+                  </span>
+                )}
+                {odaklanilacak && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-sm font-medium text-orange-700">
+                    📈 Odaklanılmalı: {odaklanilacak.ders} ({odaklanilacak.examType})
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Body: ders kartları yan yana; ders sayısı artarsa ızgara kendi içinde kayar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto thin-scrollbar pr-2 lg:flex-1 lg:min-h-0">
+              {istatistikler.dersler.map((ders) => (
               <div key={`${ders.ders}-${ders.examType}`} className="p-4 border border-gray-200 rounded-lg">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <span className="font-medium text-gray-900">
@@ -334,7 +358,8 @@ export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
                   />
                 </div>
               </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       ) : (
