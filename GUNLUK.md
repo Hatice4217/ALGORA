@@ -3082,3 +3082,22 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### 📌 Session Bitişi
 - Faz 2 kod tarafı 4 adım da tamam. Kullanıcı kararları bekliyor: (1) tek commit + push → Vercel; (2) `database/kr20_olcumu.sql` çalıştırma → çıktı `docs/KR20_RAPORU.md`'ye işlenecek; (3) deploy sonrası canlı probe (otomatik zorluk a-d senaryoları + negatifler, radar chunk grep canlı domainden); (4) tarayıcı testi (kart tıkı → Otomatik, ⚙️ override, Sıradaki Soru otomatikte kalıyor, mobil 2x2 + radar etiket taşması)
+
+## [5 Ekim 2026 - Pazar] (Faz 2 Canlı Probe — 7/7 PASS)
+
+### 🎯 Tetikleyici
+- Faz 2 commit'leri (`43c1384` + `5c59b2b` answered_at düzeltmesi) push'lu, Vercel deploy SUCCESS (GitHub combined status `success`, 13:20 UTC). Kalan adım: canlı probe.
+
+### 🔧 Probe Script Düzeltmesi
+- `probe_faz2.mts` ilk iki koşuda kendi kendine takıldı: `signInWithPassword` dönüşünde token `data.session.access_token`'da, script `data.access_token`'a bakıyordu → "Giriş yapılamadı: null". Düzeltme sonrası akış açıldı (debug çıktısı `hasUser:true, hasSession:true` ile teşhis — Supabase tarafı sağlamdı, hata script'teydi)
+
+### ✅ Canlı Probe Sonuçları (7/7 PASS)
+- **a) Soğuk başlangıç:** 0 cevaplı kullanıcı `otomatik` → `difficulty=intermediate`, `source=pool` (havuz HIT — adaptif çözümleme RPC'ye gerçek DB değeri taşıdı)
+- **b) %100 doğru:** TYT/Türkçe'ye 6 doğru cevap yazıldı → `otomatik` → `advanced` (havuzda advanced yok → Gemini fallback üretti, `source=generated`)
+- **c) %0 doğru:** Coğrafya/AYT'ye 5 yanlış → `otomatik` → `beginner` (`source=generated`)
+- **d) Negatifler:** zorluk `kolay` → 400; ders `Hacker Dersi` → 400 ("Geçersiz ders veya zorluk seviyesi.")
+- **e) Chunk kanıtı (canlı domain):** "Ders Başarı Radarı" + "Yapay zeka son cevaplarına göre zorluğu uyarlar" canlı dashboard chunk'larında (11 chunk tarandı)
+- **Temizlik:** dry-run listesi (answers=11, questions=2) → 2 üretilen soru `created_by=NULL` anonimleştirildi (global havuzda kaldı) → auth DELETE → signIn reddi kanıtı ✅
+
+### 📌 Session Bitişi
+- Faz 2 canlıda TAMAM. Bekleyen kullanıcı adımları: (1) `database/kr20_olcumu.sql` Supabase SQL Editor'de çalıştırma → çıktı `docs/KR20_RAPORU.md` ölçüm tablosuna işlenecek; (2) tarayıcı testi (kart tıkı → Otomatik rozet, ⚙️ override, mobil 2x2 zorluk grid'i + radar etiketleri). Kalan teknik borç: B1 (Upstash Redis global rate limit) + generate route'taki deduct_credit artığı
