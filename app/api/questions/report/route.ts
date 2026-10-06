@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     }
 
     // 0.1 SPAM LİMİTİ — bildirim bedava olduğundan saatlik üst sınır şart
-    const burst = rateLimit(`report:${user.id}`, 10, 3_600_000);
+    const burst = await rateLimit(`report:${user.id}`, 10, 3_600_000);
     if (!burst.ok) {
       return NextResponse.json(
         { error: 'Çok fazla bildirim gönderildi. Lütfen bir saat sonra tekrar deneyin.' },

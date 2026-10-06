@@ -22,7 +22,7 @@ const MAX_LOGIN_ATTEMPTS = 3;  // hesap bazlı yanlış deneme eşiği (DB'deki 
 export async function POST(request: NextRequest) {
   // 1) Sunucu-taraflı IP limiti (F1 fix'li getClientIp: sahte XFF ilk hop'u okunmaz)
   const ip = getClientIp(request);
-  const limit = rateLimit(`login:${ip}`, LOGIN_LIMIT, LOGIN_WINDOW_MS);
+  const limit = await rateLimit(`login:${ip}`, LOGIN_LIMIT, LOGIN_WINDOW_MS);
   if (!limit.ok) {
     return NextResponse.json(
       { error: `Çok fazla giriş denemesi yaptınız. ${limit.retryAfterSec} saniye sonra tekrar deneyin.` },
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 5) Başarılı giriş: IP sayacını affet + hesap kilit sayacını temizle
-  resetRateLimit(`login:${ip}`);
+  await resetRateLimit(`login:${ip}`);
   if (adminClient) {
     const { error: resetError } = await adminClient.rpc('reset_failed_login', { p_email: email });
     if (resetError) {

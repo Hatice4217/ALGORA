@@ -122,7 +122,7 @@ export async function POST(request: Request) {
 
     // 0.1 BURST LİMİTİ — havuz okuması ucuz olsa da fallback Gemini çağırabildiği
     // için üst sınır şart (ücretsiz modelde tek maliyet freni budur)
-    const burst = rateLimit(`next:${user.id}`, 20, 60_000);
+    const burst = await rateLimit(`next:${user.id}`, 20, 60_000);
     if (!burst.ok) {
       return NextResponse.json(
         { error: 'Çok fazla istek gönderildi. Lütfen bir dakika sonra tekrar deneyin.' },

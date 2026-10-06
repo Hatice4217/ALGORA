@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     }
 
     // 0.1 BURST LİMİTİ — kredi freni olsa da Gemini maliyetini sınırlar
-    const burst = rateLimit(`solution:${user.id}`, 10, 60_000);
+    const burst = await rateLimit(`solution:${user.id}`, 10, 60_000);
     if (!burst.ok) {
       return NextResponse.json(
         { error: 'Çok fazla istek gönderildi. Lütfen bir dakika sonra tekrar deneyin.' },

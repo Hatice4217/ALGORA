@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 
     // 0.1 BURST LİMİTİ — üretim artık ücretsiz olduğundan Gemini maliyetinin
     // TEK freni budur (anlık istek fırtınasını keser)
-    const burst = rateLimit(`generate:${user.id}`, 10, 60_000);
+    const burst = await rateLimit(`generate:${user.id}`, 10, 60_000);
     if (!burst.ok) {
       return NextResponse.json(
         { error: 'Çok fazla istek gönderildi. Lütfen bir dakika sonra tekrar deneyin.' },
