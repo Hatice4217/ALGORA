@@ -6,7 +6,7 @@
 
 ## 🟢 KOLAY — Hemen Başlanabilir
 
-- [ ] **1. Avatar + Gizli Çıkış (SaaS görünümü)** — `~1 gün`
+- [x] **1. Avatar + Gizli Çıkış (SaaS görünümü)** — `~1 gün` ✅ 6 Ekim (commit `ed7657a`, deploy SUCCESS)
   Hasan Hoca #1. Baş harflerden yuvarlak avatar (sağ üst), tıklayınca menü: ad, paket,
   kalan kredi; çıkış menünün altında ince kırmızı link. Mevcut "Çıkış Yap" butonu
   (header + mobil menü) kaldırılır. Saf UI — veriler elimizde.
@@ -72,7 +72,7 @@
 
 | # | Madde | Durum |
 |---|---|---|
-| 1 | Avatar + gizli çıkış | ❌ Yapılacak (sırada) |
+| 1 | Avatar + gizli çıkış | ✅ CANLI (6 Ekim, `ed7657a`) |
 | 2 | Hata Sepeti (gamified) | 🟡 Altyapı canlı, UI yok → madde 5 |
 | 3 | Soru Fabrikası / sıfır bekleme | 🟡 Havuz-ilk canlı, doluluk garantisi yok → madde 6 |
 | 4 | Tek tıkla başlatma | ✅ CANLI (11 ders kartı, 1-2 tık akışı) |
