@@ -3190,3 +3190,16 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 ### 📌 Session Bitişi
 - Kolay sınıf tamam: madde 1 ✅ 2 ✅ 3 ✅ — geriye madde 4 (Araştırma Modu, BAP deney altyapısı ~yarım-1 gün) kaldı, sonra orta sınıf (madde 5 Hata Sepeti UI)
 - Zaafiyet onarım sırası B2 > B1 > G1 > T2-UX1'nin TAMAMI kapatıldı; tek açık düşük madde G1-dışı kalmadı (F2/F3/F4/F9/F10/S3 kabul edilmiş düşükler olarak duruyor)
+
+## [6 Ekim 2026 - Salı] (Yol Haritası Madde 4: Araştırma Modu — BAP Deney Altyapısı)
+
+### 🎯 Amaç
+- BAP deneyinde (80-100 öğrenci) deney/kontrol ayrımı ÖDEME DURUMUNDAN bağımsız olmalı — yoksa "pedagojik etki" ile "parası olan daha fazla özellik gördü" karışır, deney geçersizleşir. Gating'li "Yakında" özellikleri gelmeden ÖNCE altyapı şart.
+
+### ✅ Yapılanlar
+- **SQL (`database/arastirma_modu.sql`, KULLANICI ÇALIŞTIRACAK):** `user_profiles.research_group` (NULL=katılımcı değil / 'deney' / 'kontrol', kapalı-küme CHECK) + `get_user_id_by_email(p_email)` RPC (SECURITY DEFINER + üçlü REVOKE — bu supabase-js sürümünde getUserByEmail YOK, listUsers güvenilmez). schema.sql baseline'ı eşitlendi.
+- **Kredi baypası TS tarafında (solution route):** deney üyesinde 402 kontrolü ve deduct ÇAĞRISI atlanır → creditDeducted null kalır → refund yolları otomatik no-op, istemci sayacı değişmez. Kolon yoksa/hata olsa arastirmaDeney=false → fail-closed (ayrıcalık yalnız açık atamayla). RPC'lere (deduct/refund) DOKUNULMADI.
+- **Admin atama route'u (`/api/subscription/admin/research`):** POST {email, group: deney|kontrol|null} atar, GET ?email= sorgular. x-admin-key + 404 maskesi deseni; e-posta→UUID RPC ile; profil yazımı ÖNCE UPDATE sonra INSERT fallback (upsert ÇAKIŞMADA TÜM ALANLARI ezdiği için kullanılmadı — kullanıcıların gerçek ders/hedef verisi korunur); migration öncesi net hata mesajı.
+
+### 📌 Session Bitişi
+- Kolay sınıf 4/4 TAMAM. Bekleyen: kullanıcının SQL'i çalıştırması + admin key ile atama testi. Sıradaki: orta sınıf madde 5 (Hata Sepeti UI, ~2-3 gün).

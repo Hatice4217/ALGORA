@@ -40,6 +40,10 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   target_major TEXT NOT NULL DEFAULT '' CONSTRAINT user_profiles_major_len_check CHECK (length(target_major) <= 120),
   current_streak INTEGER DEFAULT 0,
   total_study_time INTEGER DEFAULT 0, -- in minutes
+  -- Araştırma Modu (BAP deneyi, database/arastirma_modu.sql): NULL = katılımcı
+  -- değil / 'deney' = tüm özellikler açık / 'kontrol' = standart deneyim
+  research_group TEXT CONSTRAINT user_profiles_research_group_check
+    CHECK (research_group IS NULL OR research_group IN ('deney', 'kontrol')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

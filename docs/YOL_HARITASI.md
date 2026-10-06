@@ -15,7 +15,7 @@
 - [x] **3. B1 — Upstash Redis global rate limit** — `~1 gün` ✅ 6 Ekim
   Mevcut in-memory limit her serverless instance'ta ayrı çalışır (zaafiyet bulgusu).
   Upstash ücretsiz tier + tek dosya değişimi.
-- [ ] **4. Araştırma Modu (BAP deney altyapısı)** — `~ yarım-1 gün`
+- [x] **4. Araştırma Modu (BAP deney altyapısı)** — `~ yarım-1 gün` ✅ 6 Ekim
   Deney/kontrol ayrımı ÖDEME DURUMUNDAN bağımsız olmalı — yoksa "pedagojik etki" ile
   "parası olan daha fazla özellik gördü" karışır, deney geçersizleşir.
   - `user_profiles.research_group` (`NULL` = katılımcı değil / `'deney'` / `'kontrol'`)

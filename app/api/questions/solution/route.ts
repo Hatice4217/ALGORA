@@ -133,6 +133,24 @@ export async function POST(request: Request) {
       subscription = seeded;
     }
 
+    // 3.1 ARAŞTIRMA MODU (BAP deneyi): deney grubu üyesi Üst Beyin'i KREDİSİZ
+    // ve sınırsız kullanır — deney/kontrol ayrımı ödeme durumundan bağımsız
+    // olmak zorundadır (yoksa pedagojik etki ile satın alma gücü karışır).
+    // Kolon yoksa/hata olursa arastirmaDeney=false kalır → HERKES normal
+    // kredi akışına döner (fail-closed: ayrıcalık yalnız açık atamayla verilir).
+    // Kontrol grubuna ('kontrol') ve katılımcı olmayanlara dokunulmaz.
+    let arastirmaDeney = false;
+    try {
+      const { data: profileRow } = await adminClient
+        .from('user_profiles')
+        .select('research_group')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      arastirmaDeney = profileRow?.research_group === 'deney';
+    } catch (researchException) {
+      console.error('solution: research_group okunamadı (normal kredi akışı):', researchException);
+    }
+
     // 3.5 ÖNBELEK OKUMA — 402 kontrolünden ÖNCE: bu öğrenci bu sorunun
     // anlatımını daha önce aldıysa BEDAVA döner (deduct YOK, Gemini YOK).
     // Tablo henüz yoksa (migration öncesi deploy) hata loglanıp normal
@@ -162,7 +180,7 @@ export async function POST(request: Request) {
       console.error('solution: önbellek okuma istisnası (normal akışa devam):', cacheException);
     }
 
-    if (subscription.credits_remaining <= 0) {
+    if (!arastirmaDeney && subscription.credits_remaining <= 0) {
       return NextResponse.json(
         {
           error: 'AI Üst Beyin krediniz tükendi. Yarın yenilenir veya paketinizi yükseltebilirsiniz.',
@@ -177,15 +195,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Atomik kredi düş (Gemini ÖNCESİ — yarış penceresi kapanır)
-    const { data: deducted, error: deductError } = await adminClient.rpc('deduct_credit', {
-      p_user_id: user.id,
-    });
+    // 4. Atomik kredi düş (Gemini ÖNCESİ — yarış penceresi kapanır).
+    // Araştırma Modu: deney üyesinde deduct ÇAĞRILMAZ → creditDeducted null
+    // kalır → refund yolları otomatik no-op, istemci sayacı güncellemez.
+    let deducted: number | null = null;
+    let deductError: { message: string } | null = null;
+    if (arastirmaDeney) {
+      console.log('solution: Araştırma Modu — deney grubu üyesi, kredi düşülmedi (user:', user.id + ')');
+    } else {
+      const deductResult = await adminClient.rpc('deduct_credit', {
+        p_user_id: user.id,
+      });
+      deducted = (deductResult.data as number | null) ?? null;
+      deductError = deductResult.error;
+    }
     if (deductError) {
       console.error('solution: deduct_credit hatası:', deductError.message);
       return NextResponse.json({ error: 'Kredi işlemi başarısız oldu' }, { status: 500 });
     }
-    if (deducted === null) {
+    // (deney üyesinde deducted bilinçli olarak null'dur — 402 bloğu atlanır)
+    if (!arastirmaDeney && deducted === null) {
       return NextResponse.json(
         {
           error: 'AI Üst Beyin krediniz tükendi. Yarın yenilenir veya paketinizi yükseltebilirsiniz.',
@@ -199,7 +228,9 @@ export async function POST(request: Request) {
         { status: 402 }
       );
     }
-    creditDeducted = deducted as number;
+    // Deney üyesinde deducted null → creditDeducted null kalır (refund no-op,
+    // istemci 'credits_remaining' alanını sayı değil sayıp atlar)
+    creditDeducted = deducted;
 
     // Gemini başarısız olursa düşülen krediyi iade et (+1, reason 'refund')
     const refundCredit = async () => {
