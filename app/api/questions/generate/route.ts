@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../../../lib/supabase';
-import { PLAN_LIMITS } from '../../../../lib/subscription-config';
 import { rateLimit } from '../../../../lib/rate-limit';
 import { getSubjects, isKnownTopic } from '../../../../lib/constants/syllabus';
 
@@ -75,11 +74,10 @@ const TOPIC_MAX_LENGTH = 100;
 const PREVIOUS_QUESTION_MAX_LENGTH = 2000;
 
 export async function POST(request: Request) {
-  // Kredi düşüldükten sonra oluşabilecek hatalarda iade için — catch bloğu erişebilir
-  let creditDeducted: number | null = null;
-  let adminClientRef: SupabaseClient | null = null;
-  let userId: string | null = null;
-
+  // ⚠️ V2 KREDİ MODELİ: soru üretimi ÜCRETSİZDİR — bu route'ta
+  // deduct/refund/rollover/402 YOKTUR. Kredi yalnızca "Üst Beyin"
+  // çözümünde harcanır (app/api/questions/solution). Maliyet freni:
+  // auth + kullanıcı başına burst limit.
   try {
     // 0. AUTH KONTROLÜ - oturum açmamış kullanıcılar soru üretemez
     // (Gemini API kotanının kötüye kullanımını engeller)
@@ -100,8 +98,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 0.1 BURST LİMİTİ — kullanıcı başına anlık istismarı sınırlar
-    // (kredi sistemi günlük maliyeti zaten sınırlar; bu anlık fırtınayı keser)
+    // 0.1 BURST LİMİTİ — üretim artık ücretsiz olduğundan Gemini maliyetinin
+    // TEK freni budur (anlık istek fırtınasını keser)
     const burst = rateLimit(`generate:${user.id}`, 10, 60_000);
     if (!burst.ok) {
       return NextResponse.json(
@@ -110,7 +108,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 0.5 KOTA ZORLAMASI — abonelik durumu (service-role: kredi yazımları kullanıcıya kapalı)
+    // 0.5 Service-role client (son sorular okuma + questions insert)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseUrl || !serviceRoleKey) {
@@ -120,65 +118,6 @@ export async function POST(request: Request) {
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
-    adminClientRef = adminClient;
-    userId = user.id;
-
-    // Lazy rollover: dönem bitmişse yeni dönem aç (kredi plan limitine resetlenir)
-    const { error: rolloverError } = await adminClient.rpc('rollover_subscription', {
-      p_user_id: user.id,
-    });
-    if (rolloverError) {
-      console.error('generate: rollover hatası:', rolloverError.message);
-    }
-
-    let subscription = (
-      await adminClient
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle()
-    ).data;
-
-    if (!subscription) {
-      // Beklenmedik boşluk (backfill/trigger atlanmış) — free seed ile devam
-      // free dönemi GÜNLÜKTÜR (PLAN_LIMITS.free — V2: günlük AI Üst Beyin kotası)
-      const now = new Date();
-      const periodEnd = new Date(now);
-      periodEnd.setDate(periodEnd.getDate() + 1);
-      const { data: seeded, error: seedError } = await adminClient
-        .from('subscriptions')
-        .upsert({
-          user_id: user.id,
-          plan: 'free',
-          status: 'active',
-          credits_remaining: PLAN_LIMITS.free,
-          credits_limit: PLAN_LIMITS.free,
-          period_start: now.toISOString(),
-          period_end: periodEnd.toISOString(),
-        })
-        .select()
-        .single();
-      if (seedError) {
-        console.error('generate: subscription seed hatası:', seedError.message);
-        return NextResponse.json({ error: 'Abonelik bilgisi alınamadı' }, { status: 500 });
-      }
-      subscription = seeded;
-    }
-
-    if (subscription.credits_remaining <= 0) {
-      return NextResponse.json(
-        {
-          error: 'Soru üretim krediniz tükendi. Paketinizi yükselterek devam edebilirsiniz.',
-          code: 'CREDIT_EXHAUSTED',
-          data: {
-            plan: subscription.plan,
-            credits_remaining: subscription.credits_remaining,
-            period_end: subscription.period_end,
-          },
-        },
-        { status: 402 }
-      );
-    }
 
     // 1. İstekten gelen JSON verisini al
     // examType: yeni alan (UI toggle); exam_type: eski isteklerle geriye dönük uyum için yedek
@@ -298,43 +237,6 @@ export async function POST(request: Request) {
 
 Yanıtı KESİNLİKLE JSON formatında ver.`;
 
-    // KOTA: Gemini çağrısından ÖNCE atomik kredi düş (yarış penceresi kapanır).
-    // Fonksiyon null döndürürse kredi yoktur — Gemini HİÇ çağrılmadan 402 döner.
-    const { data: deducted, error: deductError } = await adminClient.rpc('deduct_credit', {
-      p_user_id: user.id,
-    });
-    if (deductError) {
-      console.error('generate: deduct_credit hatası:', deductError.message);
-      return NextResponse.json({ error: 'Kredi işlemi başarısız oldu' }, { status: 500 });
-    }
-    if (deducted === null) {
-      return NextResponse.json(
-        {
-          error: 'Soru üretim krediniz tükendi. Paketinizi yükselterek devam edebilirsiniz.',
-          code: 'CREDIT_EXHAUSTED',
-          data: {
-            plan: subscription.plan,
-            credits_remaining: 0,
-            period_end: subscription.period_end,
-          },
-        },
-        { status: 402 }
-      );
-    }
-    creditDeducted = deducted as number;
-
-    // Gemini başarısız olursa düşülen krediyi iade et (+1, reason 'refund')
-    const refundCredit = async () => {
-      if (creditDeducted === null) return;
-      creditDeducted = null;
-      const { error: refundError } = await adminClient.rpc('refund_credit', {
-        p_user_id: user.id,
-      });
-      if (refundError) {
-        console.error('generate: refund_credit hatası:', refundError.message);
-      }
-    };
-
     // Gemini REST API endpoint - lite versiyon (daha hızlı)
     const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 
@@ -352,23 +254,20 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
 
     // 5-6. Gemini çağrısı + JSON şema doğrulaması (rapor 5.1 adım 6b):
     // şema dışı/bozuk üretim öğrenciye HİÇ gösterilmez; arka planda elenir, YENİ bir
-    // seed ile otomatik yeniden denenir. Öğrenciden tek kredi düşülür (ikinci çağrının
-    // maliyeti sisteme aittir); kredi iadesi yalnızca TÜM denemeler başarısız olursa
-    // catch bloğunda yapılır. HTTP seviyesindeki hatalar (401/403/429/5xx) yeniden
-    // denenmez — anında iade edilir.
+    // seed ile otomatik yeniden denenir (ikinci çağrının maliyeti sisteme aittir).
+    // HTTP seviyesindeki hatalar (401/403/429/5xx) yeniden denenmez.
     const MAX_ATTEMPTS = 2; // 1 deneme + 1 otomatik yeniden deneme
     let parsedQuestion: GeminiSoru | null = null;
     const generationStartedAt = Date.now(); // latency gözlemi (Vercel logları)
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const attemptStartedAt = Date.now();
-      // Self-timeout (dayanıklılık Test 1 fix): Gemini asılı kalırsa platform
-      // maxDuration kill'i fonksiyonu CATCH'SİZ öldürür ve düşülen kredi iadesiz
-      // kalır (local SIGKILL simülasyonuyla kanıtlandı). Kendi limitimizi platform
-      // limitinin ALTINDA tutarsak timeout AbortError'ı catch bloğuna düşer ve
-      // refund_credit çalışır. 90 sn: gözlemlenen en yavaş canlı üretim 60.2 sn + pay;
-      // 2 deneme × 90 sn = 180 sn < Fluid varsayılan limiti (300 sn).
-      // Test/probe override: GEMINI_TIMEOUT_MS env.
+      // Self-timeout (dayanıklılık): Gemini asılı kalırsa platform maxDuration
+      // kill'i fonksiyonu CATCH'SİZ öldürür (local SIGKILL simülasyonuyla kanıtlandı).
+      // Kendi limitimizi platform limitinin ALTINDA tutarsak timeout AbortError'ı
+      // catch bloğuna düşer ve öğrenciye temiz 500 döner. 90 sn: gözlemlenen en
+      // yavaş canlı üretim 60.2 sn + pay; 2 deneme × 90 sn = 180 sn < Fluid
+      // varsayılan limiti (300 sn). Test/probe override: GEMINI_TIMEOUT_MS env.
       const geminiTimeoutMs = Number(process.env.GEMINI_TIMEOUT_MS || 90_000);
       // API key URL query param yerine header ile gönderilir
       // (key, loglarda/proxy kayıtlarında URL içinde görünmez)
@@ -398,7 +297,6 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
       });
 
       if (!response.ok) {
-        await refundCredit();
         const errorData = await response.json().catch(() => ({}));
         console.error('Gemini API Error:', errorData);
 
@@ -503,7 +401,7 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     }
 
     if (!parsedQuestion) {
-      // Tüm denemeler başarısız → kredi catch bloğunda iade edilir
+      // Tüm denemeler başarısız → catch bloğunda genel 500 döner
       throw new Error('Yapay zekadan geçerli JSON yanıtı alınamadı (tüm denemeler başarısız)');
     }
 
@@ -554,30 +452,20 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
       .select('id')
       .single();
     if (insertError) {
-      // Kredi harcandı, soruyu kullanıcıya vermeye devam et; sadece logla
+      // Soruyu kullanıcıya vermeye devam et; sadece logla
       console.error('generate: questions insert hatası:', insertError.message);
     } else {
       questionId = insertedQuestion.id;
     }
     questionData.id = questionId;
 
-    // 10. Başarılı cevabı gönder (credits_remaining: kredi sayacı güncellemesi için)
+    // 10. Başarılı cevabı gönder
     return NextResponse.json({
       success: true,
-      data: { ...questionData, credits_remaining: creditDeducted },
+      data: { ...questionData },
     });
 
   } catch (error: unknown) {
-    // Gemini/parse hatası: düşülen krediyi iade et (best effort)
-    if (creditDeducted !== null && adminClientRef && userId) {
-      creditDeducted = null;
-      try {
-        await adminClientRef.rpc('refund_credit', { p_user_id: userId });
-      } catch (refundErr) {
-        console.error('generate: catch içinde refund hatası:', refundErr);
-      }
-    }
-
     // Hata yönetimi
     console.error('❌ Gemini AI Question Generation Error:', error);
     console.error('Error message:', (error as Error)?.message);

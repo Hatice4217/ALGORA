@@ -10,7 +10,7 @@
   Hasan Hoca #1. Baş harflerden yuvarlak avatar (sağ üst), tıklayınca menü: ad, paket,
   kalan kredi; çıkış menünün altında ince kırmızı link. Mevcut "Çıkış Yap" butonu
   (header + mobil menü) kaldırılır. Saf UI — veriler elimizde.
-- [ ] **2. generate route deduct_credit temizliği** — `~ yarım gün`
+- [x] **2. generate route deduct_credit temizliği** — `~ yarım gün` ✅ 6 Ekim
   Teknik borç: V2'de soru çekme ücretsiz; generate route'ta kredi düşümü artığı var.
 - [ ] **3. B1 — Upstash Redis global rate limit** — `~1 gün`
   Mevcut in-memory limit her serverless instance'ta ayrı çalışır (zaafiyet bulgusu).
@@ -76,5 +76,5 @@
 | 2 | Hata Sepeti (gamified) | 🟡 Altyapı canlı, UI yok → madde 5 |
 | 3 | Soru Fabrikası / sıfır bekleme | 🟡 Havuz-ilk canlı, doluluk garantisi yok → madde 6 |
 | 4 | Tek tıkla başlatma | ✅ CANLI (11 ders kartı, 1-2 tık akışı) |
-| 5 | Akıllı kredi (yalnız Üst Beyin) | ✅ CANLI (madde 2 temizliği hariç) |
+| 5 | Akıllı kredi (yalnız Üst Beyin) | ✅ CANLI (madde 2 temizliği de tamam, 6 Ekim) |
 | 6 | Çift AI denetimi | ❌ Yapılacak → madde 12 |

@@ -3153,3 +3153,19 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### 📌 Session Bitişi
 - KR-20 borcu kapandı (kurulum + guard kanıtlı, ölçüm deney dönemine planlı). Bekleyenler: tarayıcı testleri (Otomatik zorluk + radar + vitrin), YOL_HARITASI madde 1 (Avatar + gizli çıkış) kullanıcı onayıyla, teknik borç B1 (Upstash) + generate route deduct_credit artığı
+
+## [6 Ekim 2026 - Salı] (Yol Haritası Madde 2: generate route kredi temizliği)
+
+### 🎯 Tetikleyici
+- Kullanıcı onayıyla madde 2 başladı. Ayrıca **tarayıcı testleri KULLANICI TARAFINDAN TAMAMLANDI — sorun çıkmadı** (avatar + gizli çıkış, Otomatik zorluk, radar, sekmeli Aboneliğim paneli).
+
+### ✅ Yapılanlar
+- `/api/questions/generate` route'undan TÜM kredi mantığı kaldırıldı (V2: üretim ücretsiz):
+  - `deduct_credit` çağrısı + 402 CREDIT_EXHAUSTED blokları (2 adet), `refund_credit` fonksiyonu + catch iade bloğu, lazy rollover + subscription fetch/seed bloku, yanıttan `credits_remaining` alanı, kullanılmayan `PLAN_LIMITS`/`SupabaseClient` import'ları
+  - Korunanlar: auth (401), burst limit (10/dk, artık Gemini maliyetinin TEK freni), Faz 0.8 girdi whitelist'i, G1 konu whitelist'i, şema retry, self-timeout, questions insert
+  - `/next` zaten kredisizdi; UI `/generate`'ı çağırmıyor (dashboard `/next` kullanıyor) → istemci tarafı sıfır değişiklik
+  - Rollover/seed boşluğu yok: solution route kendi rollover+seed'ini yapıyor (kanıtlı)
+- `docs/YOL_HARITASI.md`: madde 2 ✅ işaretlendi; Hasan Hoca #5 "madde 2 hariç" şerhi kaldırıldı
+
+### 📌 Session Bitişi
+- Kredi ekonomisi artık TAM V2: soru çek/üret/çöz ÜCRETSİZ + SINIRSIZ; kredi yalnız Üst Beyin'de (önbellek isabeti de ücretsiz). Bekleyen: madde 3 (B1 Upstash — hesap kararı), madde 4 (Araştırma Modu), sonra madde 5 (Hata Sepeti UI)
