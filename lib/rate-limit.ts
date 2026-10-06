@@ -59,13 +59,24 @@ function memoryRateLimit(
 
 const UPSTASH_TIMEOUT_MS = 2_000;
 
+// Kopyala-yapıştır hijyeni: Upstash konsolundan kopyalanan değer satır sonuna
+// sarıp token İÇİNE \n/boşluk girebilir (canlıda kanıtlandı: header invalid
+// olur, istekler sessizce in-memory fallback'e düşer). Token/URL asla beyaz
+// boşluk içermediğinden tamamen silinmeleri güvenlidir.
+function envTemiz(ad: string): string | undefined {
+  const deger = process.env[ad];
+  if (!deger) return undefined;
+  const temiz = deger.replace(/\s+/g, '');
+  return temiz.length > 0 ? temiz : undefined;
+}
+
 export async function rateLimit(
   key: string,
   limit: number,
   windowMs: number
 ): Promise<{ ok: boolean; retryAfterSec: number }> {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = envTemiz('UPSTASH_REDIS_REST_URL');
+  const token = envTemiz('UPSTASH_REDIS_REST_TOKEN');
   if (!url || !token) {
     return memoryRateLimit(key, limit, windowMs);
   }
@@ -117,8 +128,8 @@ export async function rateLimit(
 // pencere sonunda kendi kendine düşer — false-affetme riski yok.
 export async function resetRateLimit(key: string): Promise<void> {
   buckets.delete(key);
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = envTemiz('UPSTASH_REDIS_REST_URL');
+  const token = envTemiz('UPSTASH_REDIS_REST_TOKEN');
   if (!url || !token) return;
   try {
     // NOT: /del REST endpoint'i canlı testte sessizce 0 döndürüp SİLMEDİ;
