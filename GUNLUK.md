@@ -3169,3 +3169,24 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### 📌 Session Bitişi
 - Kredi ekonomisi artık TAM V2: soru çek/üret/çöz ÜCRETSİZ + SINIRSIZ; kredi yalnız Üst Beyin'de (önbellek isabeti de ücretsiz). Bekleyen: madde 3 (B1 Upstash — hesap kararı), madde 4 (Araştırma Modu), sonra madde 5 (Hata Sepeti UI)
+
+## [6 Ekim 2026 - Salı] (Yol Haritası Madde 3 / B1: Upstash Global Rate Limit)
+
+### 🎯 Tetikleyici
+- Zaafiyet turu 1 bulgusu B1 (ORTA): in-memory rate limit her serverless instance'ta ayrı tutuluyordu → paralel kopyalar limiti fiilen bölüyor. Kullanıcı "oluşturalım, geri dönmeyelim" kararıyla Upstash kurulumunu başlattı.
+
+### ✅ Yapılanlar
+- **Upstash Redis** (ücretsiz tier, eu-central-1 Frankfurt — Supabase ile aynı bölge, `algora-rate-limit`): eviction KAPALI, read regions yok (ücretsiz)
+- `lib/rate-limit.ts`: `rateLimit`/`resetRateLimit` async oldu; Upstash REST pipeline (INCR + EXPIRE NX + TTL — fixed-window semantiği birebir korundu); fail-open kaskad: env yok / hata / 2sn timeout → in-memory fallback (regression yok). 7 çağrı noktasına `await` (login/next/report/solution/generate + resetRateLimit)
+- 🔥 **Kurulum debug (geçici tanılama endpoint'i ile):** ilk deployda sayaç Upstash'e gitmiyordu. Tanılama sadece booleans/hostname döndürdü (token asla sızmadı) → `tokenInfo.hasSpace: true`: Upstash konsolundan kopyalanırken token satıra sarmış, İÇİNE \n+boşluk girmiş → `Authorization` header invalid → fetch istisna → sessiz in-memory fallback. Çift onarım: kullanıcı token'ı kopyala-butonuyla yeniden girdi + koda `envTemiz()` (beyaz boşluk silme) savunması eklendi; tanılama endpoint'i aynı commit'te silindi
+- 🔥 **Upstash `/del` REST endpoint'i sessizce 0 döndürüp SİLMİYOR** (canlıda kanıtlandı: EXISTS 1 → /del 0 → EXISTS 1); `resetRateLimit` pipeline-içi DEL ile yazıldı (EXISTS 1 → pipeline DEL 1 → EXISTS 0)
+
+### ✅ Canlı Kanıt Zinciri (probe: 15+2 istek + dışarıdan silme)
+1. İlk 15 kötü login → 401; **16. → 429** "Çok fazla giriş denemesi" (Retry-After ~284sn)
+2. Sayaç Upstash'te göründü: `rl:login:79.123.163.111`
+3. Anahtar Upstash REST'ten DIŞARIDAN silindi → yeni istek **401** (limitten geçti) — sayaç instance hafızasında değil Upstash'te YAŞIYOR kanıtı
+4. Hesap-bazlı kilit sayaçı da çalışıyor (`kalanHak` dönüyor)
+
+### 📌 Session Bitişi
+- Kolay sınıf tamam: madde 1 ✅ 2 ✅ 3 ✅ — geriye madde 4 (Araştırma Modu, BAP deney altyapısı ~yarım-1 gün) kaldı, sonra orta sınıf (madde 5 Hata Sepeti UI)
+- Zaafiyet onarım sırası B2 > B1 > G1 > T2-UX1'nin TAMAMI kapatıldı; tek açık düşük madde G1-dışı kalmadı (F2/F3/F4/F9/F10/S3 kabul edilmiş düşükler olarak duruyor)
