@@ -72,6 +72,24 @@ Fonksiyon `STABLE`, `SECURITY DEFINER`, üçlü REVOKE'lıdır (`PUBLIC`, `anon`
 |---|---|---|---|---|---|---|
 | — | — | — | 0 | — | — | Veri yok (guard doğrulandı); ölçüm deney dönemine ertelendi |
 
+### Ölçüm 2 — 6 Ekim 2026 (sistem doğrulama ölçümü)
+
+**Sonuç: Satır döndürmedi ("No rows returned") — veri yok.**
+
+- `get_kr20(5)` boş küme döndürdü; `SELECT count(*) FROM answers;` → **0**. Sistem hâlâ
+  teste kapalı olduğundan (canlıya açma ilanı bekleniyor) gerçek kullanıcı cevap verisi
+  birikmedi — boş küme, küçük havuz/veri guard'ının tasarlandığı gibi çalıştığının
+  ikinci kez kanıtıdır.
+- Yetki matrisi yeniden doğrulandı: `has_function_privilege('anon'/'authenticated',
+  'get_kr20(integer)', 'EXECUTE')` → **FALSE / FALSE** (yalnız SQL Editor sahibi +
+  `service_role`).
+- **KR-20 sayısal ölçümü, deney dönemi verisiyle (80–100 öğrenci, ön/son test) yapılacak.**
+  BAP formundaki vaat ölçümü bu dönemde karşılanır.
+
+| Sınav Türü | Ders | k (soru) | Cevap Sayısı | Ort. p | KR-20 | Yorum |
+|---|---|---|---|---|---|---|
+| — | — | — | 0 | — | — | Veri yok (guard ikinci kez doğrulandı); ölçüm deney dönemine ertelendi |
+
 ## Sınırlılıklar (raporda açıkça belirtilir)
 
 - KR-20, aynı madde setini çözen **öğrenci grubu** varsayar; ALGORA'da her öğrenci

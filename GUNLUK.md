@@ -3144,3 +3144,12 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 - 17 madde, kolay→zor, gün tahminli + checkbox; Hasan Hoca 6 maddesinin durum tespiti tablosu
 - **YENİ madde 4: Araştırma Modu** — BAP deneyi için kritik: deney/kontrol ayrımı ödeme durumundan bağımsız olmalı. `user_profiles.research_group` (NULL/'deney'/'kontrol') + kredi/gating baypası + admin atama route'u; şimdilik etkisiz ama gating'li özellikler gelmeden altyapısı şart (~yarım-1 gün)
 - Sıradaki: madde 1 (Avatar + gizli çıkış) kullanıcı onayıyla başlayacak
+
+## [6 Ekim 2026 - Salı] (KR-20 Ölçüm 2 — Sistem Doğrulama)
+
+- Kullanıcı `get_kr20(5)` çalıştırdı → **"No rows returned"**; `SELECT count(*) FROM answers` → **0**. Sistem teste kapalı olduğundan gerçek cevap verisi birikmedi; boş küme guard'ın ikinci kez doğru çalıştığının kanıtı
+- Yetki matrisi yeniden teyit: `has_function_privilege` → `anon=FALSE, authenticated=FALSE` (üçlü REVOKE etkili)
+- `docs/KR20_RAPORU.md`'ye Ölçüm 2 kaydı işlendi: sayısal KR-20 ölçümü deney dönemine (80-100 öğrenci, ön/son test) ertelenmiş durumda — BAP vaadi bu dönemde karşılanır
+
+### 📌 Session Bitişi
+- KR-20 borcu kapandı (kurulum + guard kanıtlı, ölçüm deney dönemine planlı). Bekleyenler: tarayıcı testleri (Otomatik zorluk + radar + vitrin), YOL_HARITASI madde 1 (Avatar + gizli çıkış) kullanıcı onayıyla, teknik borç B1 (Upstash) + generate route deduct_credit artığı
