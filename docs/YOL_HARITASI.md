@@ -12,7 +12,7 @@
   (header + mobil menü) kaldırılır. Saf UI — veriler elimizde.
 - [x] **2. generate route deduct_credit temizliği** — `~ yarım gün` ✅ 6 Ekim
   Teknik borç: V2'de soru çekme ücretsiz; generate route'ta kredi düşümü artığı var.
-- [ ] **3. B1 — Upstash Redis global rate limit** — `~1 gün`
+- [x] **3. B1 — Upstash Redis global rate limit** — `~1 gün` ✅ 6 Ekim
   Mevcut in-memory limit her serverless instance'ta ayrı çalışır (zaafiyet bulgusu).
   Upstash ücretsiz tier + tek dosya değişimi.
 - [ ] **4. Araştırma Modu (BAP deney altyapısı)** — `~ yarım-1 gün`
