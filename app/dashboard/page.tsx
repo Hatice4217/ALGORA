@@ -10,6 +10,7 @@ import { authHelpers, dbHelpers } from '../../lib/supabase';
 import { StatisticsCards } from '../../components/dashboard/StatisticsCards';
 import { AnalysisPanel } from '../../components/dashboard/AnalysisPanel';
 import { QuestionPractice } from '../../components/dashboard/QuestionPractice';
+import { CoachPanel } from '../../components/dashboard/CoachPanel';
 import { SettingsPanel } from '../../components/dashboard/SettingsPanel';
 import { PackagePanel, UpgradeModal } from '../../components/dashboard/PackagePanel';
 import { ProfileAvatar } from '../../components/dashboard/ProfileAvatar';
@@ -78,7 +79,7 @@ export default function DashboardPage() {
   const router = useRouter();
   // Giriş yapan kullanıcı doğrudan Dinamik Soru Bankası'nda başlar (onboarding kaldırıldı);
   // son aktif sekme localStorage'dan geri yüklenir (refresh sonrası sekme kaybolmasın)
-  const [activeTab, setActiveTab] = useState<'overview' | 'practiceRoom' | 'analysis' | 'package' | 'settings'>('practiceRoom');
+  const [activeTab, setActiveTab] = useState<'overview' | 'practiceRoom' | 'coach' | 'analysis' | 'package' | 'settings'>('practiceRoom');
   const [tabRestored, setTabRestored] = useState(false);
   const [statistics, setStatistics] = useState<DashboardStatistics>({
     toplamSoru: 0,
@@ -151,6 +152,7 @@ export default function DashboardPage() {
       if (
         saved === 'overview' ||
         saved === 'practiceRoom' ||
+        saved === 'coach' ||
         saved === 'analysis' ||
         saved === 'package' ||
         saved === 'settings'
@@ -788,6 +790,7 @@ export default function DashboardPage() {
   const tabs = [
     { id: 'overview' as const, label: 'Genel Bakış' },
     { id: 'practiceRoom' as const, label: 'Dinamik Soru Bankası' },
+    { id: 'coach' as const, label: 'Koç' },
     { id: 'analysis' as const, label: 'Analizler' },
     { id: 'package' as const, label: 'Aboneliğim' },
     { id: 'settings' as const, label: 'Ayarlar' },
@@ -1004,6 +1007,17 @@ export default function DashboardPage() {
               setBildirimDurumu(null);
               setHataMesaji(null);
             }}
+          />
+        )}
+
+        {/* Koç Sekmesi — hedef puan + günlük saat + gerçek performans → günlük plan */}
+        {activeTab === 'coach' && (
+          <CoachPanel
+            baslat={(ders, tur, zorluk) => {
+              setActiveTab('practiceRoom');
+              dersBaslat(ders, tur, { zorluk });
+            }}
+            gitAyarlara={() => setActiveTab('settings')}
           />
         )}
 
