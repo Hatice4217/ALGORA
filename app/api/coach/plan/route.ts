@@ -43,6 +43,7 @@ function zorlukOner(basari: number | null): 'baslangic' | 'orta' | 'ileri' | 'ot
 
 // Gemini kişisel notu — başarısızlıkta statik yedek (asla akışı bozmaz)
 async function kisiselNotYaz(girdi: {
+  ad: string;
   hedefPuan: number;
   gunKaldi: number;
   universite: string;
@@ -63,16 +64,17 @@ async function kisiselNotYaz(girdi: {
         ? `En zayıf branşı ${girdi.enZayif} (%${girdi.enZayifBasari} başarı).`
         : 'Henüz yeterli çözüm verisi yok — plan dengeli dağıtıldı.';
 
-    const prompt = `Sen ALGORA'nın YKS koçusun. Öğrenciye BUGÜNKÜ çalışma planı için 2-3 cümlelik kişisel, samimi ve motive edici bir not yaz. Türkçe yaz, öğrencinin adına hitap et ("sen"), emoji en fazla 1 tane, vaat/kesinlik verme (garantili puan vb. yasak), kısa tut.
+    const prompt = `Sen ALGORA'nın YKS koçusun. Öğrenciye BUGÜNKÜ çalışma planı için 2-3 cümlelik kişisel, samimi ve motive edici bir not yaz. Türkçe yaz, emoji en fazla 1 tane, vaat/kesinlik verme (garantili puan vb. yasak), kısa tut.
 
 Öğrenci verisi:
+- Adı: ${girdi.ad || 'bilinmiyor — ad KULLANMA, "sen" diye hitap et'}
 - Hedef puan: ${girdi.hedefPuan}
 - Hedef üniversite/bölüm: ${universiteBolum}
 - Sınava kalan gün: ${girdi.gunKaldi}
 - ${zayifCumle}
 - Bugünkü plan: ${girdi.planOzeti}
 
-Sadece not metnini yaz (başlık, madde işareti, tırnak yok).`;
+Adı belli değilse "sen" diye hitap et; ASLA "[Öğrencinin Adı]" gibi yer tutucu/şablon metni yazma. Sadece not metnini yaz (başlık, madde işareti, tırnak yok).`;
 
     const response = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent',
@@ -134,7 +136,7 @@ export async function POST(request: Request) {
     // 1. PROFİL — hedef puan + günlük saat + sınav türü (Koç'un girdileri)
     const { data: profil } = await adminClient
       .from('user_profiles')
-      .select('exam_type, target_score, study_hours_per_day, target_university, target_major')
+      .select('name, exam_type, target_score, study_hours_per_day, target_university, target_major')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -246,6 +248,7 @@ export async function POST(request: Request) {
     // 5. Gemini kişisel notu
     const enZayif = maddeler[0];
     const { metin: motivasyon, kaynak } = await kisiselNotYaz({
+      ad: typeof profil?.name === 'string' ? profil.name : '',
       hedefPuan,
       gunKaldi,
       universite: profil?.target_university || '',
