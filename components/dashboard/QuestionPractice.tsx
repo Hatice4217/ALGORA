@@ -144,6 +144,20 @@ export function QuestionPractice({
     modalGovdeRef.current?.scrollTo({ top: 0 });
   }, [mevcutSoru?.id]);
 
+  // 🧺 Hata Sepeti (madde 5): oturumda görülen en yüksek bekleyen klon sayısı
+  // telafi ilerlemesinin tabanıdır — cevaplanan klonlar listeden düştükçe
+  // çubuk dolar, hepsi bitince kutlama kartı gelir (kapatılana dek durur)
+  const [sepetZirvesi, setSepetZirvesi] = useState(0);
+  const [kutlamaKapandi, setKutlamaKapandi] = useState(false);
+
+  useEffect(() => {
+    setSepetZirvesi((onceki) => Math.max(onceki, bekleyenKlonlar.length));
+  }, [bekleyenKlonlar.length]);
+
+  const telafiEdilen = sepetZirvesi - bekleyenKlonlar.length;
+  const telafiYuzdesi = sepetZirvesi > 0 ? Math.round((telafiEdilen / sepetZirvesi) * 100) : 0;
+  const sepetBosaltildi = sepetZirvesi > 0 && bekleyenKlonlar.length === 0;
+
   useEffect(() => {
     if (!soruUretiliyor) {
       setBeklemeSaniye(0);
@@ -254,19 +268,43 @@ export function QuestionPractice({
                   cevaplardan ürettiği bekleyen kişisel klonlar. Liste boşken
                   kart HİÇ render edilmez. Klon tıklanınca sıradan soru gibi
                   akar (modal kilit pattern'i aynen geçerli). */}
+              {/* Madde 5 — Hata Sepeti (Duolingo görünümü): bekleyen gece
+                  klonları sepet metaforuyla oyunlaştırılır — sayaç rozeti,
+                  telafi ilerleme çubuğu, sepeti boşaltınca kutlama. Veri
+                  yalnız bekleyenKlonlar; ilerleme oturumda görülen en yüksek
+                  sayıya göre hesaplanır (yenilemede taban sıfırdan başlar). */}
               {bekleyenKlonlar.length > 0 && (
                 <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
                   <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
                     <h3 className="text-sm font-bold text-amber-800 flex items-center gap-2">
-                      <span className="text-base">🎯</span>
-                      Eksiklerini Kapat
+                      <span className="relative inline-flex text-base leading-none">
+                        🧺
+                        <span className="absolute -top-1.5 -right-3.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                          {bekleyenKlonlar.length}
+                        </span>
+                      </span>
+                      Hata Sepeti
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-xs font-bold">
-                      {bekleyenKlonlar.length}
+                    <span className="text-xs font-semibold text-amber-700">
+                      {telafiEdilen}/{sepetZirvesi} telafi edildi
                     </span>
                   </div>
+                  {/* Telafi ilerleme çubuğu */}
+                  <div
+                    className="h-3 rounded-full bg-amber-100 overflow-hidden mb-2"
+                    role="progressbar"
+                    aria-valuenow={telafiYuzdesi}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label="Hata sepeti telafi ilerlemesi"
+                  >
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-500"
+                      style={{ width: `${telafiYuzdesi}%` }}
+                    />
+                  </div>
                   <p className="text-xs text-amber-700 mb-3">
-                    Dün yanlış yaptığın sorulardan özel türevler hazırlandı — çözünce listeden düşer.
+                    Dün yanlış yaptığın soruların türevleri sepete eklendi — telafi ettikçe boşalır.
                   </p>
                   <ul className="space-y-2">
                     {bekleyenKlonlar.map((klon) => (
@@ -293,6 +331,31 @@ export function QuestionPractice({
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* 🎉 Sepet boşaltıldı — kutlama kartı (kapatılana dek görünür;
+                  yeni klonlar gelirse sepet kartı geri döner) */}
+              {sepetBosaltildi && !kutlamaKapandi && (
+                <div className="mb-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 px-4 py-3 flex items-start justify-between gap-3 animate-toast-in">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-emerald-800 flex items-center gap-2">
+                      <span className="text-base">🎉</span>
+                      Hata sepetini boşalttın!
+                    </h3>
+                    <p className="text-xs text-emerald-700 mt-0.5">
+                      {sepetZirvesi} yanlışın tamamını telafi ettin — eksiklerin kapanıyor, böyle devam!
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setKutlamaKapandi(true)}
+                    aria-label="Kutlamayı kapat"
+                    className="p-1 rounded-lg text-emerald-400 hover:text-emerald-600 hover:bg-emerald-100 transition-colors shrink-0"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               )}
 
