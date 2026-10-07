@@ -407,12 +407,114 @@ export default function DashboardPage() {
   // state + çağrıyı AYNI tikte yapar; klasör güncel state'i değil çağrı
   // anındaki override'ı görür. "Sıradaki Soru" gibi state'ten okuyan
   // çağrılar parametresiz çağırır.
+  //
+  // ⚡ ÖN-YÜKLEME: havuzdan gelen soru bile zincir yüzünden ~1 sn sürüyor
+  // (TR → Vercel edge → fonksiyon → auth + rate limit + adaptif + havuz RPC).
+  // Öğrenci mevcut soruyu çözerken SIRADAKİ soru arka planda çekilir;
+  // "Sıradaki Soru" tıklandığında eşleşen ön-yükleme ANINDA ekrana gelir.
+  // Eşleşme = istek gövdesi birebir aynı (ders/konu/zorluk/sınav + önceki
+  // soru metni + exclude listesi). Klon açma/geçmiş inceleme currentQuestion'ı
+  // değiştirdiği için gövde eşleşmez → otomatik normal akıza düşer (güvenli).
+  const bekleyenSoruRef = useRef<{ istekGovdesi: string; soru: Question } | null>(null);
+
+  const soruIstekGovdesiOlustur = (
+    secim: {
+      subject?: string;
+      topic?: string;
+      difficulty?: string;
+      examType?: 'TYT' | 'AYT' | 'YDT';
+    } | undefined,
+    oncekiSoruMetni: string | null,
+    excludeListesi: string[]
+  ): string =>
+    JSON.stringify({
+      subject: secim?.subject ?? selectedSubject,
+      topic: secim?.topic ?? selectedTopic,
+      difficulty: secim?.difficulty ?? selectedDifficulty,
+      examType: secim?.examType ?? examType,
+      // Sıradaki sorunun öncekinden farklı olması için mevcut soru metnini gönder
+      previous_question: oncekiSoruMetni,
+      // Bu oturumda görülen sorular havuzdan hariç tutulur (mükerrer önleme)
+      exclude: excludeListesi,
+    });
+
+  // Arka planda sıradaki soruyu çekip bekleyenSoruRef'e koyar. Hata olursa
+  // SESSİZCE vazgeçer — tıklama anında normal akış zaten çalışır.
+  const sonrakiniOnyukle = async (
+    secim: {
+      subject?: string;
+      topic?: string;
+      difficulty?: string;
+      examType?: 'TYT' | 'AYT' | 'YDT';
+    } | undefined,
+    gosterilenSoru: Question,
+    excludeListesi: string[]
+  ): Promise<void> => {
+    const istekGovdesi = soruIstekGovdesiOlustur(secim, gosterilenSoru.question ?? null, excludeListesi);
+    bekleyenSoruRef.current = null;
+    try {
+      const response = await authFetch('/api/questions/next', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: istekGovdesi,
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data.success && data.data) {
+        bekleyenSoruRef.current = { istekGovdesi, soru: data.data as Question };
+      }
+    } catch {
+      // sessiz: ön-yükleme başarısızsa tıklama anında normal akış devrede
+    }
+  };
+
+  // Elde edilen soruyu ekrana uygular + sıradakinin ön-yüklemesini başlatır
+  const soruGosterVeOnyukle = (
+    soru: Question,
+    secim: {
+      subject?: string;
+      topic?: string;
+      difficulty?: string;
+      examType?: 'TYT' | 'AYT' | 'YDT';
+    } | undefined,
+    oncekiExclude: string[]
+  ): void => {
+    setCurrentQuestion(soru);
+    // Soru artık ekranda: çözme süresi sayacını sıfırdan başlat
+    questionStartedAtRef.current = Date.now();
+    // Oturum exclude listesi (route zaten 100 id ile tavanlı)
+    const yeniExclude =
+      typeof soru.id === 'string' ? [...oncekiExclude, soru.id].slice(-100) : oncekiExclude;
+    if (typeof soru.id === 'string') {
+      setGorulenSorular(yeniExclude);
+    }
+    // Öğrenci bu soruyu çözerken sıradaki arka planda çekilsin
+    void sonrakiniOnyukle(secim, soru, yeniExclude);
+  };
+
   const generateQuestion = async (secim?: {
     subject?: string;
     topic?: string;
     difficulty?: string;
     examType?: 'TYT' | 'AYT' | 'YDT';
   }) => {
+    // ⚡ Ön-yükleme eşleşmesi: bekleme yok, soru ANINDA ekrana gelir
+    const istekGovdesi = soruIstekGovdesiOlustur(secim, currentQuestion?.question ?? null, gorulenSorular);
+    const onyuklenen = bekleyenSoruRef.current;
+    if (onyuklenen && onyuklenen.istekGovdesi === istekGovdesi) {
+      bekleyenSoruRef.current = null;
+      setShowAnswer(false);
+      setSelectedAnswer(null);
+      setAcilanIpucu(0);
+      setUstBeyinMetni(null);
+      setBildirimDurumu(null);
+      setHataMesaji(null);
+      soruGosterVeOnyukle(onyuklenen.soru, secim, gorulenSorular);
+      return;
+    }
+    // Eşleşmeyen ön-yükleme bayattır (seçim/ekran değişti) → at
+    bekleyenSoruRef.current = null;
+
     setIsGeneratingQuestion(true);
     setShowAnswer(false);
     setSelectedAnswer(null);
@@ -426,16 +528,7 @@ export default function DashboardPage() {
       const response = await authFetch('/api/questions/next', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject: secim?.subject ?? selectedSubject,
-          topic: secim?.topic ?? selectedTopic,
-          difficulty: secim?.difficulty ?? selectedDifficulty,
-          examType: secim?.examType ?? examType,
-          // Sıradaki sorunun öncekinden farklı olması için mevcut soru metnini gönder
-          previous_question: currentQuestion?.question ?? null,
-          // Bu oturumda görülen sorular havuzdan hariç tutulur (mükerrer önleme)
-          exclude: gorulenSorular,
-        }),
+        body: istekGovdesi,
       });
 
       if (!response.ok) {
@@ -447,13 +540,7 @@ export default function DashboardPage() {
 
       const data = await response.json();
       if (data.success) {
-        setCurrentQuestion(data.data);
-        // Soru artık ekranda: çözme süresi sayacını sıfırdan başlat
-        questionStartedAtRef.current = Date.now();
-        // Oturum exclude listesi (route zaten 100 id ile tavanlı)
-        if (typeof data.data.id === 'string') {
-          setGorulenSorular((prev) => [...prev, data.data.id].slice(-100));
-        }
+        soruGosterVeOnyukle(data.data as Question, secim, gorulenSorular);
       } else {
         console.error('API Error:', data.error);
         setHataMesaji(`Soru alınamadı: ${data.error || 'Bilinmeyen hata'}`);
