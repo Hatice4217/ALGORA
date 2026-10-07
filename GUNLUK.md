@@ -3219,3 +3219,16 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### 📌 Session Bitişi
 - Kolay sınıf 4/4 + prefetch hattı + madde 5 TAMAM. Yol haritasında sıradaki: madde 6 (Soru Fabrikası doluluk garantisi — MEB kaynaklarıyla besleme planıyla birleşir: question_sources tablosu + Gemini kaynak-modu + pilot ders). Kullanıcı MEB 8 yıllık çıkmış soruları indiriyor → PDF'ler gelince havuz besleme işi başlar. Prefetch/simetri davranışları kullanıcı tarayıcı testinde.
+
+## [7 Ekim 2026 - Çarşamba, Akşam] (Koç: Hedef Puan/Saat → Günlük Plan — Hoca "Bunu Niye Alıyorsun?" Yanıtı)
+
+### 🎯 Amaç
+- Hoca "puan ve saati niye alıyorsun?" dedi; "şu anlık öylesine" cevabı "yok" aldı → hedef verisi ürünü ÇALIŞTIRMALI. Kullanıcı kararı: yeni 'Koç' sekmesi + hibrit motor (kural dağıtır, Gemini kişisel not yazar, "AI sana özel hazırlıyor" etiketi).
+
+### ✅ Yapılanlar
+- **`/api/coach/plan` (3 commit: `dadaf87`+`b819542`+`2c94103`):** profil (hedef puan/saat/sınav) + subject_breakdown + answers ortalama süre → kural motoru: zayıf ders ağırlıklı dağıtım (100-başarı%, ≥3 soru eşiği, veri azsa sınav çekirdek dersleriyle tamamla), kapasite = saat×3600/sn×0.6 odak payı (tavan 120), hedef yükü = puan/10 (450→45 soru), madde zorluğu başarıya göre (<40 başlangıç, <75 orta, ≥75 ileri), 2027 takvimi gün sayısı. Gemini flash-lite kişisel not (12sn timeout, statik fallback); ad profilden geçer, ad yoksa "sen" hitabı + şablon yer tutucu yasağı. Rate limit 5/dk.
+- **CoachPanel.tsx:** hedef çerçevesi kartı (puan/gün/saat), AI Koç Notu kartı, madde kartları — bugünkü GERÇEK cevap sayımıyla (answers, yerel gece yarısı) ders bazlı k/N ilerleme çubuğu, Başlat → dersBaslat + Dinamik Soru Bankası'na geçiş, hepsi dolunca kutlama; hedef yoksa Ayarlar'a yönlendirme boş durumu. Dashboard'a 6. sekme ('coach', localStorage restore dahil).
+- **Probe (probe_koc.mjs) 2 tur:** TUR-1 gerçek birim hatası yakaladı — kapasite hesabı saat×60(dk)/sn bölüyordu → 6 saatlik öğrenciye 5 soru kapasitesi! (saat×3600/sn×0.6 ile onarıldı, tavan 120) + Gemini "[Öğrencinin Adı]" şablon yer tutucusu bırakmıştı (ad + yasak kuralı eklendi). TUR-2 final: hedefYok ✓, kapasite=120/yük=45/toplam=45 ✓, Türkçe %0 → 25 soru + başlangıç (zayıf en büyük pay) ✓, not [gemini] kişisel ✓, 4. istekte 429 ✓, yetkisiz 401 ✓, temizlik signIn 400 kanıtlı ✓. UI metinleri canlı chunk'ta ✓.
+
+### 📌 Session Bitişi
+- Hedef puan + günlük saat artık veri toplama değil ÜRÜN GİRDİSİ: plan üretir, kapasite/hedef karşılaştırır, madde zorluğu belirler, Gemini notunu kişiselleştirir. İlerleme gerçek cevaplardan sayılır — plan kağıt üstünde kalmaz. Yol haritası madde 15'in MVP'si sayılabilir (tam Koç: haftalık plan/deneme verisi sonraki adım). Kullanıcı MEB çıkmış soruları indiriyor — PDF'ler gelince madde 6 havuz besleme başlar.
