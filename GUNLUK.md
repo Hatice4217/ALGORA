@@ -3203,3 +3203,19 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### 📌 Session Bitişi
 - Kolay sınıf 4/4 TAMAM. Bekleyen: kullanıcının SQL'i çalıştırması + admin key ile atama testi. Sıradaki: orta sınıf madde 5 (Hata Sepeti UI, ~2-3 gün).
+
+## [7 Ekim 2026 - Çarşamba] (Havuz Hızı + Prefetch UX + Madde 5 Hata Sepeti UI)
+
+### 🎯 Amaç
+- Hoca yönü backend/DB'ye döndü; kullanıcı "havuzdaki soru bile ekrana rötarlı geliyor" dedi → hız kök neden analizi ve onarım. Ardından prefetch'in yarattığı yeni UX sorunu + yol haritası madde 5.
+
+### ✅ Yapılanlar
+- **Gecikme analizi (probe_next_sure.mjs):** TR'den canlı /next ölçümü — pool HIT 924-1332ms, soğuk 2258ms, taban PostgREST ~490-700ms. Kök neden: X-Vercel-Id `fra1::iad1` — edge Frankfurt ama FONKSİYON ABD'de (iad1); Supabase+Upstash Frankfurt'ta → her sunucu çağrısı (getUser+rateLimit+adaptif+havuz RPC) Atlantik'i geçiyordu.
+- **Çözüm-1 — İstemci prefetch (commit `193ffe3`):** page.tsx'te `bekleyenSoruRef` mekanizması: soru ekrana gelir gelmez SIRADAKİ soru arka planda çekilir (istek gövdesi string birebir saklanır); "Sıradaki Soru" tıkında gövde eşleşirse ANINDA basılır (network yok). Eşleşmeme (ders/konu değişimi, klon, inceleme) → bayat ön-yükleme atılır, normal akış. Hata sessizce yutulur. 'otomatik' zorlukta adaptif hesap 1 cevap gecikmeli — kabul kararı.
+- **Çözüm-2 — Vercel bölgesi fra1 (kullanıcı):** bölge değişimi REDEPLOY ister (ayar tek başına yetmez!) → `fra1::fra1` teyit; pool HIT 658-1062ms (ort ~823ms, önce ~1106). Kullanıcı tarayıcıda "çok hızlı" teyidi. Kalan ~700ms TR→Fra fiziksel ağ — taban değer.
+- **Prefetch UX onarımı (commit `efbd5a2`):** kullanıcı "sıradaki soru 'üretiliyor' demeden direkt değişiyor, fark edilmiyor" dedi. Neden: prefetch eşleşmesi `isGeneratingQuestion` açmadan basıyordu → tüm loading UI bayrağa bağlı, hiç görünmüyordu. Onarım: yakalanan prefetch'te 400ms geçiş anı (spinner örtüsü + kilitli gövde) + `soru-giris` keyframe animasyonu (globals.css, fade+10px, prefers-reduced-motion'da kapalı) + soru gövdesi `key={soru.id}` remount (klon/inceleme açılışlarında da oynar). QuestionPractice yerel Question arayüzüne `id?: string` eklendi.
+- **Modal scroll sıfırlama (commit `b2198ec`):** yeni soru gelince kayan modal kartı `scrollTo({top:0})` ile en üste döner — öğrenci açıklamada aşağı inmişken yeni sorunun başını görmek için elle kaydırmasın.
+- **Madde 5 — Hata Sepeti UI (commit `c944535`, bundle kanıtlı):** "Eksiklerini Kapat" banner'ı 🧺 Hata Sepeti'ne dönüştü: kırmızı sayaç rozeti (sepet ikonunda), animasyonlu telafi ilerleme çubuğu (amber→turuncu gradyan, progressbar ARIA), "X/Y telafi edildi" sayacı, sepet boşalınca kapatılabilir 🎉 kutlama kartı (animate-toast-in). İlerleme tabanı = oturumda görülen en yüksek klon sayısı; veri akışı (gece klonları, MAX 2 tur) DEĞİŞMEDİ — yalnız görünüme dokunuldu.
+
+### 📌 Session Bitişi
+- Kolay sınıf 4/4 + prefetch hattı + madde 5 TAMAM. Yol haritasında sıradaki: madde 6 (Soru Fabrikası doluluk garantisi — MEB kaynaklarıyla besleme planıyla birleşir: question_sources tablosu + Gemini kaynak-modu + pilot ders). Kullanıcı MEB 8 yıllık çıkmış soruları indiriyor → PDF'ler gelince havuz besleme işi başlar. Prefetch/simetri davranışları kullanıcı tarayıcı testinde.

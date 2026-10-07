@@ -27,10 +27,14 @@
 
 ## 🟡 ORTA
 
-- [ ] **5. Hata Sepeti (Duolingo görünümü)** — `~2-3 gün`
+- [x] **5. Hata Sepeti (Duolingo görünümü)** — `~2-3 gün` ✅ 7 Ekim (commit `c944535`, deploy SUCCESS, bundle kanıtlı)
   Hasan Hoca #2. Altyapı CANLI (yanlış→gece klonu→ertesi gün "Eksiklerini Kapat",
   MAX 2 tur) — eksik olan oyunlaştırılmış sepet UI'ı: sepet rozeti/sayaç, telafi
   ilerleme çubuğu, tamamlanınca kutlama.
+  **Uygulama:** QuestionPractice'te "Eksiklerini Kapat" banner'ı 🧺 Hata Sepeti'ne
+  dönüştü — kırmızı sayaç rozeti, animasyonlu telafi çubuğu (progressbar ARIA),
+  "X/Y telafi edildi" sayacı, sepet boşalınca kapatılabilir 🎉 kutlama kartı.
+  İlerleme tabanı oturumda görülen en yüksek klon sayısı (veri akışı değişmedi).
 - [ ] **6. Soru Fabrikası doluluk garantisi** — `~2 gün`
   Hasan Hoca #3. Havuz-ilk mimari CANLI (HIT ~0.1sn) ama havuz sığ. Dal bazlı doluluk
   izleme + eşik altına düşen dallara proaktif üretim (gece vardiyası + gün içi top-up)
@@ -73,7 +77,7 @@
 | # | Madde | Durum |
 |---|---|---|
 | 1 | Avatar + gizli çıkış | ✅ CANLI (6 Ekim, `ed7657a`) |
-| 2 | Hata Sepeti (gamified) | 🟡 Altyapı canlı, UI yok → madde 5 |
+| 2 | Hata Sepeti (gamified) | ✅ CANLI (7 Ekim, `c944535`) |
 | 3 | Soru Fabrikası / sıfır bekleme | 🟡 Havuz-ilk canlı, doluluk garantisi yok → madde 6 |
 | 4 | Tek tıkla başlatma | ✅ CANLI (11 ders kartı, 1-2 tık akışı) |
 | 5 | Akıllı kredi (yalnız Üst Beyin) | ✅ CANLI (madde 2 temizliği de tamam, 6 Ekim) |
