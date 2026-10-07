@@ -503,13 +503,21 @@ export default function DashboardPage() {
     const onyuklenen = bekleyenSoruRef.current;
     if (onyuklenen && onyuklenen.istekGovdesi === istekGovdesi) {
       bekleyenSoruRef.current = null;
+      // Soru elde hazır ama SIFIR geri bildirimle "pat" değişince öğrenci
+      // değişimi fark etmiyor → kısa bir geçiş anı yaşatılır: mevcut spinner
+      // örtüsü ("Yeni soru üretiliyor...") + kilitli gövde 400ms görünür,
+      // sonra yeni soru animasyonla girer. Hız hissi korunur, algı gelir.
+      setIsGeneratingQuestion(true);
       setShowAnswer(false);
       setSelectedAnswer(null);
       setAcilanIpucu(0);
       setUstBeyinMetni(null);
       setBildirimDurumu(null);
       setHataMesaji(null);
-      soruGosterVeOnyukle(onyuklenen.soru, secim, gorulenSorular);
+      setTimeout(() => {
+        soruGosterVeOnyukle(onyuklenen.soru, secim, gorulenSorular);
+        setIsGeneratingQuestion(false);
+      }, 400);
       return;
     }
     // Eşleşmeyen ön-yükleme bayattır (seçim/ekran değişti) → at

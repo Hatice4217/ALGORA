@@ -8,6 +8,9 @@ interface Question {
   choices: string[];
   correctAnswer: number;
   explanation: string;
+  // Soru kimliği — gövde key'i olarak kullanılır (her yeni soruda remount →
+  // giriş animasyonu yeniden oynar)
+  id?: string;
   // "Son Çözülenler" kaydından incelenirken dolar (rozetler doğru dersi/zorluğu/türü göstersin)
   subject?: string;
   difficulty?: string;
@@ -630,9 +633,14 @@ export function QuestionPractice({
                 </div>
               )}
 
-              {/* Soru gövdesi — yeni soru üretilirken eski soruyla etkileşim fiziksel olarak kesilir */}
+              {/* Soru gövdesi — yeni soru üretilirken eski soruyla etkileşim fiziksel olarak kesilir.
+                  key= soru id'si: soru değişince blok yeniden mount edilir → giriş animasyonu
+                  her yeni soruda yeniden oynar (değişim algılanabilsin diye) */}
               <div className="relative">
-                <div className={`space-y-6 ${soruUretiliyor ? 'opacity-50 pointer-events-none select-none' : ''}`}>
+                <div
+                  key={mevcutSoru.id ?? 'soru'}
+                  className={`space-y-6 animate-soru-giris ${soruUretiliyor ? 'opacity-50 pointer-events-none select-none' : ''}`}
+                >
                   <div>
                     <h3 className="text-xl font-semibold text-slate-800 mb-6">
                       {mevcutSoru.question}

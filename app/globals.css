@@ -109,3 +109,27 @@ html {
 .animate-toast-in {
   animation: toast-in 0.25s ease-out;
 }
+
+/* Yeni soru giriş animasyonu — soru değişiminin algılanması için
+   (ön-yükleme anında gelse bile yumuşak bir geçişle girer) */
+@keyframes soru-giris {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-soru-giris {
+  animation: soru-giris 0.35s ease-out;
+}
+
+/* Hareket azaltma tercihi olan kullanıcıda geçiş anında atlansın */
+@media (prefers-reduced-motion: reduce) {
+  .animate-soru-giris {
+    animation: none;
+  }
+}
