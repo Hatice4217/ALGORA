@@ -202,10 +202,19 @@ export async function POST(request: Request) {
       }
     }
 
-    // Kapasite (saat → soru) ve hedef yükü (puan → soru)
-    const kapasite = Math.min(120, Math.max(5, Math.round((saat * 60) / Math.max(20, ortSn))));
+    // Kapasite (saat → soru): saat×3600 sn / ortalama çözme süresi (sn).
+    // ×0.6 odak payı — çalışma süresinin tamamı soru çözmez (konu tekrarı,
+    // açıklama okuma vb. da zaman yer). Tavan 120: gerçekçi günlük soru sınırı.
+    const kapasite = Math.min(
+      120,
+      Math.max(10, Math.round(((saat * 3600) / Math.max(20, ortSn)) * 0.6))
+    );
     const hedefYuku = Math.min(60, Math.max(10, Math.round(hedefPuan / 10)));
-    const toplamSoru = Math.min(kapasite, Math.max(10, hedefYuku));
+    // Plan toplamı kapasiteyle tavanlı; madde başına min 3 tabanıyla çakışmasın
+    const toplamSoru = Math.max(
+      secilmis.length * 3,
+      Math.min(kapasite, Math.max(10, hedefYuku))
+    );
 
     // Ağırlığa göre dağıt (her madde min 3 soru)
     const agirlikToplami = secilmis.reduce((t, s) => t + s.agirlik, 0);
