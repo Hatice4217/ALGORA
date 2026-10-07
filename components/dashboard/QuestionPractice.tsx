@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getSubjectColor } from '../../lib/utils';
 import { getTopics } from '../../lib/constants/syllabus';
 import type { RecentAnswer, PendingClone } from '../../types/question';
@@ -135,6 +135,14 @@ export function QuestionPractice({
   const [detayZorluk, setDetayZorluk] = useState('otomatik');
   // Üretim beklenirken geçen süre (saniye) — kullanıcının bekleyiş hissini yönetir
   const [beklemeSaniye, setBeklemeSaniye] = useState(0);
+  // Soru modalının kayan gövdesi — yeni soru gelince en üste kaydırılır
+  // (önceki soruda açıklama/ipuclarında aşağı inmiş olabilir; öğrenci yeni
+  // sorunun BAŞINI görerek başlasın, elle kaydırmasın)
+  const modalGovdeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    modalGovdeRef.current?.scrollTo({ top: 0 });
+  }, [mevcutSoru?.id]);
 
   useEffect(() => {
     if (!soruUretiliyor) {
@@ -567,7 +575,10 @@ export function QuestionPractice({
       {/* Soru Modal Overlay */}
       {mevcutSoru && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+          <div
+            ref={modalGovdeRef}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+          >
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
               <div className="flex items-center gap-2 flex-wrap">
