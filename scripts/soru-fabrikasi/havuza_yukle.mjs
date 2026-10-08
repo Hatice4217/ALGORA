@@ -31,24 +31,60 @@ async function main() {
 
   const sorular = JSON.parse(readFileSync(GIRDI, 'utf8'));
 
-  // Havuzda zaten var olan izleri çek (idempotency)
-  const izKumesi = new Set();
+  // Havuzda zaten var olan izleri çek (idempotency + İYİLEŞTİRME modu):
+  //   aktif satır  → atla (klasik davranış)
+  //   askıda satır → converter düzeltilmiş içerikle GÜNCELLE ve aktifleştir
+  //                  (2026-10-08 kırılımı: 18 soru şık-parçası-sızmıştı, askıya
+  //                   alınıp din_ayikla düzeltmesiyle yeniden üretildi)
+  const izDurumu = new Map(); // iz → { id, status }
   for (const s of sorular) {
     const iz = `MEB-DIN-${s.yil}-${s.no}`;
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/questions?select=id&tags=cs.{${iz}}`,
+      `${SUPABASE_URL}/rest/v1/questions?select=id,status&tags=cs.{${iz}}`,
       { headers: { ...headers, Prefer: '' } }
     );
-    if (r.ok && (await r.json()).length > 0) izKumesi.add(iz);
+    if (r.ok) {
+      const satirlar = await r.json();
+      if (satirlar.length > 0) izDurumu.set(iz, satirlar[0]);
+    }
   }
 
   let yuklenecek = 0, atlandi = 0;
   console.log(`${GERCEK_YAZIM ? '🔴 GERÇEK YAZIM' : '🔵 DRY-RUN'} — ${sorular.length} soru işlenecek\n`);
 
+  let iyilestirilen = 0;
   for (const s of sorular) {
     const iz = `MEB-DIN-${s.yil}-${s.no}`;
+    const mevcutSatir = izDurumu.get(iz);
 
-    if (izKumesi.has(iz)) { atlandi++; continue; }
+    // İyileştirme: aynı iz ASKIDA satırdaysa yeni içerikle güncelle
+    // (dry-run'da yalnız [iyileştirilir] listelenir)
+    if (mevcutSatir?.status === 'suspended') {
+      if (s.resimGerekli) { console.log(`⏭ soru ${s.no} (${s.yil}): askıda ama resim gerekli — dokunulmadı`); atlandi++; continue; }
+      const guncelPayload = {
+        topic: s.konu,
+        question_text: s.question_text,
+        choices: s.choices,
+        correct_answer: s.dogruIndex,
+        explanation: s.aciklama,
+        hints: s.ipuclari,
+        status: 'active',
+      };
+      if (!GERCEK_YAZIM) {
+        console.log(`[iyileştirilir] soru ${s.no} (${s.yil}) → askıda satır ${mevcutSatir.id} aktifleşir | doğru: ${'ABCDE'[s.dogruIndex]}`);
+        yuklenecek++;
+        continue;
+      }
+      const p = await fetch(`${SUPABASE_URL}/rest/v1/questions?id=eq.${mevcutSatir.id}`, {
+        method: 'PATCH', headers, body: JSON.stringify(guncelPayload),
+      });
+      if (!p.ok) { console.error(`❌ soru ${s.no} iyileştirme: HTTP ${p.status} — ${(await p.text()).slice(0, 200)}`); continue; }
+      console.log(`♻ soru ${s.no} (${s.yil}) iyileştirildi ve aktifleşti: ${mevcutSatir.id}`);
+      yuklenecek++; iyilestirilen++;
+      continue;
+    }
+
+    if (mevcutSatir) { atlandi++; continue; }
     if (s.resimGerekli) { console.log(`⏭ soru ${s.no} (${s.yil}): resim gerekli — atlandı`); atlandi++; continue; }
 
     const payload = {
@@ -100,7 +136,7 @@ async function main() {
     yuklenecek++;
   }
 
-  console.log(`\nÖzet: ${yuklenecek} ${GERCEK_YAZIM ? 'yüklendi' : 'yüklenecek'}, ${atlandi} atlandı.`);
+  console.log(`\nÖzet: ${yuklenecek} ${GERCEK_YAZIM ? 'işlendi' : 'işlenecek'} (${iyilestirilen} iyileştirme), ${atlandi} atlandı.`);
 }
 
 main().catch((e) => { console.error('HATA:', e.message); process.exit(1); });

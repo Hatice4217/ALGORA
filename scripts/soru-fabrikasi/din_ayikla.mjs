@@ -44,6 +44,12 @@ function main() {
   let aktif = null;
   let sayfa = 1;
   let sayfaBasi = 1;
+  // Son görülen şık indeksi. ÇOK SATIRLI şıklar (ayet/hadis alıntıları, uzun
+  // cümleler) PDF'te satır satır gelir; şık bölümü başladıktan sonra gelen
+  // harfsiz satırlar SON ŞIKKIN devamıdır — köke eklenirse soru metni ile
+  // şık parçaları karışır (2026-10-08 havuz kırılımının kök nedeni: 18 soru
+  // askıya alınıp bu düzeltmeyle yeniden üretildi).
+  let sonSikIdx = -1;
 
   for (let i = baslangicIdx; i < tumSatirlar.length; i++) {
     const satirHam = tumSatirlar[i];
@@ -57,6 +63,7 @@ function main() {
       aktif.oturum = etiket[2];
       sorular.push(aktif);
       aktif = null;
+      sonSikIdx = -1;
       continue;
     }
 
@@ -69,6 +76,7 @@ function main() {
       if (no === sonNo + 1 || no > sonNo + 1) {
         if (no > sonNo + 1) console.log(`⚠ ${sonNo + 1}. soru bulunamadı — ${no}'e atlanıyor`);
         aktif = { no, sayfaBasi: sayfa, yil: null, oturum: null, govde: [], siklar: [] };
+        sonSikIdx = -1;
         if (baslangic[2]) aktif.govde.push(baslangic[2]);
         continue;
       }
@@ -84,12 +92,24 @@ function main() {
       let eslesti = false;
       for (const parca of parcalar) {
         const m = parca.match(/^([A-E])\)\s*(.*)$/);
-        if (m) { aktif.siklar[m[1].charCodeAt(0) - 65] = m[2]; eslesti = true; }
+        if (m) {
+          const idx = m[1].charCodeAt(0) - 65;
+          aktif.siklar[idx] = m[2];
+          sonSikIdx = idx;
+          eslesti = true;
+        }
       }
       if (eslesti) continue;
     }
 
-    aktif.govde.push(satir);
+    // Şık bölümü başladıysa harfsiz satır = son şıkkın devamı; henüz şık
+    // görülmediyse normal gövde satırıdır (matris sorularının tablo başlığı
+    // gibi istisnalar da gövdeye düşer — eski davranış korunur)
+    if (sonSikIdx >= 0) {
+      aktif.siklar[sonSikIdx] = `${aktif.siklar[sonSikIdx] ?? ''} ${satir}`.trim();
+    } else {
+      aktif.govde.push(satir);
+    }
   }
 
   // Doğrulama + temizlik
