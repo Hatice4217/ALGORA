@@ -3246,3 +3246,6 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### 📌 Session Bitişi
 - Hata Sepeti artık kendi kendine yeter: sepette kal, modal üstte açılsın, cevap verince listeden düşsün. Kullanıcı tarayıcı testi bekleniyor. Not: Soru Bankası sekmesinde soru artık eskisi gibi sekme içinde değil AYNI modal katmanında açılıyor (görsel davranış aynı — fixed overlay zaten öyleydi).
+
+### ✅ Ek (öğleden sonra 2. tur)
+- **Telafi modu "Sıradaki" düzeltmesi (commit `8edf925`, deploy SUCCESS + chunk kanıtı `2hgsxoieiun7q.js`):** kullanıcı "hatalı soru çözerken Sıradaki Soru havuzdan soru çekiyor" dedi → page.tsx'te `klonModu` state'i: klon açılınca true, havuz/üretim/inceleme/kapatmada false. Telafi modunda buton etiketi "Sıradaki Hatalı Soru", tıklayınca `bekleyenKlonlar`'dan (mevcut id hariç) sıradaki klon açılır; bekleyen klon kalmadıysa buton gri/pasif (`siradakiPasif`, disabled:bg-slate-400). SoruModali'ye `siradakiEtiket?` + `siradakiPasif?` prop'ları eklendi.
