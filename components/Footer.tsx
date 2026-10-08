@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export function Footer() {
   return (
-    <footer className="bg-purple-50 border-t border-purple-100">
+    <footer className="bg-purple-100 border-t border-purple-200">
       <div className="w-full px-4 md:px-6 lg:px-8 pt-14 pb-8 md:pt-16 md:pb-10">
         <div className="grid grid-cols-1 md:grid-cols-3 items-start gap-10 md:gap-16">
           {/* 1. Sütun - Marka */}
