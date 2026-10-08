@@ -9,6 +9,15 @@ export function Footer() {
     scrollToElementId(hedefId);
   };
 
+  // Yasal sayfaya geçerken kalınan konumu kaydet — dönüşte LandingScrollRestorer geri yükler
+  const yasalLinkTikla = () => {
+    try {
+      sessionStorage.setItem('algora_landing_scrollY', String(window.scrollY));
+    } catch {
+      // private mode vb. — kayıt olmadan normal git
+    }
+  };
+
   return (
     <footer className="bg-purple-100 border-t border-purple-200">
       <div className="w-full px-4 md:px-6 lg:px-8 pt-14 pb-8 md:pt-16 md:pb-10">
@@ -38,9 +47,9 @@ export function Footer() {
           <div>
             <h4 className="font-bold text-gray-900 mb-4">Yasal</h4>
             <ul className="space-y-4 text-sm">
-              <li><Link href="/legal/privacy" className="text-gray-500 hover:text-purple-600 transition-colors">Gizlilik Politikası</Link></li>
-              <li><Link href="/legal/terms" className="text-gray-500 hover:text-purple-600 transition-colors">Kullanım Şartları</Link></li>
-              <li><Link href="/legal/cookies" className="text-gray-500 hover:text-purple-600 transition-colors">Çerez Politikası</Link></li>
+              <li><Link href="/legal/privacy" onClick={yasalLinkTikla} className="text-gray-500 hover:text-purple-600 transition-colors">Gizlilik Politikası</Link></li>
+              <li><Link href="/legal/terms" onClick={yasalLinkTikla} className="text-gray-500 hover:text-purple-600 transition-colors">Kullanım Şartları</Link></li>
+              <li><Link href="/legal/cookies" onClick={yasalLinkTikla} className="text-gray-500 hover:text-purple-600 transition-colors">Çerez Politikası</Link></li>
             </ul>
           </div>
         </div>

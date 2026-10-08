@@ -4,11 +4,15 @@ import { HeroSection } from './components/landing/HeroSection';
 import { FeaturesSection } from './components/landing/FeaturesSection';
 import { HowItWorksSection } from './components/landing/HowItWorksSection';
 import { PricingSection } from './components/landing/PricingSection';
+import { LandingScrollRestorer } from './components/landing/LandingScrollRestorer';
 
 // Server-side rendered landing page for optimal LCP
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      {/* Yasal sayfalardan dönüşte kaydırma konumunu geri yükler */}
+      <LandingScrollRestorer />
+
       {/* Interactive Header - Client Component */}
       <LandingHeader />
 
