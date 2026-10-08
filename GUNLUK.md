@@ -3232,3 +3232,17 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### 📌 Session Bitişi
 - Hedef puan + günlük saat artık veri toplama değil ÜRÜN GİRDİSİ: plan üretir, kapasite/hedef karşılaştırır, madde zorluğu belirler, Gemini notunu kişiselleştirir. İlerleme gerçek cevaplardan sayılır — plan kağıt üstünde kalmaz. Yol haritası madde 15'in MVP'si sayılabilir (tam Koç: haftalık plan/deneme verisi sonraki adım). Kullanıcı MEB çıkmış soruları indiriyor — PDF'ler gelince madde 6 havuz besleme başlar.
+
+## [8 Ekim 2026 - Perşembe, Öğleden Sonra] (Soru Modalı Global Katman — Hata Sepeti'nden Çözünce Sekme Atlaması Bitti)
+
+### 🎯 Amaç
+- Kullanıcı geri bildirimi: "Hata Sepeti'nden soru çözerken hâlâ Soru Bankası'na atıyor." Kök neden: soru modalı QuestionPractice (Soru Bankası sekmesi) İÇİNDE render edildiğinden klonu açmak için sekmeyi practiceRoom'a çevirmek zorundaydı.
+
+### ✅ Yapılanlar
+- **SoruModali.tsx ayrıldı (commit `4d6f411`, deploy SUCCESS + bundle kanıtlı):** soru modalı QuestionPractice'ten çıkıp page.tsx'te SEKMEDEN BAĞIMSIZ global katman oldu — currentQuestion hangi sekmedeyken gelirse gelsin (Hata Sepeti "Çöz", ders kartı, klon) modal o sekmenin ÜZERİNE basılır, arka plan atlamaz. Tüm state page.tsx'te kalıyor; bileşen saf görünüme indirgendi (klon açınca öğrenci sepette kalır, telafi listesi göz önünde düşer).
+  - QuestionPractice: 14 modal prop'u + modal JSX'i (~340 satır) çıktı; yalnız ders kartı grid'i, chooser, detay penceresi, son çözülenler ve kompakt Hata Sepeti bildirimi kaldı. `Question` arayüzü QuestionPractice'ten export edilir oldu; `difficultyEtiketleri` + `altiCiziliMetniCevir` SoruModali'ye taşındı (QuestionPractice value import ediyor, SoruModali type-only import — runtime döngüsü yok).
+  - HataSepetiPanel: `coz` artık sadece `klonAc` — sekmeyi çevirme kaldırıldı; bayat yorumlar düzeltildi.
+  - tsc + eslint + build temiz; canlı chunk'ta "Soruyu kapat" kanıtı (2kwpsvs9dsj75.js).
+
+### 📌 Session Bitişi
+- Hata Sepeti artık kendi kendine yeter: sepette kal, modal üstte açılsın, cevap verince listeden düşsün. Kullanıcı tarayıcı testi bekleniyor. Not: Soru Bankası sekmesinde soru artık eskisi gibi sekme içinde değil AYNI modal katmanında açılıyor (görsel davranış aynı — fixed overlay zaten öyleydi).
