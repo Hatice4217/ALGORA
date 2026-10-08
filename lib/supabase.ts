@@ -545,12 +545,14 @@ export const dbHelpers = {
             return { data: [], error: null };
           }
 
-          // Cevaplanmış klonları ele (banner'dan düşsün) — answers yalnız
-          // kendi satırlarımızı döndürür, question_id kontrolü JS'te.
+          // Klon ancak DOĞRU cevaplanınca sepetten düşer (telafi = doğru).
+          // Yanlış cevaplayan öğrenci soruyu KAYBETMESİN — sepetinde kalır,
+          // tekrar deneyene dek listelenir. answers yalnız kendi satırlarımızı
+          // döndürür, question_id kontrolü JS'te.
           const klonIdler = klonlar.map((k: { id: string }) => k.id);
           const { data: cevaplar, error: cevapError } = await db
             .from('answers')
-            .select('question_id')
+            .select('question_id, is_correct')
             .eq('user_id', userId)
             .in('question_id', klonIdler);
           if (cevapError) {
@@ -558,9 +560,13 @@ export const dbHelpers = {
             // Cevaplanamayanı varsay: klonları göster (yanlış eksiltme daha güvenli)
             return { data: klonlar as unknown as PendingClone[], error: null };
           }
-          const cevaplananlar = new Set((cevaplar ?? []).map((c: { question_id: string }) => c.question_id));
+          const dogruCevaplananlar = new Set(
+            ((cevaplar ?? []) as { question_id: string; is_correct: boolean }[])
+              .filter((c) => c.is_correct)
+              .map((c) => c.question_id)
+          );
           const bekleyenler = (klonlar as unknown as PendingClone[]).filter(
-            (k) => !cevaplananlar.has(k.id)
+            (k) => !dogruCevaplananlar.has(k.id)
           );
           return { data: bekleyenler, error: null };
         } catch (error) {

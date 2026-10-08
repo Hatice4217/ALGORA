@@ -270,12 +270,7 @@ export function QuestionPractice({
               {bekleyenKlonlar.length > 0 && (
                 <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
                   <p className="text-sm text-amber-800 flex items-center gap-2 flex-wrap min-w-0">
-                    <span className="relative inline-flex text-base leading-none">
-                      🧺
-                      <span className="absolute -top-1.5 -right-3.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
-                        {bekleyenKlonlar.length}
-                      </span>
-                    </span>
+                    <span className="text-base leading-none">🧺</span>
                     <span>
                       Hata Sepeti&apos;nde <strong>{bekleyenKlonlar.length} telafi soru</strong> bekliyor
                     </span>

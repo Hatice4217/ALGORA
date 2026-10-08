@@ -44,18 +44,16 @@ export function HataSepetiPanel({ bekleyenKlonlar, coz }: HataSepetiPanelProps) 
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2.5 flex-wrap">
-              <span className="relative inline-flex text-2xl leading-none">
-                🧺
-                {!sepetBos && (
-                  <span className="absolute -top-1.5 -right-4 min-w-[1.4rem] h-6 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
-                    {bekleyenKlonlar.length}
-                  </span>
-                )}
-              </span>
+              <span className="text-2xl leading-none">🧺</span>
               Hata Sepeti
+              {!sepetBos && (
+                <span className="px-2.5 py-0.5 rounded-full bg-red-500 text-white text-sm font-bold">
+                  {bekleyenKlonlar.length}
+                </span>
+              )}
             </h2>
             <p className="mt-1.5 text-sm text-slate-600">
-              Dün yanlış yaptığın soruların benzerleri sepete eklenir — telafi ettikçe boşalır,
+              Dün yanlış yaptığın soruların benzerleri sepete eklenir — <strong>doğru cevapladıkça</strong> boşalır,
               eksiklerin kapanır.
             </p>
           </div>
