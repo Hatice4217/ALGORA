@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { authHelpers, dbHelpers } from '../../lib/supabase';
+import { authHelpers, dbHelpers, supabase } from '../../lib/supabase';
 import { getSubjects } from '../../lib/constants/syllabus';
+import { getSubjectColor } from '../../lib/utils';
 import { useGoals, todayStr, type Goal } from './GoalsProvider';
-import { RadarGrafigi } from './RadarGrafigi';
 
 // 'YYYY-MM-DD' → "27 Eylül" (farklı yılsa yıl eklenir)
 const formatGun = (dateStr: string): string => {
@@ -49,15 +49,12 @@ interface SubjectStat {
   basari: number;
 }
 
-// Radar eksenlerinde yer kazandıran kısa ders adları (yalnız uzunlar)
-const KISA_AD: Record<string, string> = {
-  'Türk Dili ve Edebiyatı': 'Edebiyat',
-};
-
 interface AnalysisPanelProps {
   istatistikler: {
     dersler: SubjectStat[];
   };
+  // Zayıf Konu kartı: seçili konuyu Soru Bankası'nda açar (page.tsx: sekme + dersBaslat)
+  konuCoz: (ders: string, tur: 'TYT' | 'AYT' | 'YDT', konu: string) => void;
 }
 
 // ─── Zorluk Analizi kartı (gerçek cevap verisinden) ───
@@ -93,6 +90,128 @@ function zorlukYorumuUret(kapsam: Record<string, ZorlukSayaci> | undefined, onek
 }
 
 const SECILEBILIR_SINAVLAR = ['Genel', 'TYT', 'AYT', 'YDT'] as const;
+
+// ─── Zayıf Konu Analizi kartı (radar'ın yerine) ───
+// answers × questions gerçek verisinden KONU bazlı kırılım: en çok yanlış
+// yapılan 5 konu. Ders Performansı ders bazını, Zorluk Analizi seviye
+// kırılımını verir — buradaki benzersiz değer KONU detayı + tek tıkla o
+// konuyu çözme eylemi (Analiz'den Soru Bankası'na ilk köprü).
+
+type KonuSayaci = { ders: string; tur: string; konu: string; dogru: number; toplam: number };
+
+function ZayifKonuKarti({ konuCoz }: { konuCoz: AnalysisPanelProps['konuCoz'] }) {
+  const [satirlar, setSatirlar] = useState<KonuSayaci[] | null>(null);
+  const [yukleniyor, setYukleniyor] = useState(true);
+
+  useEffect(() => {
+    let iptal = false;
+    (async () => {
+      try {
+        const { user } = await authHelpers.getCurrentUser();
+        if (!user) return;
+        // RLS: yalnız kendi cevapları görünür (CoachPanel deseni)
+        const { data } = await supabase!
+          .from('answers')
+          .select('is_correct, question:questions(subject, exam_type, topic)')
+          .eq('user_id', user.id)
+          .order('answered_at', { ascending: false })
+          .limit(1000);
+        if (iptal || !data) return;
+        const harita = new Map<string, KonuSayaci>();
+        for (const satir of data as unknown as Array<{
+          is_correct: boolean;
+          question: { subject: string; exam_type: string; topic: string } | null;
+        }>) {
+          const q = satir.question;
+          if (!q?.topic) continue;
+          const anahtar = `${q.subject}|${q.exam_type}|${q.topic}`;
+          const kayit = harita.get(anahtar) ?? {
+            ders: q.subject, tur: q.exam_type, konu: q.topic, dogru: 0, toplam: 0,
+          };
+          kayit.toplam += 1;
+          if (satir.is_correct) kayit.dogru += 1;
+          harita.set(anahtar, kayit);
+        }
+        setSatirlar(
+          [...harita.values()]
+            .filter((k) => k.toplam >= 2) // tek soruluk konu gürültü olur
+            .sort((a, b) => b.toplam - b.dogru - (a.toplam - a.dogru))
+            .slice(0, 5),
+        );
+      } finally {
+        if (!iptal) setYukleniyor(false);
+      }
+    })();
+    return () => {
+      iptal = true;
+    };
+  }, []);
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col">
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <h2 className="font-semibold text-gray-900">Zayıf Konu Analizi 🎯</h2>
+        <span className="text-xs text-gray-400">en çok yanlış yapılan konular</span>
+      </div>
+
+      {yukleniyor ? (
+        <div className="flex-1 space-y-3 animate-pulse">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-10 bg-gray-100 rounded-lg"></div>
+          ))}
+        </div>
+      ) : !satirlar || satirlar.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-center py-6">
+          <p className="text-sm text-gray-400 max-w-[240px]">
+            En az 2 soru çözdüğün konularda en zayıfların burada listelenir.
+          </p>
+        </div>
+      ) : (
+        <ul className="flex-1 flex flex-col gap-2.5 overflow-y-auto thin-scrollbar pr-1">
+          {satirlar.map((k) => {
+            const yanlis = k.toplam - k.dogru;
+            const yuzde = Math.round((k.dogru / k.toplam) * 100);
+            return (
+              <li
+                key={`${k.ders}-${k.tur}-${k.konu}`}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors min-w-0"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${getSubjectColor(k.ders)}`}>
+                      {k.ders}
+                    </span>
+                    <span className="text-xs text-gray-400">{k.tur}</span>
+                    <span className="text-sm font-medium text-gray-700 truncate">{k.konu}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden min-w-[60px]">
+                      <div
+                        className={`h-full rounded-full ${
+                          yuzde >= 60 ? 'bg-green-500' : 'bg-red-400'
+                        }`}
+                        style={{ width: `${yuzde}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500 shrink-0">
+                      {k.dogru}/{k.toplam} doğru · <span className="font-semibold text-red-500">{yanlis} yanlış</span>
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => konuCoz(k.ders, k.tur as 'TYT' | 'AYT' | 'YDT', k.konu)}
+                  className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-colors shrink-0"
+                >
+                  Çöz
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function ZorlukAnaliziKarti() {
   const [veri, setVeri] = useState<ZorlukVerisi | null>(null);
@@ -219,7 +338,7 @@ function ZorlukAnaliziKarti() {
   );
 }
 
-export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
+export function AnalysisPanel({ istatistikler, konuCoz }: AnalysisPanelProps) {
   const { goals, hydrated } = useGoals();
   // Arşivde gezinilen gün ('YYYY-MM-DD'); ileri ok bugün sınırında kilitli
   const [seciliTarih, setSeciliTarih] = useState(todayStr());
@@ -233,13 +352,6 @@ export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
   const odaklanilacak = istatistikler.dersler.length > 1
     ? istatistikler.dersler.reduce((a, b) => (b.basari < a.basari ? b : a))
     : null;
-
-  // Radar eksenleri: ders başına tek satır, kısa ad + tür sonekiyle
-  const radarEksenleri = istatistikler.dersler.map((ders) => ({
-    etiket: `${KISA_AD[ders.ders] ?? ders.ders} (${ders.examType})`,
-    basari: ders.basari,
-    toplam: ders.toplam,
-  }));
 
   return (
     // Masaüstünde sayfa kaydırması yok: 1. satır üst blok (auto), 2. satır performans
@@ -297,17 +409,12 @@ export function AnalysisPanel({ istatistikler }: AnalysisPanelProps) {
         <ZorlukAnaliziKarti />
       </div>
 
-      {/* ALT SATIR (Faz 2): Ders Başarı Radarı + Ders Performans yan yana;
+      {/* ALT SATIR: Zayıf Konu Analizi + Ders Performans yan yana;
           boş-durum koşulu ikisine ortak */}
       {istatistikler.dersler.length > 0 ? (
         <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:min-h-0">
-          {/* Ders Başarı Radarı — saf SVG, mevcut dersler verisinden türetilir */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col">
-            <h2 className="font-semibold text-gray-900 mb-3">Ders Başarı Radarı</h2>
-            <div className="flex-1 flex items-center justify-center">
-              <RadarGrafigi eksenler={radarEksenleri} />
-            </div>
-          </div>
+          {/* Zayıf Konu Analizi — konu bazlı kırılım + tek tıkla o konuyu çözme */}
+          <ZayifKonuKarti konuCoz={konuCoz} />
 
           {/* Ders Performans Analizi — rozetler + progress bar ızgarası */}
           <div className="bg-white rounded-2xl shadow-sm p-6 lg:min-h-0 lg:flex lg:flex-col">

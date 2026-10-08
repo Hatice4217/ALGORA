@@ -1035,8 +1035,16 @@ export default function DashboardPage() {
           />
         )}
 
-        {/* Analizler Sekmesi */}
-        {activeTab === 'analysis' && <AnalysisPanel istatistikler={statistics} />}
+        {/* Analizler Sekmesi — konuCoz: zayıf konuyu Soru Bankası'nda açar */}
+        {activeTab === 'analysis' && (
+          <AnalysisPanel
+            istatistikler={statistics}
+            konuCoz={(ders, tur, konu) => {
+              setActiveTab('practiceRoom');
+              dersBaslat(ders, tur, { konu });
+            }}
+          />
+        )}
 
         {/* Paketim Sekmesi */}
         {activeTab === 'package' && (
