@@ -26,6 +26,17 @@ interface Difficulty {
   etiket: string;
 }
 
+// Gemini dil bilgisi sorularında "altı çizili sözcüğü" <u>sözcük</u> biçiminde
+// işaretler (üretim prompt'undaki TEK izinli işaretleme). Bu yardımcı <u>'yu
+// gerçek altı çizgiye çevirir; başka hiçbir etiket render edilmez — kalan tüm
+// etiketler soyulur (dangerouslySetInnerHTML bilinçli olarak ASLA kullanılmaz).
+function altiCiziliMetniCevir(metin: string) {
+  return metin.split(/<u>(.*?)<\/u>/gi).map((parca, i) => {
+    const temiz = parca.replace(/<[^>]*>/g, '');
+    return i % 2 === 1 ? <span key={i} className="underline">{temiz}</span> : temiz;
+  });
+}
+
 // Branş-öncelikli kart: ders adı + okutulduğu sınav türleri (dashboard'ta
 // MEB_SYLLABUS'tan türetilir — hardcoded liste asla)
 interface DersKarti {
@@ -717,7 +728,7 @@ export function QuestionPractice({
                 >
                   <div>
                     <h3 className="text-xl font-semibold text-slate-800 mb-6">
-                      {mevcutSoru.question}
+                      {altiCiziliMetniCevir(mevcutSoru.question)}
                     </h3>
                   </div>
 
@@ -752,7 +763,7 @@ export function QuestionPractice({
                             }`}>
                               {String.fromCharCode(65 + index)}
                             </div>
-                            <span className="flex-1 text-base text-slate-700">{secenek}</span>
+                            <span className="flex-1 text-base text-slate-700">{altiCiziliMetniCevir(secenek)}</span>
                           </div>
                         </button>
                       );

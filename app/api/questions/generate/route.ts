@@ -31,7 +31,8 @@ KURALLAR:
 - Üsleri ^ ile yaz (x^2, x^3), √ yerine "karekök" yaz
 - Tüm matematiksel ifadeleri DÜZ METİN olarak yaz
 - ≤ yerine "küçük eşit" veya "<=", ≥ yerine "büyük eşit" veya ">=" yaz
-- fraction, \\frac gibi LaTeX komutları KULLANMA`;
+- fraction, \\frac gibi LaTeX komutları KULLANMA
+- İŞARETLEME KURALI: Soru ya da şık metninde HTML/LaTeX/markdown KULLANMA. TEK istisna: dil bilgisi sorularında "altı çizili sözcük" gerekiyorsa ilgili sözcüğü tam olarak <u>sözcük</u> biçiminde işaretle; <u> etiketinin dışına asla çıkma`;
 
 // Matematiksel sembolleri düzeltme fonksiyonu
 function cleanMathText(text: string): string {

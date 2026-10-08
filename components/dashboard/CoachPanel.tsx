@@ -54,6 +54,9 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
   const [hata, setHata] = useState<string | null>(null);
   // Bugün o dersten kaç soru çözüldü (answers tablosundan gerçek sayım)
   const [gununSayilari, setGununSayilari] = useState<Record<string, number>>({});
+  // Bonus hedef: ders hedefine ulaşınca kullanıcı +5'lik ek hedef açabilir
+  // (oturumluk — plan zaten her gün yeniden üretiliyor)
+  const [bonusHedef, setBonusHedef] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let iptal = false;
@@ -163,7 +166,9 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
     );
   }
 
-  const tamamlanan = plan.maddeler.filter((m) => (gununSayilari[m.ders] ?? 0) >= m.soru).length;
+  const tamamlanan = plan.maddeler.filter(
+    (m) => (gununSayilari[m.ders] ?? 0) >= m.soru + (bonusHedef[m.ders] ?? 0),
+  ).length;
   const hepsiTamam = plan.maddeler.length > 0 && tamamlanan === plan.maddeler.length;
 
   return (
@@ -218,61 +223,78 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
         </div>
       )}
 
-      {/* Plan maddeleri — gerçek ilerleme (bugünkü answers sayımı) */}
-      <div className="space-y-3">
+      {/* Plan maddeleri — KOMPAKT kart grid'i (tek satırda üç kart, kaydırma yok);
+          ilerleme bugünkü gerçek answers sayımıyla */}
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 gap-3">
         {plan.maddeler.map((madde) => {
           const cozulen = gununSayilari[madde.ders] ?? 0;
-          const tamam = cozulen >= madde.soru;
-          const yuzde = Math.min(100, Math.round((cozulen / madde.soru) * 100));
+          const hedef = madde.soru + (bonusHedef[madde.ders] ?? 0);
+          const tamam = cozulen >= hedef;
+          const yuzde = Math.min(100, Math.round((cozulen / hedef) * 100));
           return (
             <div
               key={madde.ders}
-              className={`bg-white rounded-2xl shadow-sm border p-4 md:p-5 flex flex-col min-[480px]:flex-row min-[480px]:items-center gap-4 transition-colors ${
+              className={`bg-white rounded-xl shadow-sm border p-3.5 flex flex-col gap-2.5 transition-colors ${
                 tamam ? 'border-emerald-200' : 'border-slate-200'
               }`}
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`px-3 py-1 rounded-lg text-sm font-bold ${getSubjectColor(madde.ders)} text-white`}>
-                    {madde.ders}
-                  </span>
-                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
-                    {ZORLUK_ETIKET[madde.zorluk] ?? madde.zorluk}
-                  </span>
-                  <span className="text-sm font-semibold text-slate-700">
-                    {Math.min(cozulen, madde.soru)}/{madde.soru} soru
-                  </span>
-                  {tamam && <span className="text-xs font-bold text-emerald-600">✓ Tamam</span>}
-                </div>
-                {/* İlerleme çubuğu: bugünkü GERÇEK cevaplarla dolar */}
-                <div
-                  className="mt-2 h-2.5 rounded-full bg-slate-100 overflow-hidden"
-                  role="progressbar"
-                  aria-valuenow={yuzde}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label={`${madde.ders} bugünkü ilerleme`}
-                >
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      tamam
-                        ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
-                        : 'bg-gradient-to-r from-purple-400 to-pink-500'
-                    }`}
-                    style={{ width: `${yuzde}%` }}
-                  />
-                </div>
-                <p className="mt-1.5 text-xs text-slate-400">
-                  {madde.neden} · önerilen zorluk: {ZORLUK_ETIKET[madde.zorluk] ?? madde.zorluk}
-                </p>
+              <div className="flex items-center justify-between gap-2">
+                <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold ${getSubjectColor(madde.ders)} text-white truncate`}>
+                  {madde.ders}
+                </span>
+                <span className="text-xs font-bold text-slate-700 shrink-0">
+                  {tamam ? '✓ ' : ''}{Math.min(cozulen, hedef)}/{hedef}
+                </span>
               </div>
-              <button
-                onClick={() => baslat(madde.ders, madde.tur as 'TYT' | 'AYT' | 'YDT', madde.zorluk)}
-                disabled={tamam}
-                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0 w-full min-[480px]:w-auto"
+              {/* İlerleme çubuğu: bugünkü GERÇEK cevaplarla dolar */}
+              <div
+                className="h-2 rounded-full bg-slate-100 overflow-hidden"
+                role="progressbar"
+                aria-valuenow={yuzde}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${madde.ders} bugünkü ilerleme`}
               >
-                {tamam ? 'Tamamlandı ✓' : 'Başlat'}
-              </button>
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    tamam
+                      ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
+                      : 'bg-gradient-to-r from-purple-400 to-pink-500'
+                  }`}
+                  style={{ width: `${yuzde}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                {tamam ? (
+                  <span className="text-[11px] font-semibold text-emerald-600 truncate">
+                    🎉 {cozulen} soru çözüldü
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-slate-400 truncate">
+                    {madde.neden} · {ZORLUK_ETIKET[madde.zorluk] ?? madde.zorluk}
+                  </span>
+                )}
+                {tamam ? (
+                  <button
+                    onClick={() =>
+                      setBonusHedef((eski) => ({
+                        ...eski,
+                        [madde.ders]: (eski[madde.ders] ?? 0) + 5,
+                      }))
+                    }
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shrink-0"
+                  >
+                    Bonus +5
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => baslat(madde.ders, madde.tur as 'TYT' | 'AYT' | 'YDT', madde.zorluk)}
+                    className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-colors shrink-0"
+                  >
+                    Başlat
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}
