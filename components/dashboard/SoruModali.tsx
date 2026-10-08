@@ -182,12 +182,61 @@ export function SoruModali({
 }: SoruModaliProps) {
   // Modalın kayan gövdesi — yeni soru gelince en üste kaydırılır (önceki
   // soruda açıklama/ipuclarında aşağı inmiş olabilir; öğrenci yeni sorunun
-  // BAŞINI görerek başlasın)
+  // BAŞINI görerek başlasın). Split görünümde sol/sağ pencereler bağımsız
+  // kayar → üçü de sıfırlanır.
   const modalGovdeRef = useRef<HTMLDivElement>(null);
+  const solPanelRef = useRef<HTMLDivElement>(null);
+  const sagPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     modalGovdeRef.current?.scrollTo({ top: 0 });
+    solPanelRef.current?.scrollTo({ top: 0 });
+    sagPanelRef.current?.scrollTo({ top: 0 });
   }, [mevcutSoru?.id]);
+
+  // Tam ekran genişletme (⤢): modal overlay içinde kalır ama tüm alanı kaplar
+  const [tamEkran, setTamEkran] = useState(false);
+
+  // Köşeden serbest boyutlandırma (⤡ yerine ⇲): yalnız GERÇEK masaüstünde
+  // (lg + fare). Öğrencinin çektiği boyut localStorage'da hatırlanır ve
+  // sonraki açılışta geri yüklenir. Tam ekran modunda yok sayılır.
+  const kartRef = useRef<HTMLDivElement>(null);
+  const [kayitliBoyut, setKayitliBoyut] = useState<{ w: number; h: number } | null>(null);
+  const masaustuMu = () =>
+    typeof window !== 'undefined' &&
+    window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches;
+
+  useEffect(() => {
+    if (!masaustuMu()) return;
+    try {
+      const kayitli = localStorage.getItem('algora_soru_modali_boyut');
+      if (!kayitli) return;
+      const { w, h } = JSON.parse(kayitli) as { w?: unknown; h?: unknown };
+      if (typeof w === 'number' && typeof h === 'number' && w > 0 && h > 0) {
+        // Görüş alanından taşmasın (pencere küçülmüş olabilir)
+        setKayitliBoyut({
+          w: Math.min(w, window.innerWidth - 32),
+          h: Math.min(h, window.innerHeight - 32),
+        });
+      }
+    } catch {
+      // bozuk kayıt — sessizce yoksay
+    }
+  }, []);
+
+  useEffect(() => {
+    const kart = kartRef.current;
+    if (!kart || !masaustuMu()) return;
+    const gozlemci = new ResizeObserver(() => {
+      if (tamEkran) return;
+      localStorage.setItem(
+        'algora_soru_modali_boyut',
+        JSON.stringify({ w: kart.offsetWidth, h: kart.offsetHeight })
+      );
+    });
+    gozlemci.observe(kart);
+    return () => gozlemci.disconnect();
+  }, [tamEkran]);
 
   // Üretim beklenirken geçen süre (saniye) — kilitli butonda gösterilir
   const [beklemeSaniye, setBeklemeSaniye] = useState(0);
@@ -208,14 +257,31 @@ export function SoruModali({
   }, [soruUretiliyor]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm ${
+        tamEkran ? 'p-0' : 'p-4'
+      }`}
+    >
       <div
-        ref={modalGovdeRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+        ref={kartRef}
+        style={
+          !tamEkran && kayitliBoyut
+            ? { width: kayitliBoyut.w, height: kayitliBoyut.h }
+            : undefined
+        }
+        className={[
+          'bg-white shadow-2xl w-full flex flex-col overflow-hidden',
+          tamEkran
+            ? 'h-full max-w-none max-h-none rounded-none'
+            : 'max-w-3xl max-h-[90vh] rounded-2xl lg:max-w-5xl lg:h-[85vh]',
+          // Köşeden serbest boyutlandırma yalnız masaüstünde (CSS resize ⇲);
+          // mobilde anlamı yok. max-w/max-h sınırları yine geçerli.
+          !tamEkran ? 'lg:[resize:both] lg:min-w-[640px] lg:min-h-[480px]' : '',
+        ].join(' ')}
       >
-        {/* Modal Header */}
-        <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10">
-          <div className="flex items-center gap-2 flex-wrap">
+        {/* Modal Header — kart artık flex-col olduğundan sabit kalır (sticky değil) */}
+        <div className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
             <span className="px-3 py-1 rounded-lg text-sm font-bold bg-purple-100 text-purple-700">
               {mevcutSoru.exam_type || examType}
             </span>
@@ -253,23 +319,49 @@ export function SoruModali({
               </span>
             )}
           </div>
-          <button
-            onClick={modalKapat}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            aria-label="Soruyu kapat"
-          >
-            <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Tam ekran genişletme (⤢): tek dokunuşla tüm ekran, tekrar basınca küçülür */}
+            <button
+              onClick={() => setTamEkran((v) => !v)}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              aria-label={tamEkran ? 'Tam ekrandan çık' : 'Tam ekran yap'}
+            >
+              {tamEkran ? (
+                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M15 9h4.5M15 9V4.5M9 15v4.5M9 15H4.5m10.5 0h4.5m-4.5 0v4.5" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 3.75v4.5m0-4.5h4.5M3.75 20.25v-4.5m0 4.5h4.5M20.25 3.75h-4.5m4.5 0v4.5m0 11.25v-4.5m0 4.5h-4.5" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={modalKapat}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              aria-label="Soruyu kapat"
+            >
+              <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
-        {/* Modal Content */}
-        <div className="p-6 space-y-6">
+        {/* Gövde — mobilde/dar ekranda TEK kayan kolon (bugünkü akış korunur);
+            lg ve üzerinde İKİYE BÖLÜNÜR: sol yarı soru + şıklar (asıl iş), sağ
+            yarı yardım rayı (ipuçları → açıklama → Üst Beyin). Pencereler
+            bağımsız kayar — öğrenci soruyu görürken yardımı okur, kaybolmaz. */}
+        <div
+          ref={modalGovdeRef}
+          className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[minmax(0,1fr)_340px]"
+        >
+          {/* === SOL PANEL: soru + şıklar === */}
+          <div ref={solPanelRef} className="p-4 sm:p-6 lg:h-full lg:overflow-y-auto">
           {/* Hata banner'ı (T2-UX1): modal açıkken işlem hatası (bağlantı
               kopması, API hatası) alert yerine burada tatlıca görünür */}
           {hataMesaji && (
-            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 flex items-start gap-3">
+            <div className="mb-6 rounded-xl bg-red-50 border border-red-200 px-4 py-3 flex items-start gap-3">
               <span className="text-base leading-none mt-0.5 shrink-0">⚠️</span>
               <p className="flex-1 text-sm text-red-700">{hataMesaji}</p>
               <button
@@ -297,6 +389,7 @@ export function SoruModali({
                   {altiCiziliMetniCevir(mevcutSoru.question)}
                 </h3>
               </div>
+
 
               <div className="space-y-3">
                 {mevcutSoru.choices.map((secenek: string, index: number) => {
@@ -335,7 +428,26 @@ export function SoruModali({
                   );
                 })}
               </div>
+            </div>
 
+            {/* Üretim kilidi — sol panelin üstünde spinner örtüsü */}
+            {soruUretiliyor && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white/40 rounded-xl">
+                <svg className="animate-spin h-8 w-8 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="text-sm font-medium text-purple-700">Yeni soru üretiliyor...</span>
+              </div>
+            )}
+          </div>
+          </div>{/* SOL PANEL sonu */}
+
+          {/* === SAĞ PANEL: yardım rayı — ipuçları → açıklama → Üst Beyin === */}
+          <div
+            ref={sagPanelRef}
+            className="p-4 sm:p-6 space-y-5 lg:h-full lg:overflow-y-auto lg:border-l lg:border-slate-200 lg:bg-slate-50/60"
+          >
               {/* V2: Takıldın mı? — Sokratik ipuçları (ücretsiz, kademeli açılır).
                   İpuçları çözümü ifşa etmez; sorunun ipucusu yoksa (eski havuz
                   kayıtları) kart hiç render edilmez. */}
@@ -425,23 +537,15 @@ export function SoruModali({
                   </div>
                 )}
               </div>
-            </div>
+          </div>{/* SAĞ PANEL sonu */}
+        </div>{/* Gövde sonu */}
 
-            {/* Üretim sürerken kilitli gövdenin üstünde spinner örtüsü */}
-            {soruUretiliyor && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white/40 rounded-xl">
-                <svg className="animate-spin h-8 w-8 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span className="text-sm font-medium text-purple-700">Yeni soru üretiliyor...</span>
-              </div>
-            )}
-          </div>
-
+        {/* Footer: bildirim + Sıradaki butonu — kartın altına sabit, kaymaz;
+            öğrenci uzun anlatım okurken bile sıradaki soru hep gözünün önünde */}
+        <div className="shrink-0 border-t border-slate-200 bg-white p-4 space-y-3">
           {/* V2: Hatalı soru bildirimi — kitle kaynaklı kalite kontrolü.
               2. FARKLI kullanıcının bildirimiyle soru havuzdan otomatik askıya alınır. */}
-          <div className="flex items-center justify-between gap-3 flex-wrap -mt-2">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             {bildirimDurumu ? (
               <p className={`text-sm ${bildirimDurumu === 'askida' ? 'text-emerald-600 font-medium' : 'text-slate-500'}`}>
                 {bildirimDurumu === 'askida'
