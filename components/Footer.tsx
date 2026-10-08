@@ -1,6 +1,14 @@
+'use client';
+
 import Link from 'next/link';
+import { scrollToElementId } from '../lib/smooth-scroll';
 
 export function Footer() {
+  const bolumeKaydir = (e: React.MouseEvent<HTMLAnchorElement>, hedefId: string) => {
+    e.preventDefault();
+    scrollToElementId(hedefId);
+  };
+
   return (
     <footer className="bg-purple-100 border-t border-purple-200">
       <div className="w-full px-4 md:px-6 lg:px-8 pt-14 pb-8 md:pt-16 md:pb-10">
@@ -20,9 +28,9 @@ export function Footer() {
           <div>
             <h4 className="font-bold text-gray-900 mb-4">Ürün</h4>
             <ul className="space-y-4 text-sm">
-              <li><a href="#features" className="text-gray-500 hover:text-purple-600 transition-colors">Özellikler</a></li>
-              <li><a href="#how-it-works" className="text-gray-500 hover:text-purple-600 transition-colors">Nasıl Çalışır?</a></li>
-              <li><a href="#pricing" className="text-gray-500 hover:text-purple-600 transition-colors">Fiyatlandırma</a></li>
+              <li><a href="#features" onClick={(e) => bolumeKaydir(e, 'features')} className="text-gray-500 hover:text-purple-600 transition-colors">Özellikler</a></li>
+              <li><a href="#how-it-works" onClick={(e) => bolumeKaydir(e, 'how-it-works')} className="text-gray-500 hover:text-purple-600 transition-colors">Nasıl Çalışır?</a></li>
+              <li><a href="#pricing" onClick={(e) => bolumeKaydir(e, 'pricing')} className="text-gray-500 hover:text-purple-600 transition-colors">Fiyatlandırma</a></li>
             </ul>
           </div>
 
