@@ -3249,3 +3249,10 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### ✅ Ek (öğleden sonra 2. tur)
 - **Telafi modu "Sıradaki" düzeltmesi (commit `8edf925`, deploy SUCCESS + chunk kanıtı `2hgsxoieiun7q.js`):** kullanıcı "hatalı soru çözerken Sıradaki Soru havuzdan soru çekiyor" dedi → page.tsx'te `klonModu` state'i: klon açılınca true, havuz/üretim/inceleme/kapatmada false. Telafi modunda buton etiketi "Sıradaki Hatalı Soru", tıklayınca `bekleyenKlonlar`'dan (mevcut id hariç) sıradaki klon açılır; bekleyen klon kalmadıysa buton gri/pasif (`siradakiPasif`, disabled:bg-slate-400). SoruModali'ye `siradakiEtiket?` + `siradakiPasif?` prop'ları eklendi.
+
+### ✅ Ek (3. tur — Landing Page Güncellemesi)
+- **Kapsam kullanıcı onayıyla seçildi (tam paket + gerçek soru mockup'ı):** commits `3a30b0b` + `c814dbc`, deploy SUCCESS, canlı SSR kontrolleri 6/6 + düzeltme metni PASS.
+- **Hero (HeroSection.tsx):** başlık "YKS (TYT/AYT/YDT)"; "her gün 20 soru hakkıyla dene" KALDIRILDI → gerçek vaat çipleri (♾️ Sınırsız soru, 💡 3 Sokratik ipucu, 🧠 AI Koç, 🧺 Hata telafisi); üstte "YKS 2027'ye özel yapay zekâ koçun" badge'i; sağ kart 3 satırlık jenerik listeden GERÇEK ÜRÜN FORMATINDA soru mockup'ına dönüştü (rozet satırı TYT/Matematik/Oran-Orantı/📚 Havuz + soru metni + 5 şık C seçili + "💡 1. İpucu Al (ücretsiz)"); tipografi responsive kademelendi (text-4xl sm:5xl lg:6xl). dangerouslySetInnerHTML İLK taslakta kullanılmıştı → proje kuralı gereği anında düzeltildi (string expression).
+- **Features (FeaturesSection.tsx):** 3 jenerik kart → 6 GERÇEK özellik (Nokta Atışı Analiz, AI Koç, Hata Sepeti, Adaptif Zorluk, 3 Sokratik İpucu, Sınırsız Soru); grid sm:2 lg:3, kart metinleri responsive.
+- **Nasıl Çalışır (HowItWorksSection.tsx):** "Sınav Seç — TYT veya AYT seçin" → "Hedefini Belirle — TYT, AYT veya YDT seç, hedef puanını gir"; 3. adım açıklaması kullanıcı düzeltmesiyle "ipuçlarını çöz" anlamsızlığından arındırıldı ("takıldığında Sokratik ipucu al").
+- Landing SSR olduğu için kanıt curl HTML grep'iyle (chunk grep gerekmedi).
