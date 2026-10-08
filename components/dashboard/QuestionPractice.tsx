@@ -21,6 +21,9 @@ export interface Question {
   // V2 havuz akışı: 3'lü Sokratik ipucu (eski havuz sorularında yok) + kaynak rozeti
   hints?: string[];
   source?: 'pool' | 'generated';
+  // Soru Fabrikası kaynak izi (örn. "MEB-DIN-2022-5") — MEB çıkmış soru
+  // rozetinde yıl göstermek için istemciye taşınır; yoksa rozet basılmaz
+  tags?: string[] | null;
 }
 
 interface Difficulty {

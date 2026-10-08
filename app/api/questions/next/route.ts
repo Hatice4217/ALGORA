@@ -98,6 +98,8 @@ interface PoolQuestion {
   correct_answer: number;
   explanation: string;
   hints: string[] | null;
+  // Kaynak izi (örn. MEB-DIN-2022-5) — RPC'de tags alanı yoksa gelmez, rozet basılmaz
+  tags?: string[] | null;
 }
 
 export async function POST(request: Request) {
@@ -251,6 +253,8 @@ export async function POST(request: Request) {
           correctAnswer: poolHit.correct_answer,
           explanation: poolHit.explanation,
           hints: Array.isArray(poolHit.hints) ? poolHit.hints : [],
+          // Kaynak izi (örn. MEB-DIN-2022-5) — RPC eski sürümse gelmez, rozet basılmaz
+          tags: Array.isArray(poolHit.tags) ? poolHit.tags : null,
           subject: poolHit.subject,
           topic: poolHit.topic,
           difficulty: poolHit.difficulty,

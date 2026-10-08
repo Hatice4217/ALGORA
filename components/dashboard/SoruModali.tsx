@@ -29,6 +29,17 @@ export function altiCiziliMetniCevir(metin: string) {
   });
 }
 
+// Soru Fabrikası kaynak izinden MEB yılını çıkarır (örn. "MEB-DIN-2022-5" →
+// "2022"). İz yoksa ya da biçim tanıdık değilse null → yıl rozeti basılmaz.
+export function mebYiliBul(tags?: string[] | null): string | null {
+  if (!Array.isArray(tags)) return null;
+  for (const etiket of tags) {
+    const eslesme = /^MEB-[^-]+-(\d{4})-\d+$/.exec(etiket);
+    if (eslesme) return eslesme[1];
+  }
+  return null;
+}
+
 interface SoruModaliProps {
   examType: string;
   seciliDers: string;
@@ -96,6 +107,9 @@ export function SoruModali({
   // Üretim beklenirken geçen süre (saniye) — kilitli butonda gösterilir
   const [beklemeSaniye, setBeklemeSaniye] = useState(0);
 
+  // MEB çıkmış soru izi → yıl rozeti (örn. "📅 2022 MEB Çıkmış")
+  const mebYili = mebYiliBul(mevcutSoru.tags);
+
   useEffect(() => {
     if (!soruUretiliyor) {
       setBeklemeSaniye(0);
@@ -141,6 +155,11 @@ export function SoruModali({
             {mevcutSoru.source === 'pool' && (
               <span className="px-3 py-1 rounded-lg text-sm font-medium bg-emerald-100 text-emerald-700">
                 📚 Havuz
+              </span>
+            )}
+            {mebYili && (
+              <span className="px-3 py-1 rounded-lg text-sm font-medium bg-teal-100 text-teal-700">
+                📅 {mebYili} MEB Çıkmış
               </span>
             )}
             {mevcutSoru.source === 'generated' && (
