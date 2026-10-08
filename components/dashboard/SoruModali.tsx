@@ -40,6 +40,91 @@ export function mebYiliBul(tags?: string[] | null): string | null {
   return null;
 }
 
+// Üst Beyin anlatımını taranabilir bloklara ayırır: kısa giriş paragrafı,
+// "1) 2) 3)" satır başı numaralı adımlar ve "ÖZET:" kapanışı. Numaralı adım
+// hiç yoksa (eski/kuraldışı biçim) bileşen metni eski düz haliyle basar.
+interface UstBeyinBlok {
+  giris: string[];
+  adimlar: { no: string; metin: string }[];
+  ozet: string | null;
+}
+
+export function ustBeyinBloklariniAyir(metin: string): UstBeyinBlok {
+  const sonuc: UstBeyinBlok = { giris: [], adimlar: [], ozet: null };
+  let bolum: 'giris' | 'adim' | 'ozet' = 'giris';
+  let suAnkiAdim: { no: string; metin: string } | null = null;
+
+  for (const satir of metin.replace(/\r/g, '').split('\n')) {
+    const duz = satir.trim();
+    if (!duz) continue;
+
+    const ozetEsmesi = /^ÖZET\s*:\s*(.*)$/i.exec(duz);
+    if (ozetEsmesi) {
+      bolum = 'ozet';
+      sonuc.ozet = ozetEsmesi[1].trim();
+      continue;
+    }
+    const adimEsmesi = /^(\d{1,2})\)\s*(.*)$/.exec(duz);
+    if (adimEsmesi) {
+      suAnkiAdim = { no: adimEsmesi[1], metin: adimEsmesi[2] };
+      sonuc.adimlar.push(suAnkiAdim);
+      bolum = 'adim';
+      continue;
+    }
+    if (bolum === 'giris') {
+      sonuc.giris.push(duz);
+    } else if (bolum === 'ozet') {
+      sonuc.ozet = sonuc.ozet ? `${sonuc.ozet} ${duz}` : duz;
+    } else if (suAnkiAdim) {
+      // Adım satırı alt satıra taşmışsa aynı adıma ekle
+      suAnkiAdim.metin += ` ${duz}`;
+    } else {
+      sonuc.giris.push(duz);
+    }
+  }
+  return sonuc;
+}
+
+// Üst Beyin anlatım görseli: giriş cümlesi + numara rozetli adım kartları +
+// "Özet" kapanış kartı. Uzun gri paragraf denizi yerine taranabilir bloklar —
+// kısa odak süresi bilinçli tasarım kısıtıdır.
+function UstBeyinAnlatim({ metin }: { metin: string }) {
+  const { giris, adimlar, ozet } = ustBeyinBloklariniAyir(metin);
+
+  // Ayrıştırılamayan biçim (ör. eski önbellek kayıtları): kırılma yok,
+  // metin olduğu gibi düz paragraf olarak basılır
+  if (adimlar.length === 0) {
+    return <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{metin}</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {giris.length > 0 && (
+        <p className="text-slate-700 text-sm leading-relaxed">{giris.join(' ')}</p>
+      )}
+      <ol className="space-y-2.5">
+        {adimlar.map((adim) => (
+          <li
+            key={adim.no}
+            className="flex items-start gap-3 bg-purple-50/60 border border-purple-100 rounded-lg px-3 py-2.5"
+          >
+            <span className="shrink-0 w-7 h-7 rounded-full bg-purple-600 text-white text-sm font-bold flex items-center justify-center">
+              {adim.no}
+            </span>
+            <p className="text-slate-700 text-sm leading-relaxed pt-0.5">{adim.metin}</p>
+          </li>
+        ))}
+      </ol>
+      {ozet && (
+        <div className="flex items-start gap-2.5 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5">
+          <span className="shrink-0 text-base leading-none pt-0.5">🎯</span>
+          <p className="text-emerald-900 text-sm leading-relaxed font-medium">{ozet}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface SoruModaliProps {
   examType: string;
   seciliDers: string;
@@ -332,11 +417,11 @@ export function SoruModali({
                   </>
                 ) : (
                   <div>
-                    <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                    <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
                       <span className="text-lg">🧠</span>
                       Üst Beyin Anlatımı
                     </h4>
-                    <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{ustBeyinMetni}</p>
+                    <UstBeyinAnlatim metin={ustBeyinMetni} />
                   </div>
                 )}
               </div>

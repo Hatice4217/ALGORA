@@ -285,8 +285,11 @@ ${ipuclar.length > 0 ? `\nÖĞRENCİNİN DAHA ÖNCE ALDIĞI İPUÇLARI:\n${ipucl
 ANLATIM KURALLARI:
 - İLK CÜMLE DOĞRUDAN SORUNUN ANALİZİYLE BAŞLAR: "Merhaba", "Selam", kendini tanıtma veya sohbet açılışı KESİNLİKLE YASAK. Örnek ilk cümle: "Bu soru bize ... soruyor."
 - Türkçe yaz; ç, ğ, ı, İ, ö, ş, ü karakterlerini kusursuz kullan.
-- Önce sorunun NE İSTEDİĞİNİ bir cümleyle netleştir; sonra hangi kavram/kural gerektiğini hatırlat; sonra çözümü ADIM ADIM yürüt; sonda 1-2 cümlelik özet ver.
-- Adımları "1)", "2)", "3)" numaralarıyla sırala; markdown başlık, yıldız, code block KULLANMA.
+- YAPI ZORUNLUDUR, bu düzenin dışına çıkma:
+  1) GİRİŞ: sorunun NE İSTEDİĞİNİ ve hangi kavram/kuralın gerektiğini 1-2 cümleyle netleştir.
+  2) ADIMLAR: çözümü "1)", "2)", "3)" numaralarıyla AYRI SATIRLARDA yürüt. HER ADIM EN FAZLA 2-3 CÜMLE ve tek bir fikir taşısın — uzun paragraflar KESİNLİKLE YASAK (öğrencinin odak süresi kısa).
+  3) ÖZET: en sona "ÖZET:" ile başlayan tek paragraf yaz: doğru cevabın harfini ve akılda kalıcı tek bir noktayı 1-2 cümlede ver.
+- Adım numaraları "1)" biçiminde ve SATIR BAŞINDA olsun; markdown başlık, yıldız, code block KULLANMA.
 - Öğrencinin yanıldığı yer varsa klasik tuzakları açıkça adlandır.
 - Matematiksel ifadeleri DÜZ METİN yaz: $, \\, LaTeX kodları KULLANMA. Üsleri x² biçiminde yaz, karekökü "karekök" olarak yaz.
 - Yanıt SADECE anlatım metni olsun; sonda iyi dilekler/imza ekleme.`;
