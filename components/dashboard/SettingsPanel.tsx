@@ -435,24 +435,23 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
         {activeSection === 'exam' && (
           <div className="bg-white rounded-xl shadow-sm p-5 md:p-6 max-w-2xl mx-auto">
             <div className="mb-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl shrink-0">
                   🎯
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">Sınav Hedefleri</h2>
+                <div className="min-w-0">
+                  <h2 className="text-xl font-semibold text-gray-900">Sınav Hedefleri</h2>
+                  <p className="text-gray-500 text-xs">
+                    Hedefin Genel Bakış&apos;ta rozet olur; Koç planını buna göre kurar
+                  </p>
+                </div>
               </div>
-              <p className="text-gray-600 text-sm">Hedefini belirle, motivasyonun hiç düşmesin</p>
             </div>
 
-            {/* Kayıt sonrası rozet bilgilendirmesi */}
-            <div className="bg-purple-50 border border-purple-100 rounded-xl px-3.5 py-2 mb-4">
-              <p className="text-xs text-purple-700">
-                💡 Kaydettiğinde hedefin, Genel Bakış&apos;taki karşılama kartında rozet olarak görünür.
-              </p>
-            </div>
-
-            {/* Sınav ayarları */}
-            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-4">
+            {/* Tüm hedef alanları TEK grid'de — PC'de dikey scroll yok:
+                2 kolon × 3 satır (mobilde tek kolon). Ara başlık/ayraç ve
+                bilgi kutusu kaldırıldı (mesaj başlık altına katlandı). */}
+            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-x-4 gap-y-3.5">
               <Select
                 label="Sınav Tipi"
                 options={EXAM_TYPES}
@@ -471,7 +470,7 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
                 onBlur={() => handleSectionBlur('exam')}
                 error={errors.target_score}
                 placeholder="0-500"
-                helperText="TYT için 500, AYT için 600 üzerinden"
+                helperText="TYT 500, AYT 600 üzerinden"
               />
 
               <Input
@@ -485,7 +484,7 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
                 onBlur={() => handleSectionBlur('exam')}
                 error={errors.study_hours_per_day}
                 placeholder="0-24"
-                helperText="Günde kaç saat çalışmayı planlıyorsunuz?"
+                helperText="Planladığın günlük süre"
               />
 
               <Input
@@ -498,14 +497,9 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
                 onBlur={() => handleSectionBlur('exam')}
                 error={errors.daily_question_target}
                 placeholder="1-500"
-                helperText="Boş bırakırsan Koç, saat ve puanına göre hesaplar"
+                helperText="Boş = Koç hesaplar"
               />
-            </div>
 
-            {/* Hedef üniversite & bölüm — motivasyon rozetini besler */}
-            <div className="my-4 border-t border-gray-100" />
-            <p className="text-sm font-semibold text-gray-700 mb-3">🎓 Hedefin</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="Hedef Üniversite"
                 type="text"
