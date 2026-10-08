@@ -10,6 +10,7 @@ import { authHelpers, dbHelpers } from '../../lib/supabase';
 import { StatisticsCards } from '../../components/dashboard/StatisticsCards';
 import { AnalysisPanel } from '../../components/dashboard/AnalysisPanel';
 import { QuestionPractice } from '../../components/dashboard/QuestionPractice';
+import { SoruModali } from '../../components/dashboard/SoruModali';
 import { CoachPanel } from '../../components/dashboard/CoachPanel';
 import { HataSepetiPanel } from '../../components/dashboard/HataSepetiPanel';
 import { SettingsPanel } from '../../components/dashboard/SettingsPanel';
@@ -977,39 +978,15 @@ export default function DashboardPage() {
             examType={examType}
             DERS_KARTLARI={DERS_KARTLARI}
             ZORLUKLER={DIFFICULTIES}
-            seciliDers={selectedSubject}
-            seciliZorluk={selectedDifficulty}
             soruUretiliyor={isGeneratingQuestion}
             mevcutSoru={currentQuestion}
-            cevapGoster={showAnswer}
-            seciliCevap={selectedAnswer}
             dersBaslat={dersBaslat}
-            soruUret={() => generateQuestion()}
-            cevapSec={selectAnswer}
             sonCozulenler={recentAnswers}
             bekleyenKlonlar={bekleyenKlonlar}
             hataSepetineGit={() => setActiveTab('hataSepeti')}
             kayitIncele={reviewRecentAnswer}
-            ipuclar={currentQuestion?.hints ?? []}
-            acilanIpucu={acilanIpucu}
-            ipucuAc={ipucuAc}
-            ustBeyinMetni={ustBeyinMetni}
-            ustBeyinIstiyor={ustBeyinIstiyor}
-            ustBeyinIste={ustBeyinIste}
-            bildirimDurumu={bildirimDurumu}
-            bildiriliyor={bildiriliyor}
-            soruBildir={soruBildir}
             hataMesaji={hataMesaji}
             hataKapat={() => setHataMesaji(null)}
-            modalKapat={() => {
-              setCurrentQuestion(null);
-              setShowAnswer(false);
-              setSelectedAnswer(null);
-              setAcilanIpucu(0);
-              setUstBeyinMetni(null);
-              setBildirimDurumu(null);
-              setHataMesaji(null);
-            }}
           />
         )}
 
@@ -1024,14 +1001,13 @@ export default function DashboardPage() {
           />
         )}
 
-        {/* Hata Sepeti Sekmesi — dün yanlışlanan soruların telafi merkezi */}
+        {/* Hata Sepeti Sekmesi — dün yanlışlanan soruların telafi merkezi.
+            "Çöz" sekmeyi DEĞİŞTİRMEZ: soru modali global katman olduğundan klon
+            sepette kalırken açılır, telafi listesi göz önünde güncellenir. */}
         {activeTab === 'hataSepeti' && (
           <HataSepetiPanel
             bekleyenKlonlar={bekleyenKlonlar}
-            coz={(klon) => {
-              setActiveTab('practiceRoom');
-              klonAc(klon);
-            }}
+            coz={klonAc}
           />
         )}
 
@@ -1071,6 +1047,43 @@ export default function DashboardPage() {
           />
         )}
       </main>
+
+      {/* Soru Modalı — SEKMEDEN BAĞIMSIZ global katman: currentQuestion hangi
+          sekmedeyken gelirse gelsin (Hata Sepeti "Çöz", klon, ders kartı)
+          hangi sekme açıksa onun ÜZERİNE basılır; arka plan sekmeye atlamaz. */}
+      {currentQuestion && (
+        <SoruModali
+          examType={examType}
+          seciliDers={selectedSubject}
+          seciliZorluk={selectedDifficulty}
+          mevcutSoru={currentQuestion}
+          cevapGoster={showAnswer}
+          seciliCevap={selectedAnswer}
+          cevapSec={selectAnswer}
+          soruUret={() => generateQuestion()}
+          soruUretiliyor={isGeneratingQuestion}
+          ipuclar={currentQuestion?.hints ?? []}
+          acilanIpucu={acilanIpucu}
+          ipucuAc={ipucuAc}
+          ustBeyinMetni={ustBeyinMetni}
+          ustBeyinIstiyor={ustBeyinIstiyor}
+          ustBeyinIste={ustBeyinIste}
+          bildirimDurumu={bildirimDurumu}
+          bildiriliyor={bildiriliyor}
+          soruBildir={soruBildir}
+          hataMesaji={hataMesaji}
+          hataKapat={() => setHataMesaji(null)}
+          modalKapat={() => {
+            setCurrentQuestion(null);
+            setShowAnswer(false);
+            setSelectedAnswer(null);
+            setAcilanIpucu(0);
+            setUstBeyinMetni(null);
+            setBildirimDurumu(null);
+            setHataMesaji(null);
+          }}
+        />
+      )}
 
       {/* Yükseltme Modalı (kota bitişi veya Paketim'den açılır) */}
       {showUpgradeModal && (

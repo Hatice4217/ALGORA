@@ -3,9 +3,9 @@
 // Hata Sepeti — Duolingo tarzı telafi merkezi. Gece vardiyası, dün yanlış
 // cevaplanan soruların BENZERlerini (klon) üretir; öğrenci buradan tek tıkla
 // çözer, cevaplanan klon listeden düşer. İlerleme tabanı oturumda görülen en
-// yüksek klon sayısıdır (yenilemede sıfırdan başlar). Soru çözme pratiği
-// Dinamik Soru Bankası'nda olduğundan "Çöz" tıklaması önce sekmeyi oraya
-// çevirir, sonra klonu sıradan soru gibi açar (page.tsx klonAc).
+// yüksek klon sayısıdır (yenilemede sıfırdan başlar). "Çöz" tıklaması sekmeyi
+// DEĞİŞTİRMEZ: soru modali global katmandır (SoruModali), klon sepette
+// kalırken açılır ve telafi listesi göz önünde güncellenir.
 
 import { useEffect, useState } from 'react';
 import { getSubjectColor } from '../../lib/utils';
@@ -19,7 +19,7 @@ const ZORLUK_ETIKET: Record<string, string> = {
 
 interface HataSepetiPanelProps {
   bekleyenKlonlar: PendingClone[];
-  // Klonu çözülmek üzere açar (page.tsx: sekme practiceRoom'a döner + klonAc)
+  // Klonu çözülmek üzere açar (page.tsx klonAc — sekme değişmez, modal üstte açılır)
   coz: (klon: PendingClone) => void;
 }
 
