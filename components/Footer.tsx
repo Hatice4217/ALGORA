@@ -3,10 +3,10 @@ import Link from 'next/link';
 export function Footer() {
   return (
     <footer className="bg-white/60 border-t border-purple-100">
-      <div className="container mx-auto px-6 pt-12 pb-10 min-[480px]:pt-16 min-[480px]:pb-12 md:pt-20 md:pb-16">
-        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 gap-10 min-[480px]:gap-12 md:gap-16">
+      <div className="w-full px-4 md:px-6 lg:px-8 pt-14 pb-8 md:pt-16 md:pb-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 items-start gap-10 md:gap-16">
           {/* 1. Sütun - Marka */}
-          <div className="flex flex-col space-y-4 min-[480px]:col-span-2 md:col-span-1">
+          <div className="flex flex-col space-y-4">
             <div className="flex items-center">
               <span className="text-4xl font-bold text-purple-600">Al</span>
               <span className="text-4xl font-bold text-gray-900">gora</span>
@@ -19,7 +19,7 @@ export function Footer() {
           {/* 2. Sütun - Ürün */}
           <div>
             <h4 className="font-bold text-gray-900 mb-4">Ürün</h4>
-            <ul className="space-y-3 text-sm">
+            <ul className="space-y-4 text-sm">
               <li><a href="#features" className="text-gray-500 hover:text-purple-600 transition-colors">Özellikler</a></li>
               <li><a href="#how-it-works" className="text-gray-500 hover:text-purple-600 transition-colors">Nasıl Çalışır?</a></li>
               <li><a href="#pricing" className="text-gray-500 hover:text-purple-600 transition-colors">Fiyatlandırma</a></li>
@@ -29,7 +29,7 @@ export function Footer() {
           {/* 3. Sütun - Yasal */}
           <div>
             <h4 className="font-bold text-gray-900 mb-4">Yasal</h4>
-            <ul className="space-y-3 text-sm">
+            <ul className="space-y-4 text-sm">
               <li><Link href="/legal/privacy" className="text-gray-500 hover:text-purple-600 transition-colors">Gizlilik Politikası</Link></li>
               <li><Link href="/legal/terms" className="text-gray-500 hover:text-purple-600 transition-colors">Kullanım Şartları</Link></li>
               <li><Link href="/legal/cookies" className="text-gray-500 hover:text-purple-600 transition-colors">Çerez Politikası</Link></li>
@@ -38,7 +38,7 @@ export function Footer() {
         </div>
 
         {/* Alt Kapanış - Copyright */}
-        <div className="border-t border-purple-100 mt-8 min-[480px]:mt-10 md:mt-12 pt-6 min-[480px]:pt-7 md:pt-8 text-center text-sm text-gray-500">
+        <div className="border-t border-purple-100 mt-10 md:mt-12 pt-6 text-center text-sm text-gray-500">
           © 2026 ALGORA. Tüm hakları saklıdır.
         </div>
       </div>
