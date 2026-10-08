@@ -66,10 +66,10 @@ interface QuestionPracticeProps {
   cevapSec: (index: number) => void;
   sonCozulenler: RecentAnswer[];
   kayitIncele: (kayit: RecentAnswer) => void;
-  // V2 Faz 1b: bekleyen kişisel klonlar ("Eksiklerini Kapat" kartı —
-  // boşken hiç render edilmez) + klonu çözülmek üzere açan handler
+  // V2 Faz 1b: bekleyen kişisel klonların SAYISI (kompakt bildirim) — telafi
+  // merkezi Hata Sepeti sekmesinde; bildirim o sekmeye yönlendirir
   bekleyenKlonlar: PendingClone[];
-  klonAc: (klon: PendingClone) => void;
+  hataSepetineGit: () => void;
   // V2: Sokratik ipuçları (ücretsiz, kademeli) + Üst Beyin (-1 kredi) + bildirim
   ipuclar: string[];
   acilanIpucu: number;
@@ -123,7 +123,7 @@ export function QuestionPractice({
   sonCozulenler,
   kayitIncele,
   bekleyenKlonlar,
-  klonAc,
+  hataSepetineGit,
   ipuclar,
   acilanIpucu,
   ipucuAc,
@@ -155,19 +155,8 @@ export function QuestionPractice({
     modalGovdeRef.current?.scrollTo({ top: 0 });
   }, [mevcutSoru?.id]);
 
-  // 🧺 Hata Sepeti (madde 5): oturumda görülen en yüksek bekleyen klon sayısı
-  // telafi ilerlemesinin tabanıdır — cevaplanan klonlar listeden düştükçe
-  // çubuk dolar, hepsi bitince kutlama kartı gelir (kapatılana dek durur)
-  const [sepetZirvesi, setSepetZirvesi] = useState(0);
-  const [kutlamaKapandi, setKutlamaKapandi] = useState(false);
-
-  useEffect(() => {
-    setSepetZirvesi((onceki) => Math.max(onceki, bekleyenKlonlar.length));
-  }, [bekleyenKlonlar.length]);
-
-  const telafiEdilen = sepetZirvesi - bekleyenKlonlar.length;
-  const telafiYuzdesi = sepetZirvesi > 0 ? Math.round((telafiEdilen / sepetZirvesi) * 100) : 0;
-  const sepetBosaltildi = sepetZirvesi > 0 && bekleyenKlonlar.length === 0;
+  // 🧺 Hata Sepeti artık KENDİ SEKMESİNDE (HataSepetiPanel) — burada yalnız
+  // bekleyen telafi sayısını gösteren kompakt yönlendirme bildirimi var.
 
   useEffect(() => {
     if (!soruUretiliyor) {
@@ -275,97 +264,27 @@ export function QuestionPractice({
                 </div>
               )}
 
-              {/* V2 Faz 1b: "Eksiklerini Kapat" — gece vardiyasının yanlış
-                  cevaplardan ürettiği bekleyen kişisel klonlar. Liste boşken
-                  kart HİÇ render edilmez. Klon tıklanınca sıradan soru gibi
-                  akar (modal kilit pattern'i aynen geçerli). */}
-              {/* Madde 5 — Hata Sepeti (Duolingo görünümü): bekleyen gece
-                  klonları sepet metaforuyla oyunlaştırılır — sayaç rozeti,
-                  telafi ilerleme çubuğu, sepeti boşaltınca kutlama. Veri
-                  yalnız bekleyenKlonlar; ilerleme oturumda görülen en yüksek
-                  sayıya göre hesaplanır (yenilemede taban sıfırdan başlar). */}
+              {/* 🧺 Hata Sepeti bildirimi — telafi merkezi KENDİ SEKMESİNDE
+                  (Koç ile Analizler arasında); burada yalnız sayaç + yönlendirme.
+                  Liste boşken hiç render edilmez. */}
               {bekleyenKlonlar.length > 0 && (
-                <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
-                  <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
-                    <h3 className="text-sm font-bold text-amber-800 flex items-center gap-2">
-                      <span className="relative inline-flex text-base leading-none">
-                        🧺
-                        <span className="absolute -top-1.5 -right-3.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
-                          {bekleyenKlonlar.length}
-                        </span>
+                <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                  <p className="text-sm text-amber-800 flex items-center gap-2 flex-wrap min-w-0">
+                    <span className="relative inline-flex text-base leading-none">
+                      🧺
+                      <span className="absolute -top-1.5 -right-3.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                        {bekleyenKlonlar.length}
                       </span>
-                      Hata Sepeti
-                    </h3>
-                    <span className="text-xs font-semibold text-amber-700">
-                      {telafiEdilen}/{sepetZirvesi} telafi edildi
                     </span>
-                  </div>
-                  {/* Telafi ilerleme çubuğu */}
-                  <div
-                    className="h-3 rounded-full bg-amber-100 overflow-hidden mb-2"
-                    role="progressbar"
-                    aria-valuenow={telafiYuzdesi}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label="Hata sepeti telafi ilerlemesi"
-                  >
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-500"
-                      style={{ width: `${telafiYuzdesi}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-amber-700 mb-3">
-                    Dün yanlış yaptığın soruların türevleri sepete eklendi — telafi ettikçe boşalır.
+                    <span>
+                      Hata Sepeti&apos;nde <strong>{bekleyenKlonlar.length} telafi soru</strong> bekliyor
+                    </span>
                   </p>
-                  <ul className="space-y-2">
-                    {bekleyenKlonlar.map((klon) => (
-                      <li
-                        key={klon.id}
-                        className="flex items-center justify-between gap-3 bg-white/70 rounded-lg px-3 py-2"
-                      >
-                        <div className="flex items-center gap-2 flex-wrap min-w-0">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${getSubjectColor(klon.subject)} text-white`}>
-                            {klon.subject}
-                          </span>
-                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
-                            {klon.exam_type}
-                          </span>
-                          <span className="text-xs text-slate-600 truncate">{klon.topic}</span>
-                        </div>
-                        <button
-                          onClick={() => klonAc(klon)}
-                          disabled={soruUretiliyor}
-                          className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                        >
-                          Çöz
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* 🎉 Sepet boşaltıldı — kutlama kartı (kapatılana dek görünür;
-                  yeni klonlar gelirse sepet kartı geri döner) */}
-              {sepetBosaltildi && !kutlamaKapandi && (
-                <div className="mb-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 px-4 py-3 flex items-start justify-between gap-3 animate-toast-in">
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-emerald-800 flex items-center gap-2">
-                      <span className="text-base">🎉</span>
-                      Hata sepetini boşalttın!
-                    </h3>
-                    <p className="text-xs text-emerald-700 mt-0.5">
-                      {sepetZirvesi} yanlışın tamamını telafi ettin — eksiklerin kapanıyor, böyle devam!
-                    </p>
-                  </div>
                   <button
-                    onClick={() => setKutlamaKapandi(true)}
-                    aria-label="Kutlamayı kapat"
-                    className="p-1 rounded-lg text-emerald-400 hover:text-emerald-600 hover:bg-emerald-100 transition-colors shrink-0"
+                    onClick={hataSepetineGit}
+                    className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors shrink-0"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    Sepete Git
                   </button>
                 </div>
               )}

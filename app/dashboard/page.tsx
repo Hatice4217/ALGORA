@@ -11,6 +11,7 @@ import { StatisticsCards } from '../../components/dashboard/StatisticsCards';
 import { AnalysisPanel } from '../../components/dashboard/AnalysisPanel';
 import { QuestionPractice } from '../../components/dashboard/QuestionPractice';
 import { CoachPanel } from '../../components/dashboard/CoachPanel';
+import { HataSepetiPanel } from '../../components/dashboard/HataSepetiPanel';
 import { SettingsPanel } from '../../components/dashboard/SettingsPanel';
 import { PackagePanel, UpgradeModal } from '../../components/dashboard/PackagePanel';
 import { ProfileAvatar } from '../../components/dashboard/ProfileAvatar';
@@ -79,7 +80,7 @@ export default function DashboardPage() {
   const router = useRouter();
   // Giriş yapan kullanıcı doğrudan Dinamik Soru Bankası'nda başlar (onboarding kaldırıldı);
   // son aktif sekme localStorage'dan geri yüklenir (refresh sonrası sekme kaybolmasın)
-  const [activeTab, setActiveTab] = useState<'overview' | 'practiceRoom' | 'coach' | 'analysis' | 'package' | 'settings'>('practiceRoom');
+  const [activeTab, setActiveTab] = useState<'overview' | 'practiceRoom' | 'coach' | 'hataSepeti' | 'analysis' | 'package' | 'settings'>('practiceRoom');
   const [tabRestored, setTabRestored] = useState(false);
   const [statistics, setStatistics] = useState<DashboardStatistics>({
     toplamSoru: 0,
@@ -153,6 +154,7 @@ export default function DashboardPage() {
         saved === 'overview' ||
         saved === 'practiceRoom' ||
         saved === 'coach' ||
+        saved === 'hataSepeti' ||
         saved === 'analysis' ||
         saved === 'package' ||
         saved === 'settings'
@@ -791,6 +793,7 @@ export default function DashboardPage() {
     { id: 'overview' as const, label: 'Genel Bakış' },
     { id: 'practiceRoom' as const, label: 'Dinamik Soru Bankası' },
     { id: 'coach' as const, label: 'Koç' },
+    { id: 'hataSepeti' as const, label: 'Hata Sepeti' },
     { id: 'analysis' as const, label: 'Analizler' },
     { id: 'package' as const, label: 'Aboneliğim' },
     { id: 'settings' as const, label: 'Ayarlar' },
@@ -985,7 +988,7 @@ export default function DashboardPage() {
             cevapSec={selectAnswer}
             sonCozulenler={recentAnswers}
             bekleyenKlonlar={bekleyenKlonlar}
-            klonAc={klonAc}
+            hataSepetineGit={() => setActiveTab('hataSepeti')}
             kayitIncele={reviewRecentAnswer}
             ipuclar={currentQuestion?.hints ?? []}
             acilanIpucu={acilanIpucu}
@@ -1018,6 +1021,17 @@ export default function DashboardPage() {
               dersBaslat(ders, tur, { zorluk });
             }}
             gitAyarlara={() => setActiveTab('settings')}
+          />
+        )}
+
+        {/* Hata Sepeti Sekmesi — dün yanlışlanan soruların telafi merkezi */}
+        {activeTab === 'hataSepeti' && (
+          <HataSepetiPanel
+            bekleyenKlonlar={bekleyenKlonlar}
+            coz={(klon) => {
+              setActiveTab('practiceRoom');
+              klonAc(klon);
+            }}
           />
         )}
 
