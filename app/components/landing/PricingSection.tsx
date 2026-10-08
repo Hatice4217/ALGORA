@@ -40,18 +40,18 @@ export function PricingSection() {
     isLoggedIn ? `/dashboard?tab=package&upgrade=${plan}` : '/auth/register';
 
   return (
-    <section id="pricing" className="w-full px-4 md:px-6 lg:px-8 py-20">
-      <h2 className="text-4xl font-bold text-center text-gray-900 mb-4">
+    <section id="pricing" className="w-full px-4 md:px-6 lg:px-8 py-12 min-[480px]:py-16 md:py-20">
+      <h2 className="text-3xl min-[480px]:text-4xl font-bold text-center text-gray-900 mb-4">
         Fiyatlandırma
       </h2>
-      <p className="text-xl text-center text-gray-600 mb-16">
+      <p className="text-lg min-[480px]:text-xl text-center text-gray-600 mb-10 min-[480px]:mb-14 md:mb-16">
         Size en uygun paketi seçin ve sınava hazırlanmaya başlayın
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
+      <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 gap-6 min-[480px]:gap-8 w-full">
         {/* Başlangıç Paketi */}
         <div
-          className="bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-md transition-all duration-300 gpu-accel will-change-shadow flex flex-col"
+          className="bg-white border border-gray-200 rounded-2xl p-6 min-[480px]:p-8 hover:shadow-md transition-all duration-300 gpu-accel will-change-shadow flex flex-col"
         >
           <h3 className="text-2xl font-bold text-gray-900 mb-2">Başlangıç</h3>
           <div className="mb-8">
@@ -75,7 +75,7 @@ export function PricingSection() {
         </div>
 
         {/* Pro Öğrenci Paketi */}
-        <div className="bg-white border-2 border-purple-500 rounded-2xl p-8 shadow-lg shadow-purple-200 scale-105 relative flex flex-col">
+        <div className="bg-white border-2 border-purple-500 rounded-2xl p-6 min-[480px]:p-8 shadow-lg shadow-purple-200 md:scale-105 relative flex flex-col">
           <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-purple-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
             En Çok Tercih Edilen
           </div>
@@ -104,7 +104,7 @@ export function PricingSection() {
 
         {/* Premium Paket */}
         <div
-          className="bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-md transition-all duration-300 gpu-accel will-change-shadow flex flex-col"
+          className="bg-white border border-gray-200 rounded-2xl p-6 min-[480px]:p-8 hover:shadow-md transition-all duration-300 gpu-accel will-change-shadow flex flex-col min-[480px]:col-span-2 md:col-span-1"
         >
           <h3 className="text-2xl font-bold text-gray-900 mb-2">Premium AI Koçluk</h3>
           <div className="mb-8">
