@@ -91,6 +91,14 @@ export const validateSettingsSection = (
 
       const hoursError = validateStudyHours(formData.study_hours_per_day);
       if (hoursError) errors.study_hours_per_day = hoursError;
+
+      // Günlük soru hedefi OPSİYONEL — boşsa Koç otomatik hesaplar
+      if (formData.daily_question_target) {
+        const soruHedefi = Number(formData.daily_question_target);
+        if (!Number.isInteger(soruHedefi) || soruHedefi < 1 || soruHedefi > 500) {
+          errors.daily_question_target = 'Günlük soru hedefi 1-500 arasında tam sayı olmalı';
+        }
+      }
       break;
 
     case 'account':
@@ -127,7 +135,7 @@ export const hasSectionErrors = (
     case 'profile':
       return !!(errors.name || errors.email);
     case 'exam':
-      return !!(errors.target_score || errors.study_hours_per_day);
+      return !!(errors.target_score || errors.study_hours_per_day || errors.daily_question_target);
     case 'notifications':
       return false;
     case 'account':

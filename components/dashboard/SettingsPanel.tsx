@@ -16,9 +16,9 @@ import {
 import type { SettingsFormState, SettingsValidationErrors } from '../../types/question';
 
 const EXAM_TYPES = [
-  { value: 'TYT', label: 'TYT (Temel Yeterlilik Testi)' },
-  { value: 'AYT', label: 'AYT (Alan Yeterlilik Testi)' },
-  { value: 'YDT', label: 'YDT (Yabancı Dil Testi)' },
+  { value: 'TYT', label: 'TYT' },
+  { value: 'AYT', label: 'AYT' },
+  { value: 'YDT', label: 'YDT' },
 ];
 
 const THEMES = [
@@ -79,6 +79,7 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
     exam_type: 'TYT',
     target_score: '',
     study_hours_per_day: '',
+    daily_question_target: '',
     hedef_universite: '',
     hedef_bolum: '',
     email_notifications: true,
@@ -126,6 +127,7 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
             exam_type: profileData.exam_type || 'TYT',
             target_score: profileData.target_score?.toString() || '',
             study_hours_per_day: profileData.study_hours_per_day?.toString() || '',
+            daily_question_target: profileData.daily_question_target?.toString() || '',
             // Hedef üniversite/bölüm artık DB'de (user_profiles.target_university/major)
             hedef_universite: profileData.target_university || '',
             hedef_bolum: profileData.target_major || '',
@@ -157,6 +159,7 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
       exam_type: preferences.examType,
       target_score: preferences.targetScore || prev.target_score,
       study_hours_per_day: preferences.studyHoursPerDay || prev.study_hours_per_day,
+      daily_question_target: preferences.dailyQuestionTarget || prev.daily_question_target,
       hedef_universite: preferences.hedefUniversite || prev.hedef_universite,
       hedef_bolum: preferences.hedefBolum || prev.hedef_bolum,
     }));
@@ -222,6 +225,7 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
             examType: formData.exam_type,
             targetScore: formData.target_score,
             studyHoursPerDay: formData.study_hours_per_day,
+            dailyQuestionTarget: formData.daily_question_target,
             hedefUniversite: formData.hedef_universite,
             hedefBolum: formData.hedef_bolum,
           });
@@ -234,6 +238,7 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
             exam_type: formData.exam_type,
             target_score: formData.target_score,
             study_hours_per_day: formData.study_hours_per_day,
+            daily_question_target: formData.daily_question_target,
             hedef_universite: formData.hedef_universite,
             hedef_bolum: formData.hedef_bolum,
           }));
@@ -447,7 +452,7 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
             </div>
 
             {/* Sınav ayarları */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-4">
               <Select
                 label="Sınav Tipi"
                 options={EXAM_TYPES}
@@ -481,6 +486,19 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
                 error={errors.study_hours_per_day}
                 placeholder="0-24"
                 helperText="Günde kaç saat çalışmayı planlıyorsunuz?"
+              />
+
+              <Input
+                label="Günlük Soru Hedefi"
+                type="number"
+                min="1"
+                max="500"
+                value={formData.daily_question_target}
+                onChange={(e) => handleInputChange('daily_question_target', e.target.value)}
+                onBlur={() => handleSectionBlur('exam')}
+                error={errors.daily_question_target}
+                placeholder="1-500"
+                helperText="Boş bırakırsan Koç, saat ve puanına göre hesaplar"
               />
             </div>
 

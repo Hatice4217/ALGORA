@@ -696,6 +696,8 @@ export const dbHelpers = {
     target_score?: number;
     exam_date?: string;
     study_hours_per_day?: number;
+    // Günlük soru hedefi — null = Koç otomatik hesaplar (user_profiles.daily_question_target)
+    daily_question_target?: number | null;
     // Hedef üniversite/bölüm — motivasyon rozetini besler (hesaba bağlı)
     target_university?: string;
     target_major?: string;
@@ -720,6 +722,7 @@ export const dbHelpers = {
       if (settings.target_score !== undefined) profileData.target_score = settings.target_score;
       if (settings.exam_date !== undefined) profileData.exam_date = settings.exam_date;
       if (settings.study_hours_per_day !== undefined) profileData.study_hours_per_day = settings.study_hours_per_day;
+      if (settings.daily_question_target !== undefined) profileData.daily_question_target = settings.daily_question_target;
       if (settings.target_university !== undefined) profileData.target_university = settings.target_university;
       if (settings.target_major !== undefined) profileData.target_major = settings.target_major;
       if (settings.email_notifications !== undefined) profileData.email_notifications = settings.email_notifications;

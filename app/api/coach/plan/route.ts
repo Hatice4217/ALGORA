@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     // 1. PROFİL — hedef puan + günlük saat + sınav türü (Koç'un girdileri)
     const { data: profil } = await adminClient
       .from('user_profiles')
-      .select('name, exam_type, target_score, study_hours_per_day, target_university, target_major')
+      .select('name, exam_type, target_score, study_hours_per_day, daily_question_target, target_university, target_major')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -211,11 +211,19 @@ export async function POST(request: Request) {
       120,
       Math.max(10, Math.round(((saat * 3600) / Math.max(20, ortSn)) * 0.6))
     );
-    const hedefYuku = Math.min(60, Math.max(10, Math.round(hedefPuan / 10)));
-    // Plan toplamı kapasiteyle tavanlı; madde başına min 3 tabanıyla çakışmasın
+    // Kullanıcının Ayarlar'dan girdiği günlük soru hedefi varsa puan türevli yükü EZER
+    const kullaniciSoruHedefi =
+      typeof profil?.daily_question_target === 'number' &&
+      profil.daily_question_target >= 1 &&
+      profil.daily_question_target <= 500
+        ? profil.daily_question_target
+        : null;
+    const hedefYuku = kullaniciSoruHedefi ?? Math.min(60, Math.max(10, Math.round(hedefPuan / 10)));
+    // Plan toplamı kapasiteyle tavanlı; madde başına min 3 tabanıyla çakışmasın.
+    // Kullanıcı açık hedef girdiyse 10 tabanı uygulanmaz (5 soru isteyen 10'a ezilmez).
     const toplamSoru = Math.max(
       secilmis.length * 3,
-      Math.min(kapasite, Math.max(10, hedefYuku))
+      Math.min(kapasite, kullaniciSoruHedefi ?? Math.max(10, hedefYuku))
     );
 
     // Ağırlığa göre dağıt (her madde min 3 soru)
@@ -240,8 +248,11 @@ export async function POST(request: Request) {
     // 4. Mesaj + gün sayısı
     const sinavMs = SINAV_TARIHLERI[examType] ?? SINAV_TARIHLERI.TYT;
     const gunKaldi = Math.max(0, Math.ceil((sinavMs - Date.now()) / 86_400_000));
-    const mesaj =
-      kapasite >= hedefYuku
+    const mesaj = kullaniciSoruHedefi !== null
+      ? kapasite >= kullaniciSoruHedefi
+        ? `Günlük soru hedefin ${kullaniciSoruHedefi} — ${saat} saatlik kapasiten (~${kapasite} soru) bunu rahat karşılıyor.`
+        : `Günlük soru hedefin (${kullaniciSoruHedefi}) ${saat} saatlik kapasitenin (~${kapasite}) üzerinde — planı kapasiteye göre ölçekledim.`
+      : kapasite >= hedefYuku
         ? `Günlük ${saat} saatin ~${kapasite} soru kapasitene karşılık hedefin ~${hedefYuku} soru istiyor — hedefine rahat ulaşırsın.`
         : `Hedef puanın (~${hedefYuku} soru/gün ister) kapasitenin (~${kapasite}) üzerinde — daha verimli çalış ya da süreni artır.`;
 

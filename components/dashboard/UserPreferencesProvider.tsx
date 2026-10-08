@@ -16,6 +16,7 @@ export interface UserPreferences {
   examType: 'TYT' | 'AYT' | 'YDT';
   targetScore: string; // form input değeri (string); sayıya kayıtta çevrilir
   studyHoursPerDay: string;
+  dailyQuestionTarget: string; // boş = Koç saat/puandan hesaplar (NULL yazılır)
   hedefUniversite: string; // user_profiles.target_university
   hedefBolum: string; // user_profiles.target_major
 }
@@ -32,6 +33,7 @@ const DEFAULTS: UserPreferences = {
   examType: 'TYT',
   targetScore: '',
   studyHoursPerDay: '',
+  dailyQuestionTarget: '',
   hedefUniversite: '',
   hedefBolum: '',
 };
@@ -95,6 +97,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
           examType: gecerliTur(data.exam_type),
           targetScore: data.target_score != null ? String(data.target_score) : '',
           studyHoursPerDay: data.study_hours_per_day != null ? String(data.study_hours_per_day) : '',
+          dailyQuestionTarget: data.daily_question_target != null ? String(data.daily_question_target) : '',
           hedefUniversite: data.target_university ?? '',
           hedefBolum: data.target_major ?? '',
         };
@@ -158,6 +161,8 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       exam_type: p.examType,
       target_score: parseFloat(p.targetScore) || 0,
       study_hours_per_day: parseFloat(p.studyHoursPerDay) || 0,
+      // Boş bırakılırsa NULL yazılır → Koç otomatik hesaplamaya döner
+      daily_question_target: p.dailyQuestionTarget ? Math.round(Number(p.dailyQuestionTarget)) : null,
       target_university: p.hedefUniversite,
       target_major: p.hedefBolum,
     });

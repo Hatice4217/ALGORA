@@ -79,6 +79,8 @@ export interface SettingsFormState {
   exam_type: 'TYT' | 'AYT' | 'YDT';
   target_score: string;
   study_hours_per_day: string;
+  // Günlük soru hedefi — boş = Koç saat/puandan hesaplar (user_profiles.daily_question_target)
+  daily_question_target: string;
   hedef_universite: string; // user_profiles.target_university (DB, hesaba bağlı)
   hedef_bolum: string; // user_profiles.target_major (DB, hesaba bağlı)
   // Notifications section
@@ -96,6 +98,7 @@ export interface SettingsValidationErrors {
   email?: string;
   target_score?: string;
   study_hours_per_day?: string;
+  daily_question_target?: string;
   current_password?: string;
   new_password?: string;
   confirm_password?: string;
