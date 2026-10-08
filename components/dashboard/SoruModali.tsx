@@ -39,6 +39,10 @@ interface SoruModaliProps {
   cevapSec: (index: number) => void;
   soruUret: () => void;
   soruUretiliyor: boolean;
+  // Hata Sepeti telafi modu: etiket "Sıradaki Hatalı Soru" olur; bekleyen
+  // başka klon kalmadıysa buton pasif (gri) tutulur — havuzdan soru çekilmez
+  siradakiEtiket?: string;
+  siradakiPasif?: boolean;
   // V2: Sokratik ipuçları (ücretsiz, kademeli) + Üst Beyin (-1 kredi) + bildirim
   ipuclar: string[];
   acilanIpucu: number;
@@ -65,6 +69,8 @@ export function SoruModali({
   cevapSec,
   soruUret,
   soruUretiliyor,
+  siradakiEtiket,
+  siradakiPasif,
   ipuclar,
   acilanIpucu,
   ipucuAc,
@@ -350,11 +356,13 @@ export function SoruModali({
           </div>
 
           {/* Konu artık opsiyonel: "Sıradaki Soru" seçili konu olmadan da çalışır.
-              onClick inline ok: soruUret parametresiz — MouseEvent sızmasın */}
+              onClick inline ok: soruUret parametresiz — MouseEvent sızmasın.
+              Telafi modunda etiket "Sıradaki Hatalı Soru" olur ve bekleyen klon
+              kalmadıysa buton gri/pasif kalır (siradakiPasif). */}
           <button
             onClick={() => soruUret()}
-            disabled={soruUretiliyor}
-            className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
+            disabled={soruUretiliyor || siradakiPasif === true}
+            className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-400 shadow-lg shadow-purple-200"
           >
             {soruUretiliyor ? (
               <span className="flex items-center justify-center gap-3">
@@ -365,7 +373,7 @@ export function SoruModali({
                 <span>Sıradaki soru hazırlanıyor... ({beklemeSaniye} sn)</span>
               </span>
             ) : (
-              'Sıradaki Soru'
+              siradakiEtiket ?? 'Sıradaki Soru'
             )}
           </button>
         </div>

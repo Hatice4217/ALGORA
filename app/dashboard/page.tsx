@@ -119,6 +119,9 @@ export default function DashboardPage() {
   const [recentAnswers, setRecentAnswers] = useState<RecentAnswer[]>([]);
   // V2 Faz 1b: bekleyen kişisel klonlar ("Eksiklerini Kapat" banner'ı)
   const [bekleyenKlonlar, setBekleyenKlonlar] = useState<PendingClone[]>([]);
+  // Hata Sepeti telafi modu: açık soru klonsa "Sıradaki" butonu havuz yerine
+  // sıradaki telafi klonunu açar; bekleyen başka klon kalmadıysa buton grisidir.
+  const [klonModu, setKlonModu] = useState(false);
   const [gunlukSeri, setGunlukSeri] = useState(0);
   // V2 havuz akışı: oturumda görülen sorular (havuza exclude edilir — tekrar gelmesin)
   const [gorulenSorular, setGorulenSorular] = useState<string[]>([]);
@@ -360,6 +363,8 @@ export default function DashboardPage() {
   // "Son Çözülenler" kaydındaki soruyu cevaplarıyla birlikte tekrar görüntüle
   const reviewRecentAnswer = (kayit: RecentAnswer) => {
     // İnceleme modunda ipucu/Üst Beyin/bildirim state'leri taze başlasın
+    // (inceleme klon değildir — telafi modu kapalı)
+    setKlonModu(false);
     setAcilanIpucu(0);
     setUstBeyinMetni(null);
     setBildirimDurumu(null);
@@ -384,6 +389,8 @@ export default function DashboardPage() {
   // Klon sıradan soru gibi akar — cevap kaydı/istatistik/Üst Beyin aynı yoldan.
   const klonAc = (klon: PendingClone) => {
     if (isGeneratingQuestion) return;
+    // Telafi modu açılır: "Sıradaki" artık havuz değil sepet sorusu demektir
+    setKlonModu(true);
     // Taze soru: ipucu/Üst Beyin/bildirim state'leri sıfırdan başlar
     setAcilanIpucu(0);
     setUstBeyinMetni(null);
@@ -405,6 +412,14 @@ export default function DashboardPage() {
     // Klon çözülecek bir YENİ soru: süre sayacı şimdi başlar
     questionStartedAtRef.current = Date.now();
   };
+
+  // Telafi modunda sıradaki bekleyen klon (mevcut hariç — yanlış cevaplanan
+  // klon sepette kalır, doğru cevaplanan zaten listeden düşmüştür). Kalmadıysa
+  // null → "Sıradaki Hatalı Soru" butonu gri/passif olur.
+  const siradakiKlon =
+    klonModu && currentQuestion
+      ? bekleyenKlonlar.find((k) => k.id !== currentQuestion.id) ?? null
+      : null;
 
   // V2 havuz akışı: soru ARTIK üretilmez, havuzdan GETİRİLİR (kredisiz).
   // Havuzda uygun soru varsa anında döner; yoksa Gemini üretip havuza ekler.
@@ -485,6 +500,8 @@ export default function DashboardPage() {
     oncekiExclude: string[]
   ): void => {
     setCurrentQuestion(soru);
+    // Havuz/üretim sorusu → telafi modu kapalı (klon değil)
+    setKlonModu(false);
     // Soru artık ekranda: çözme süresi sayacını sıfırdan başlat
     questionStartedAtRef.current = Date.now();
     // Oturum exclude listesi (route zaten 100 id ile tavanlı)
@@ -1060,8 +1077,15 @@ export default function DashboardPage() {
           cevapGoster={showAnswer}
           seciliCevap={selectedAnswer}
           cevapSec={selectAnswer}
-          soruUret={() => generateQuestion()}
+          soruUret={() => {
+            // Telafi modunda "Sıradaki" = sıradaki hatalı soru (sepet klonu);
+            // klon yoksa buton zaten pasiftir, buraya düşemez
+            if (klonModu && siradakiKlon) klonAc(siradakiKlon);
+            else generateQuestion();
+          }}
           soruUretiliyor={isGeneratingQuestion}
+          siradakiEtiket={klonModu ? 'Sıradaki Hatalı Soru' : undefined}
+          siradakiPasif={klonModu && !siradakiKlon}
           ipuclar={currentQuestion?.hints ?? []}
           acilanIpucu={acilanIpucu}
           ipucuAc={ipucuAc}
@@ -1075,6 +1099,7 @@ export default function DashboardPage() {
           hataKapat={() => setHataMesaji(null)}
           modalKapat={() => {
             setCurrentQuestion(null);
+            setKlonModu(false);
             setShowAnswer(false);
             setSelectedAnswer(null);
             setAcilanIpucu(0);
