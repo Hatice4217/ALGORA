@@ -5,20 +5,38 @@ import { useState } from 'react';
 import { Button } from '@/app/components/ui/Button';
 import { DemoModal } from './DemoModal';
 
+// Hero'daki statik soru kartı — üründeki gerçek formatı birebir yansıtır
+// (ÖSYM 5 şık + seçili cevap + Sokratik ipucu butonu). DemoModal'daki
+// demo sorusuyla aynı soru kullanılır → vitrin ile demo tutarlı kalır.
+const HERO_SORUSU = {
+  sinav: 'TYT',
+  ders: 'Matematik',
+  konu: 'Oran-Orantı',
+  metin: "Bir sınıftaki öğrencilerin 3/5'i kız, geri kalan 12 öğrenci erkektir. Buna göre sınıftaki toplam öğrenci sayısı kaçtır?",
+  secenekler: ['24', '27', '30', '32', '36'],
+  seciliIndex: 2, // C şıkkı
+};
+
 export function HeroSection() {
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
 
   return (
-    <section className="w-full px-4 md:px-6 lg:px-8 py-20">
-      <div className="flex flex-col lg:flex-row items-center gap-12">
+    <section className="w-full px-4 md:px-6 lg:px-8 py-14 lg:py-20">
+      <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-12">
         <div className="lg:w-1/2">
-          <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
-            YKS (TYT/AYT) Hazırlığında
+          {/* Badge — hedef kitleyi tek bakışta anlatır */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-100 border border-purple-200 text-purple-700 text-sm font-semibold mb-5">
+            <span>✨</span> YKS 2027&apos;ye özel yapay zekâ koçun
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-5">
+            YKS (TYT/AYT/YDT) Hazırlığında
             <span className="text-purple-600"> AI Destekli</span> Öğrenme
           </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            Yapay zeka destekli kişiselleştirilmiş sorular, detaylı analizler ve
-            sürekli ilerleme takibi ile sınavlara en iyi şekilde hazırlan.
+          <p className="text-lg sm:text-xl text-gray-600 mb-8">
+            Kişiselleştirilmiş sorular, hedef puana göre günlük plan üreten AI Koç,
+            yanlışlarını telafi ettiren Hata Sepeti ve detaylı analizlerle
+            sınava en iyi şekilde hazırlan.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link href="/auth/register">
@@ -41,45 +59,87 @@ export function HeroSection() {
             isOpen={isDemoModalOpen}
             onClose={() => setIsDemoModalOpen(false)}
           />
-          <div className="mt-8 flex items-center gap-2">
-            <span className="text-xl">✨</span>
-            <p className="text-gray-600">
-              <span className="font-semibold text-gray-900">Ücretsiz başla</span> —
-              her gün 20 soru hakkıyla dene
-            </p>
+
+          {/* Güven şeridi — üründeki gerçek vaatler (soru çözmede sınır YOK) */}
+          <div className="mt-8 flex flex-wrap gap-2">
+            {[
+              { ikon: '♾️', etiket: 'Sınırsız soru' },
+              { ikon: '💡', etiket: '3 Sokratik ipucu' },
+              { ikon: '🧠', etiket: 'AI Koç' },
+              { ikon: '🧺', etiket: 'Hata telafisi' },
+            ].map((cip) => (
+              <span
+                key={cip.etiket}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-700 text-sm"
+              >
+                <span>{cip.ikon}</span> {cip.etiket}
+              </span>
+            ))}
           </div>
         </div>
-        <div className="lg:w-1/2">
+
+        {/* Gerçek ürün görüntüsü: soru kartı mockup'ı */}
+        <div className="lg:w-1/2 w-full max-w-lg">
           <div className="relative">
             <div className="absolute inset-0 bg-purple-200 rounded-2xl transform rotate-3"></div>
-            <div className="relative bg-white rounded-2xl shadow-xl p-8">
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <span className="text-2xl">📚</span>
-                  </div>
-                  <div>
-                    <h2 className="font-semibold">Kişiselleştirilmiş Sorular</h2>
-                    <p className="text-sm text-gray-600">Seviyene uygun sorular</p>
-                  </div>
+            <div className="relative bg-white rounded-2xl shadow-xl overflow-hidden">
+              {/* Rozet satırı — üründeki soru modalı başlığıyla aynı yapı */}
+              <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2 flex-wrap bg-gray-50/50">
+                <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-purple-100 text-purple-700">
+                  {HERO_SORUSU.sinav}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-lg text-xs font-medium bg-indigo-500 text-white">
+                  {HERO_SORUSU.ders}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600">
+                  {HERO_SORUSU.konu}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-lg text-xs font-medium bg-emerald-100 text-emerald-700">
+                  📚 Havuz
+                </span>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <p className="text-sm sm:text-base font-medium text-gray-800 leading-relaxed">
+                  {HERO_SORUSU.metin}
+                </p>
+
+                {/* 5 şık — C seçili (üründeki seçili stil) */}
+                <div className="space-y-2.5">
+                  {HERO_SORUSU.secenekler.map((secenek, index) => {
+                    const secili = index === HERO_SORUSU.seciliIndex;
+                    return (
+                      <div
+                        key={index}
+                        className={`w-full p-3 border rounded-xl flex items-center gap-3 ${
+                          secili
+                            ? 'border-purple-500 bg-purple-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <div
+                          className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                            secili
+                              ? 'bg-purple-500 text-white'
+                              : 'bg-gray-100 text-gray-500'
+                          }`}
+                        >
+                          {String.fromCharCode(65 + index)}
+                        </div>
+                        <span className="text-sm text-gray-700">{secenek}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <span className="text-2xl">📊</span>
-                  </div>
-                  <div>
-                    <h2 className="font-semibold">Detaylı Analiz</h2>
-                    <p className="text-sm text-gray-600">İlerleme takibi</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <span className="text-2xl">🎯</span>
-                  </div>
-                  <div>
-                    <h2 className="font-semibold">Hedef Odaklı</h2>
-                    <p className="text-sm text-gray-600">TYT, AYT</p>
-                  </div>
+
+                {/* Sokratik ipucu butonu — üründekiyle aynı mesaj */}
+                <div className="pt-1">
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 text-white text-sm font-semibold">
+                    💡 1. İpucu Al (ücretsiz)
+                  </span>
+                  <p className="mt-2 text-xs text-gray-400">
+                    Çözümü ifşa etmez — düşünmeyi öğretir.
+                  </p>
                 </div>
               </div>
             </div>

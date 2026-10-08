@@ -7,13 +7,13 @@ export function HowItWorksSection() {
     },
     {
       step: '2',
-      title: 'Sınav Seç',
-      description: 'TYT veya AYT seçin',
+      title: 'Hedefini Belirle',
+      description: 'TYT, AYT veya YDT seç, hedef puanını gir',
     },
     {
       step: '3',
       title: 'Çöz & Öğren',
-      description: 'Kişiselleştirilmiş soruları çözün',
+      description: 'Kişiselleştirilmiş soruları ve Sokratik ipuçlarını çöz',
     },
     {
       step: '4',
