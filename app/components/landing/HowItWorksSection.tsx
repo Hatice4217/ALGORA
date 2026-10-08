@@ -13,7 +13,7 @@ export function HowItWorksSection() {
     {
       step: '3',
       title: 'Çöz & Öğren',
-      description: 'Kişiselleştirilmiş soruları ve Sokratik ipuçlarını çöz',
+      description: 'Kişiselleştirilmiş soruları çöz, takıldığında Sokratik ipucu al',
     },
     {
       step: '4',
