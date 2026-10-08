@@ -44,3 +44,6 @@ test-gemini.tmp.js
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Soru Fabrikası yerel çıktıları (MEB PDF türevleri)
+scripts/soru-fabrikasi/cikti/
