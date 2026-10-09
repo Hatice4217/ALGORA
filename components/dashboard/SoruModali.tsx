@@ -85,16 +85,21 @@ export function ustBeyinBloklariniAyir(metin: string): UstBeyinBlok {
   return sonuc;
 }
 
-// Üst Beyin anlatım görseli: giriş cümlesi + numara rozetli adım kartları +
-// "Özet" kapanış kartı. Uzun gri paragraf denizi yerine taranabilir bloklar —
-// kısa odak süresi bilinçli tasarım kısıtıdır.
-function UstBeyinAnlatim({ metin }: { metin: string }) {
+// Bloklu anlatım görseli (Üst Beyin VE Açıklama ortak renderer'ı): giriş
+// cümlesi + numara rozetli adım kartları + "Özet" kapanış kartı. Uzun gri
+// paragraf denizi yerine taranabilir bloklar — kısa odak süresi bilinçli
+// tasarım kısıtıdır.
+function BlokluAnlatim({ metin }: { metin: string }) {
   const { giris, adimlar, ozet } = ustBeyinBloklariniAyir(metin);
 
-  // Ayrıştırılamayan biçim (ör. eski önbellek kayıtları): kırılma yok,
-  // metin olduğu gibi düz paragraf olarak basılır
+  // Ayrıştırılamayan biçim (ör. düz cümlelik MEB açıklamaları, eski önbellek
+  // kayıtları): adım kartı yok — sol kenarı mor vurgulu sade kart olarak basılır
   if (adimlar.length === 0) {
-    return <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{metin}</p>;
+    return (
+      <div className="bg-purple-50/40 border-l-4 border-purple-300 rounded-r-lg px-4 py-3">
+        <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{metin}</p>
+      </div>
+    );
   }
 
   return (
@@ -271,6 +276,14 @@ export function SoruModali({
     }, 1000);
     return () => clearInterval(timer);
   }, [soruUretiliyor]);
+
+  // Açıklama görünürlüğü: YANLIŞ cevap → KESİNLİKLE açık (öğrenci hatasını
+  // görmek zorunda); DOĞRU cevap → isteğe bağlı, kapalı başlar, öğrenci
+  // isterse "Açıklamayı Gör" ile açar. Yeni soruda her durumda sıfırlanır.
+  const [aciklamaAcik, setAciklamaAcik] = useState(false);
+  useEffect(() => {
+    setAciklamaAcik(cevapGoster && seciliCevap !== mevcutSoru.correctAnswer);
+  }, [cevapGoster, seciliCevap, mevcutSoru.correctAnswer, mevcutSoru.id]);
 
   return (
     <div
@@ -504,13 +517,29 @@ export function SoruModali({
 
               {cevapGoster && (
                 <div>
-                  <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Açıklama
-                  </h4>
-                  <p className="text-slate-600">{mevcutSoru.explanation}</p>
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <h4 className="font-semibold text-slate-800 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Açıklama
+                    </h4>
+                    {/* Doğru cevapta açıklama İSTEĞE BAĞLI: kapalı başlar, öğrenci
+                        isterse açar. Yanlışta kesin açık olduğu için düğme basılmaz. */}
+                    {seciliCevap === mevcutSoru.correctAnswer && (
+                      <button
+                        onClick={() => setAciklamaAcik((v) => !v)}
+                        className="text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors"
+                      >
+                        {aciklamaAcik ? 'Kapat' : 'Açıklamayı Gör →'}
+                      </button>
+                    )}
+                  </div>
+                  {aciklamaAcik && (
+                    <div className="mt-3 animate-adim-girisi">
+                      <BlokluAnlatim metin={mevcutSoru.explanation} />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -554,7 +583,7 @@ export function SoruModali({
                       <span className="text-lg">🧠</span>
                       Üst Beyin Anlatımı
                     </h4>
-                    <UstBeyinAnlatim metin={ustBeyinMetni} />
+                    <BlokluAnlatim metin={ustBeyinMetni} />
                   </div>
                 )}
               </div>
