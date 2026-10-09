@@ -103,10 +103,11 @@ function UstBeyinAnlatim({ metin }: { metin: string }) {
         <p className="text-slate-700 text-sm leading-relaxed">{giris.join(' ')}</p>
       )}
       <ol className="space-y-2.5">
-        {adimlar.map((adim) => (
+        {adimlar.map((adim, i) => (
           <li
             key={adim.no}
-            className="flex items-start gap-3 bg-purple-50/60 border border-purple-100 rounded-lg px-3 py-2.5"
+            style={{ animationDelay: `${i * 70}ms` }}
+            className="animate-adim-girisi flex items-start gap-3 bg-purple-50/60 border border-purple-100 rounded-lg px-3 py-2.5"
           >
             <span className="shrink-0 w-7 h-7 rounded-full bg-purple-600 text-white text-sm font-bold flex items-center justify-center">
               {adim.no}
@@ -116,7 +117,10 @@ function UstBeyinAnlatim({ metin }: { metin: string }) {
         ))}
       </ol>
       {ozet && (
-        <div className="flex items-start gap-2.5 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5">
+        <div
+          style={{ animationDelay: `${adimlar.length * 70}ms` }}
+          className="animate-adim-girisi flex items-start gap-2.5 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5"
+        >
           <span className="shrink-0 text-base leading-none pt-0.5">🎯</span>
           <p className="text-emerald-900 text-sm leading-relaxed font-medium">{ozet}</p>
         </div>
@@ -244,6 +248,18 @@ export function SoruModali({
   // MEB çıkmış soru izi → yıl rozeti (örn. "📅 2022 MEB Çıkmış")
   const mebYili = mebYiliBul(mevcutSoru.tags);
 
+  // "🎉 Doğru!" kutlama rozeti — doğru cevapta footer üstünde süzülüp solar;
+  // yanlışta kırmızı vurgu + titreme zaten var, ekstra rozet gerekmez
+  const [kutlamaGoster, setKutlamaGoster] = useState(false);
+  useEffect(() => {
+    if (!cevapGoster || seciliCevap === null) return;
+    if (seciliCevap !== mevcutSoru.correctAnswer) return;
+    setKutlamaGoster(true);
+    const zamanlayici = setTimeout(() => setKutlamaGoster(false), 1_700);
+    return () => clearTimeout(zamanlayici);
+    // cevapGoster her soruda false'a döner → yeni soruda rozet yeniden oynar
+  }, [cevapGoster, seciliCevap, mevcutSoru.correctAnswer, mevcutSoru.id]);
+
   useEffect(() => {
     if (!soruUretiliyor) {
       setBeklemeSaniye(0);
@@ -280,20 +296,20 @@ export function SoruModali({
         ].join(' ')}
       >
         {/* Modal Header — kart artık flex-col olduğundan sabit kalır (sticky değil) */}
-        <div className="shrink-0 bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <span className="px-3 py-1 rounded-lg text-sm font-bold bg-purple-100 text-purple-700">
+        <div className="shrink-0 bg-white px-3 py-3 sm:px-6 sm:py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+            <span className="px-2.5 py-1 rounded-md text-xs sm:px-3 sm:py-1 sm:rounded-lg sm:text-sm font-bold bg-gradient-to-r from-purple-600 to-cyan-500 text-white">
               {mevcutSoru.exam_type || examType}
             </span>
-            <span className={`px-3 py-1 rounded-lg text-sm font-medium ${getSubjectColor(mevcutSoru.subject || seciliDers)} text-white`}>
+            <span className={`px-2 py-0.5 rounded-md text-xs sm:px-3 sm:py-1 sm:rounded-lg sm:text-sm font-medium ${getSubjectColor(mevcutSoru.subject || seciliDers)} text-white`}>
               {mevcutSoru.subject || seciliDers}
             </span>
             {mevcutSoru.topic && mevcutSoru.topic !== 'Genel' && (
-              <span className="px-3 py-1 rounded-lg text-sm font-medium bg-slate-100 text-slate-700">
+              <span className="px-2 py-0.5 rounded-md text-xs sm:px-3 sm:py-1 sm:rounded-lg sm:text-sm font-medium bg-slate-100 text-slate-700">
                 {mevcutSoru.topic}
               </span>
             )}
-            <span className="px-3 py-1 rounded-lg text-sm font-medium bg-slate-100 text-slate-600">
+            <span className="px-2 py-0.5 rounded-md text-xs sm:px-3 sm:py-1 sm:rounded-lg sm:text-sm font-medium bg-slate-100 text-slate-600">
               {difficultyEtiketleri[mevcutSoru.difficulty ?? ''] ??
                 (seciliZorluk === 'otomatik'
                   ? 'Otomatik'
@@ -304,17 +320,17 @@ export function SoruModali({
                   : 'İleri')}
             </span>
             {mevcutSoru.source === 'pool' && (
-              <span className="px-3 py-1 rounded-lg text-sm font-medium bg-emerald-100 text-emerald-700">
+              <span className="px-2 py-0.5 rounded-md text-xs sm:px-3 sm:py-1 sm:rounded-lg sm:text-sm font-medium bg-emerald-100 text-emerald-700">
                 📚 Havuz
               </span>
             )}
             {mebYili && (
-              <span className="px-3 py-1 rounded-lg text-sm font-medium bg-teal-100 text-teal-700">
+              <span className="px-2 py-0.5 rounded-md text-xs sm:px-3 sm:py-1 sm:rounded-lg sm:text-sm font-medium bg-teal-100 text-teal-700">
                 📅 {mebYili} MEB Çıkmış
               </span>
             )}
             {mevcutSoru.source === 'generated' && (
-              <span className="px-3 py-1 rounded-lg text-sm font-medium bg-amber-100 text-amber-700">
+              <span className="px-2 py-0.5 rounded-md text-xs sm:px-3 sm:py-1 sm:rounded-lg sm:text-sm font-medium bg-amber-100 text-amber-700">
                 ✨ Yeni üretildi
               </span>
             )}
@@ -348,6 +364,9 @@ export function SoruModali({
           </div>
         </div>
 
+        {/* Marka kimliği: header altında ince gradient çizgi (mor→fuşya→camgöbeği) */}
+        <div className="shrink-0 h-[3px] bg-gradient-to-r from-purple-500 via-fuchsia-400 to-cyan-400" />
+
         {/* Gövde — mobilde/dar ekranda TEK kayan kolon (bugünkü akış korunur);
             lg ve üzerinde İKİYE BÖLÜNÜR: sol yarı soru + şıklar (asıl iş), sağ
             yarı yardım rayı (ipuçları → açıklama → Üst Beyin). Pencereler
@@ -357,7 +376,7 @@ export function SoruModali({
           className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[minmax(0,1fr)_340px]"
         >
           {/* === SOL PANEL: soru + şıklar === */}
-          <div ref={solPanelRef} className="p-4 sm:p-6 lg:h-full lg:overflow-y-auto">
+          <div ref={solPanelRef} className="p-3 sm:p-5 lg:p-6 lg:h-full lg:overflow-y-auto bg-gradient-to-br from-purple-50/40 via-white to-cyan-50/30">
           {/* Hata banner'ı (T2-UX1): modal açıkken işlem hatası (bağlantı
               kopması, API hatası) alert yerine burada tatlıca görünür */}
           {hataMesaji && (
@@ -385,7 +404,7 @@ export function SoruModali({
               className={`space-y-6 animate-soru-giris ${soruUretiliyor ? 'opacity-50 pointer-events-none select-none' : ''}`}
             >
               <div>
-                <h3 className="text-xl font-semibold text-slate-800 mb-6">
+                <h3 className="text-lg sm:text-xl font-semibold text-slate-800 leading-snug mb-4 sm:mb-6">
                   {altiCiziliMetniCevir(mevcutSoru.question)}
                 </h3>
               </div>
@@ -397,9 +416,11 @@ export function SoruModali({
 
                   if (cevapGoster) {
                     if (index === mevcutSoru.correctAnswer) {
-                      butonSinifi = 'border-emerald-500 bg-emerald-50';
+                      // Doğru şık: yeşil vurgu + tek seferlik parlayıp büyüme mikro-animasyonu
+                      butonSinifi = 'border-emerald-500 bg-emerald-50 animate-dogru-parla';
                     } else if (index === seciliCevap && index !== mevcutSoru.correctAnswer) {
-                      butonSinifi = 'border-red-400 bg-red-50';
+                      // Yanlış seçim: kırmızı vurgu + titreme (klasik shake)
+                      butonSinifi = 'border-red-400 bg-red-50 animate-shake';
                     }
                   } else if (seciliCevap === index) {
                     butonSinifi = 'border-purple-500 bg-purple-50';
@@ -410,10 +431,10 @@ export function SoruModali({
                       key={index}
                       onClick={() => cevapSec(index)}
                       disabled={cevapGoster || soruUretiliyor}
-                      className={`w-full p-4 text-left border rounded-xl transition-all disabled:cursor-not-allowed ${butonSinifi}`}
+                      className={`w-full p-3 sm:p-4 text-left border rounded-xl transition-all disabled:cursor-not-allowed ${butonSinifi}`}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <div className={`w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-full flex items-center justify-center font-bold text-sm ${
                           cevapGoster && index === mevcutSoru.correctAnswer
                             ? 'bg-emerald-500 text-white'
                             : cevapGoster && index === seciliCevap && index !== mevcutSoru.correctAnswer
@@ -422,7 +443,7 @@ export function SoruModali({
                         }`}>
                           {String.fromCharCode(65 + index)}
                         </div>
-                        <span className="flex-1 text-base text-slate-700">{altiCiziliMetniCevir(secenek)}</span>
+                        <span className="flex-1 text-sm sm:text-base text-slate-700">{altiCiziliMetniCevir(secenek)}</span>
                       </div>
                     </button>
                   );
@@ -446,13 +467,13 @@ export function SoruModali({
           {/* === SAĞ PANEL: yardım rayı — ipuçları → açıklama → Üst Beyin === */}
           <div
             ref={sagPanelRef}
-            className="p-4 sm:p-6 space-y-5 lg:h-full lg:overflow-y-auto lg:border-l lg:border-slate-200 lg:bg-slate-50/60"
+            className="p-3 sm:p-5 lg:p-6 space-y-5 lg:h-full lg:overflow-y-auto lg:border-l lg:border-slate-200 lg:bg-slate-50/60"
           >
               {/* V2: Takıldın mı? — Sokratik ipuçları (ücretsiz, kademeli açılır).
                   İpuçları çözümü ifşa etmez; sorunun ipucusu yoksa (eski havuz
                   kayıtları) kart hiç render edilmez. */}
               {!cevapGoster && ipuclar.length > 0 && (
-                <div className="bg-sky-50 border border-sky-100 rounded-xl p-4">
+                <div>
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <h4 className="font-semibold text-slate-800 flex items-center gap-2">
                       <svg className="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -460,7 +481,7 @@ export function SoruModali({
                       </svg>
                       Takıldın mı?
                     </h4>
-                    <span className="text-xs text-slate-500">Ücretsizdir — çözümü ifşa etmez, yön gösterir.</span>
+                    <span className="text-xs text-slate-400">Ücretsiz — cevabı ifşa etmez.</span>
                   </div>
                   {acilanIpucu > 0 && (
                     <ol className="mt-3 space-y-2 list-decimal list-inside">
@@ -482,7 +503,7 @@ export function SoruModali({
               )}
 
               {cevapGoster && (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <div>
                   <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
                     <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -495,7 +516,7 @@ export function SoruModali({
 
               {/* V2: Üst Beyin (Özel Hoca) — 1 kredi karşılığı adım adım derin anlatım.
                   Buton HER ZAMAN açıktır (kullanıcı kararı); ipucu kullanımına bağlı değildir. */}
-              <div className="border border-purple-200 rounded-xl p-4 bg-white">
+              <div className="pt-1">
                 {!ustBeyinMetni ? (
                   <>
                     <button
@@ -542,7 +563,16 @@ export function SoruModali({
 
         {/* Footer: bildirim + Sıradaki butonu — kartın altına sabit, kaymaz;
             öğrenci uzun anlatım okurken bile sıradaki soru hep gözünün önünde */}
-        <div className="shrink-0 border-t border-slate-200 bg-white p-4 space-y-3">
+        <div className="relative shrink-0 border-t border-slate-200 bg-white p-3 sm:p-4 space-y-3">
+          {/* "🎉 Doğru!" kutlama rozeti — footer üstünden süzülüp solar (kutlamaGoster) */}
+          {kutlamaGoster && (
+            <div className="absolute left-1/2 -translate-x-1/2 -top-4 z-10 pointer-events-none">
+              <span className="animate-kutlama-ucus inline-block px-4 py-1.5 rounded-full bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-200">
+                🎉 Doğru!
+              </span>
+            </div>
+          )}
+
           {/* V2: Hatalı soru bildirimi — kitle kaynaklı kalite kontrolü.
               2. FARKLI kullanıcının bildirimiyle soru havuzdan otomatik askıya alınır. */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -570,7 +600,7 @@ export function SoruModali({
           <button
             onClick={() => soruUret()}
             disabled={soruUretiliyor || siradakiPasif === true}
-            className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-400 shadow-lg shadow-purple-200"
+            className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600 text-white font-bold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:from-slate-400 disabled:to-slate-400 shadow-lg shadow-purple-200"
           >
             {soruUretiliyor ? (
               <span className="flex items-center justify-center gap-3">
