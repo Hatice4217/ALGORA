@@ -524,16 +524,15 @@ export function SoruModali({
                       </svg>
                       Açıklama
                     </h4>
-                    {/* Doğru cevapta açıklama İSTEĞE BAĞLI: kapalı başlar, öğrenci
-                        isterse açar. Yanlışta kesin açık olduğu için düğme basılmaz. */}
-                    {seciliCevap === mevcutSoru.correctAnswer && (
-                      <button
-                        onClick={() => setAciklamaAcik((v) => !v)}
-                        className="text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors"
-                      >
-                        {aciklamaAcik ? 'Kapat' : 'Açıklamayı Gör →'}
-                      </button>
-                    )}
+                    {/* Aç/Kapat düğmesi her cevapta var: DOĞRUda kapalı başlar
+                        (isteğe bağlı), YANLIŞTA açık başlar (kesin görülür) ama
+                        okuduktan sonra öğrenci toplayabilir. */}
+                    <button
+                      onClick={() => setAciklamaAcik((v) => !v)}
+                      className="text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors"
+                    >
+                      {aciklamaAcik ? 'Kapat' : 'Açıklamayı Gör →'}
+                    </button>
                   </div>
                   {aciklamaAcik && (
                     <div className="mt-3 animate-adim-girisi">
