@@ -229,15 +229,27 @@ CREATE POLICY "Users can update own profile"
   ON user_profiles FOR UPDATE
   USING (auth.uid() = user_id);
 
+-- Güvenlik onarımı 9 Eki (O3): deney grubu ataması kullanıcı PATCH'iyle
+-- değiştirilemesin — kolon-ayrıcalığı (yazan yalnız service-role/admin)
+REVOKE UPDATE (research_group), INSERT (research_group)
+  ON TABLE user_profiles FROM authenticated, anon;
+
 -- Questions Policies
 -- B2 onarımı (zaafiyet raporu 5 Eki): yalnız genel havuz (intended_for NULL)
 -- + kullanıcının kendi kişisel klonları görünür — başkasının klonu ifşa edilmez.
 -- Kurulum: database/questions_klon_politikasi.sql
 DROP POLICY IF EXISTS "Anyone can view questions" ON questions;
 DROP POLICY IF EXISTS "Pool public, clones private" ON questions;
+-- Güvenlik onarımı 9 Eki (O1): SELECT yalnız girişliye; genel havuzda yalnız
+-- status='active' (anon/suspended cevap anahtarı ifşası kapandı). Kendi
+-- klonları status'suz görünür (telafi akışı).
 CREATE POLICY "Pool public, clones private"
   ON questions FOR SELECT
-  USING (intended_for IS NULL OR intended_for = auth.uid());
+  TO authenticated
+  USING (
+    (intended_for IS NULL AND status = 'active')
+    OR intended_for = auth.uid()
+  );
 
 DROP POLICY IF EXISTS "Authenticated users can insert questions" ON questions;
 CREATE POLICY "Authenticated users can insert questions"
@@ -245,9 +257,12 @@ CREATE POLICY "Authenticated users can insert questions"
   WITH CHECK (auth.uid() = created_by);
 
 DROP POLICY IF EXISTS "Question creators can update own questions" ON questions;
+-- Güvenlik onarımı 9 Eki (D5): WITH CHECK — sahibin satırı başkasına
+-- devretmesi/alan manipülasyonu kapanır
 CREATE POLICY "Question creators can update own questions"
   ON questions FOR UPDATE
-  USING (auth.uid() = created_by);
+  USING (auth.uid() = created_by)
+  WITH CHECK (auth.uid() = created_by);
 
 -- Question Reports Table (V2 kitle kaynaklı kalite kontrol)
 -- 2 FARKLI kullanıcının bildirimi report_question RPC'siyle soruyu askıya alır.
@@ -517,6 +532,7 @@ AS $$
     'correct_answer',q.correct_answer,
     'explanation',   q.explanation,
     'hints',         q.hints,
+    'tags',          q.tags,
     'created_at',    q.created_at
   )
   FROM questions q

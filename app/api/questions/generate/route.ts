@@ -173,7 +173,7 @@ export async function POST(request: Request) {
     if (!apiKey) {
       console.error('GEMINI_API_KEY bulunamadı');
       return NextResponse.json(
-        { error: 'Yapay zeka servisi yapılandırılmamış. Lütfen .env.local dosyasında GEMINI_API_KEY tanımlayın.' },
+        { error: 'Yapay zeka servisi şu anda yapılandırılmamış. Lütfen daha sonra tekrar deneyin.' },
         { status: 500 }
       );
     }

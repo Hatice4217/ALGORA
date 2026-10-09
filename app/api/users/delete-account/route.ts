@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimit } from '../../../../lib/rate-limit';
 
 // POST /api/users/delete-account
 // Oturum sahibi kullanıcının şifresini doğrular, tüm verilerini ve auth kaydını kalıcı olarak siler.
@@ -31,6 +32,17 @@ export async function POST(request: NextRequest) {
     const user = userData.user;
     if (getUserError || !user || !user.email) {
       return NextResponse.json({ error: 'Oturum doğrulanamadı' }, { status: 401 });
+    }
+
+    // D1 onarımı (güvenlik taraması 9 Eki): yıkıcı endpoint — kullanıcı başına
+    // 3 deneme/saat. Token'lı saldırgan şifre denemesini buradan sürdüremesin
+    // (Supabase auth limitinden bağımsız, Upstash global katmanı).
+    const limiter = await rateLimit(`delacct:${user.id}`, 3, 60 * 60_000);
+    if (!limiter.ok) {
+      return NextResponse.json(
+        { error: `Çok fazla deneme. Lütfen ${Math.ceil(limiter.retryAfterSec / 60)} dakika sonra tekrar deneyin.` },
+        { status: 429, headers: { 'Retry-After': String(limiter.retryAfterSec) } }
+      );
     }
 
     // 2) Sağlayıcıya göre kimlik teyidi:

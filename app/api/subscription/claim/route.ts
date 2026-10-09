@@ -55,11 +55,19 @@ export async function POST(request: NextRequest) {
     );
 
     if (error) {
+      // F2 onarımı (güvenlik taraması 9 Eki): ham DB/PostgREST mesajı istemciye
+      // sızmasın — yalnız bizim sabit mesajlarımız döner; detay loglanır.
       const status = error.code === 'PENDING_EXISTS' ? 409 : 500;
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status }
-      );
+      if (status === 500) {
+        console.error('subscription claim DB hatası:', error.code, error.message);
+      }
+      const mesaj =
+        error.code === 'PENDING_EXISTS'
+          ? 'Zaten onay bekleyen bir talebiniz var. Lütfen yanıtlanmasını bekleyin.'
+          : error.code === 'NO_CONNECTION'
+          ? 'Bağlantı kurulamadı. Lütfen tekrar deneyin.'
+          : 'Talep oluşturulamadı';
+      return NextResponse.json({ error: mesaj, code: error.code }, { status });
     }
 
     return NextResponse.json({ data }, { status: 201 });

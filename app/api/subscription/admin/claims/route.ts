@@ -31,13 +31,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Talepler alınamadı' }, { status: 500 });
     }
 
-    // Kullanıcı e-postalarını eşle (admin özet görünümü için)
+    // Kullanıcı e-postalarını eşle (admin özet görünümü için).
+    // F9 onarımı (güvenlik taraması 9 Eki): tek seferlik 1000'lik çağrı yerine
+    // sayfa döngüsü — 1000+ kullanıcıda e-posta eşlemesi sessiz eksik kalmasın.
     let emailMap: Record<string, string> = {};
     try {
-      const { data: usersData } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
-      emailMap = Object.fromEntries(
-        (usersData?.users ?? []).map((u) => [u.id, u.email ?? ''])
-      );
+      const PER_PAGE = 1000;
+      const MAX_SAYFA = 20; // 20k kullanıcı tavanı — ötesi bilinçli kesim
+      const eslesmeler: [string, string][] = [];
+      for (let sayfa = 1; sayfa <= MAX_SAYFA; sayfa++) {
+        const { data: usersData } = await adminClient.auth.admin.listUsers({
+          page: sayfa,
+          perPage: PER_PAGE,
+        });
+        const liste = usersData?.users ?? [];
+        eslesmeler.push(...liste.map((u) => [u.id, u.email ?? ''] as [string, string]));
+        if (liste.length < PER_PAGE) break;
+      }
+      emailMap = Object.fromEntries(eslesmeler);
     } catch (e) {
       console.error('admin claims: kullanıcı listesi alınamadı:', e);
     }

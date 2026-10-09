@@ -51,20 +51,47 @@ export async function POST(request: NextRequest) {
 
     const now = new Date();
 
+    // F4 onarımı (güvenlik taraması 9 Eki): koşullu UPDATE = atomik kapı.
+    // "status='pending' iken güncelle" — 0 satır dönerse başka bir onay yarışı
+    // kazanmıştır → çift plan_change/abonelik verilmesi olanaksızlaşır.
     if (action === 'reject') {
-      const { error: updateError } = await adminClient
+      const { data: kazanan, error: updateError } = await adminClient
         .from('payment_claims')
         .update({ status: 'rejected', reviewed_at: now.toISOString() })
-        .eq('id', claimId);
+        .eq('id', claimId)
+        .eq('status', 'pending')
+        .select('id')
+        .maybeSingle();
       if (updateError) {
         console.error('admin review reject hatası:', updateError.message);
         return NextResponse.json({ error: 'Talep güncellenemedi' }, { status: 500 });
       }
+      if (!kazanan) {
+        return NextResponse.json({ error: 'Bu talep zaten değerlendirilmiş' }, { status: 409 });
+      }
       return NextResponse.json({ success: true, status: 'rejected' });
     }
 
+    // Approve: ÖNCE talebi koşullu olarak 'approved' işaretle (atomik kapı).
+    // Kazanılamazsa yarış kaybedildi → 409; kazanıldıysa abonelik yazımı tek
+    // kez yapılır (tekrar çağrı pending bulamaz).
+    const { data: kapildi, error: kilitlemeHatasi } = await adminClient
+      .from('payment_claims')
+      .update({ status: 'approved', reviewed_at: now.toISOString() })
+      .eq('id', claimId)
+      .eq('status', 'pending')
+      .select('id, user_id, plan')
+      .maybeSingle();
+    if (kilitlemeHatasi) {
+      console.error('admin review approve hatası (claim kilidi):', kilitlemeHatasi.message);
+      return NextResponse.json({ error: 'Talep güncellenemedi' }, { status: 500 });
+    }
+    if (!kapildi) {
+      return NextResponse.json({ error: 'Bu talep zaten değerlendirilmiş' }, { status: 409 });
+    }
+
     // 2) Approve: satın alma süresi (paid_until) +1 ay; kota dönemi günlük (+1 gün)
-    const plan = claim.plan as 'pro' | 'premium';
+    const plan = kapildi.plan as 'pro' | 'premium';
     const limit = PLAN_LIMITS[plan]; // günlük kredi (pro/premium: 20)
     const paidUntil = new Date(now);
     paidUntil.setMonth(paidUntil.getMonth() + 1);
@@ -74,7 +101,7 @@ export async function POST(request: NextRequest) {
     const { data: subscription, error: subError } = await adminClient
       .from('subscriptions')
       .upsert({
-        user_id: claim.user_id,
+        user_id: kapildi.user_id,
         plan,
         status: 'active',
         credits_remaining: limit,
@@ -93,23 +120,13 @@ export async function POST(request: NextRequest) {
 
     // 3) plan_change transaction kaydı (+limit)
     const { error: txError } = await adminClient.from('credit_transactions').insert({
-      user_id: claim.user_id,
+      user_id: kapildi.user_id,
       amount: limit,
       reason: 'plan_change',
     });
     if (txError) {
       // Kritik değil — logla, akışı engelleme
       console.error('admin review: plan_change kaydı yazılamadı:', txError.message);
-    }
-
-    // 4) Talebi onaylandı işaretle
-    const { error: updateError } = await adminClient
-      .from('payment_claims')
-      .update({ status: 'approved', reviewed_at: now.toISOString() })
-      .eq('id', claimId);
-    if (updateError) {
-      console.error('admin review approve hatası (claim):', updateError.message);
-      return NextResponse.json({ error: 'Talep güncellenemedi' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, status: 'approved', data: { subscription } });

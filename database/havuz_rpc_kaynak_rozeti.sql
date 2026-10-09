@@ -4,8 +4,11 @@
 -- get_next_pool_question artık q.tags de döndürür; /next rotası istemciye
 -- taşır, SoruModali MEB çıkmış sorularında "📅 2022 Çıkmış" rozeti basar.
 -- CREATE OR REPLACE → idempotent, davranış başka hiçbir şekilde değişmez
--- (WHERE/ORDER/LIMIT birebir korunur; SECURITY DEFINER + üçlü REVOKE zaten
--- function sahibi değişmediği için aynen geçerli).
+-- (WHERE/ORDER/LIMIT birebir korunur).
+-- DİKKAT (güvenlik taraması 9 Eki, O4): OR REPLACE ACL'i korur ama taze
+-- kurulumda / fonksiyon drop-edilip-yeniden-doğarsa Supabase
+-- default-privilege tuzağı SECURITY DEFINER RPC'yi anon/auth'a AÇIK
+-- bırakır → aşağıdaki üçlü REVOKE bloğu dosyanın içinde gömülüdür.
 
 CREATE OR REPLACE FUNCTION get_next_pool_question(
   p_user_id uuid,
@@ -51,3 +54,9 @@ AS $$
   ORDER BY (q.hints IS NOT NULL) DESC, random()
   LIMIT 1
 $$;
+
+-- Üçlü REVOKE (O4): SECURITY DEFINER RPC anon/authenticatedın EXECUTEına kapalı kalsın
+REVOKE EXECUTE ON FUNCTION get_next_pool_question(uuid, text, text, text, text, uuid[])
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_next_pool_question(uuid, text, text, text, text, uuid[])
+  TO service_role;
