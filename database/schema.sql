@@ -234,6 +234,36 @@ CREATE POLICY "Users can update own profile"
 REVOKE UPDATE (research_group), INSERT (research_group)
   ON TABLE user_profiles FROM authenticated, anon;
 
+-- O3 ikinci onarım (10 Eki, database/o3_research_group_tetikleyici.sql):
+-- REVOKE canlıda grantor-uyumsuzluğu nedeniyle ETKİSİZ kaldı (probe: PATCH 204)
+-- → grantor'dan bağımsız BEFORE INSERT/UPDATE tetikleyici; research_group'u
+-- yalnız service_role/postgres/supabase_admin değiştirir, diğerleri 42501 alır.
+CREATE OR REPLACE FUNCTION koru_research_group() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE
+  eski text;
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    eski := OLD.research_group;
+  ELSE
+    eski := NULL;
+  END IF;
+
+  IF NEW.research_group IS DISTINCT FROM eski
+     AND current_user NOT IN ('service_role', 'postgres', 'supabase_admin') THEN
+    RAISE EXCEPTION 'research_group alani yalnizca yonetici tarafindan degistirilebilir'
+      USING ERRCODE = '42501';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS koru_research_group_trg ON user_profiles;
+CREATE TRIGGER koru_research_group_trg
+  BEFORE INSERT OR UPDATE ON user_profiles
+  FOR EACH ROW EXECUTE FUNCTION koru_research_group();
+
 -- Questions Policies
 -- B2 onarımı (zaafiyet raporu 5 Eki): yalnız genel havuz (intended_for NULL)
 -- + kullanıcının kendi kişisel klonları görünür — başkasının klonu ifşa edilmez.
