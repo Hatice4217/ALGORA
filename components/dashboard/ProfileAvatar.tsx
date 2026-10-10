@@ -7,6 +7,7 @@
 // ===================================
 
 import { useEffect, useRef, useState } from 'react';
+import { TemaDegistir } from '@/components/TemaDegistir';
 
 interface ProfileAvatarProps {
   userName: string | null;
@@ -89,6 +90,11 @@ export function ProfileAvatar({
                 {creditsRemaining ?? '—'} / {creditsLimit ?? '—'}
               </span>
             </div>
+          </div>
+
+          {/* Görünüm (koyu/açık tema) — kredi bloğu ile çıkış arasında */}
+          <div className="px-2 mt-1">
+            <TemaDegistir variant="row" />
           </div>
 
           {/* Çıkış — kibar, ince kırmızı link (belirgin buton DEĞİL) */}

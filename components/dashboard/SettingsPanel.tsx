@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTheme } from 'next-themes';
 import { Button } from '../../app/components/ui/Button';
 import { Input } from '../../app/components/ui/Input';
 import { Select } from '../../app/components/ui/Select';
@@ -30,6 +31,13 @@ const LANGUAGES = [
   { value: 'tr', label: 'Türkçe' },
   { value: 'en', label: 'English' },
 ];
+
+// Gerçek temayı localStorage'dan (next-themes) oku — DB'deki değer yalnız yazılır,
+// geri okunmaz (cihaz tercihi ezilmesin + başka cihazda flash olmasın)
+function gercekTema(resolvedTheme: string | undefined, mounted: boolean): 'light' | 'dark' {
+  if (!mounted || resolvedTheme !== 'dark') return 'light';
+  return 'dark';
+}
 
 // Section card definitions
 const SECTIONS = [
@@ -65,6 +73,9 @@ const SECTIONS = [
 
 export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) => void }) {
   const { toast, showToast, hideToast } = useToast();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   // Global sınav tercihleri (UserPreferencesProvider) — Sınav Hedefleri formu buraya yazar,
   // Genel Bakış'taki rozet anında okur
   const { preferences, hydrated, savePreferences } = useUserPreferences();
@@ -575,8 +586,12 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
                 <Select
                   label="Tema"
                   options={THEMES}
-                  value={formData.theme}
-                  onChange={(e) => handleInputChange('theme', e.target.value)}
+                  value={gercekTema(resolvedTheme, mounted)}
+                  onChange={(e) => {
+                    // Tema ANINDA uygulanır (next-themes); DB yazımı Kaydet akışıyla sürer
+                    setTheme(e.target.value);
+                    handleInputChange('theme', e.target.value);
+                  }}
                   placeholder="Tema seçin"
                 />
 

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -55,6 +56,7 @@ export default function RootLayout({
   return (
     <html
       lang="tr"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
@@ -74,12 +76,23 @@ export default function RootLayout({
             .mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}
             .py-4{padding-top:1rem;padding-bottom:1rem}.py-20{padding-top:5rem;padding-bottom:5rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}
             @media (max-width:768px){.hidden{display:none}}
+            html.dark body{background:#0a0a0a;color:#e2e8f0}
           `
         }} />
 
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+          storageKey="algora_theme"
+        >
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

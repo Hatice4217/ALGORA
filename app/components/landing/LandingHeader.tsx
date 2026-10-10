@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Logo } from '@/app/components/ui/Logo';
 import { Button } from '@/app/components/ui/Button';
 import { MobileMenu, HamburgerButton } from '@/components/MobileMenu';
+import { TemaDegistir } from '@/components/TemaDegistir';
 import { scrollToElementId } from '@/lib/smooth-scroll';
 
 export function LandingHeader() {
@@ -48,8 +49,9 @@ export function LandingHeader() {
             </a>
           </div>
 
-          {/* Desktop Auth Buttons */}
+          {/* Desktop: Tema anahtarı + Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
+            <TemaDegistir />
             <Link href="/auth/login">
               <Button variant="ghost" size="md">
                 Giriş Yap
@@ -62,11 +64,14 @@ export function LandingHeader() {
             </Link>
           </div>
 
-          {/* Mobile Hamburger Button */}
-          <HamburgerButton
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            isOpen={isMobileMenuOpen}
-          />
+          {/* Mobile: Tema anahtarı + Hamburger Button */}
+          <div className="flex md:hidden items-center gap-1">
+            <TemaDegistir />
+            <HamburgerButton
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              isOpen={isMobileMenuOpen}
+            />
+          </div>
         </div>
       </nav>
 

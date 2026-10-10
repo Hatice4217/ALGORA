@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { authHelpers } from '@/lib/supabase';
 import { Logo } from '../../components/ui/Logo';
+import { TemaDegistir } from '@/components/TemaDegistir';
 import {
   validateEmail,
   validatePassword,
@@ -269,6 +270,11 @@ export default function RegisterPage() {
         </svg>
         Ana Sayfa
       </Link>
+
+      {/* Tema anahtarı — Ana Sayfa'nın sağ aynası */}
+      <div className="absolute top-4 right-6">
+        <TemaDegistir />
+      </div>
 
       <main className="max-w-md w-full">
         {/* Logo */}

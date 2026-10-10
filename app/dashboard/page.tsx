@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Logo } from '../components/ui/Logo';
 import { MobileMenu, HamburgerButton } from '../../components/MobileMenu';
+import { TemaDegistir } from '../../components/TemaDegistir';
 import { hesaplaGunlukSeri } from '../../lib/utils';
 import { authHelpers, dbHelpers } from '../../lib/supabase';
 import { StatisticsCards } from '../../components/dashboard/StatisticsCards';
@@ -943,6 +944,9 @@ export default function DashboardPage() {
                 </button>
               </li>
             )}
+            <li>
+              <TemaDegistir variant="row" />
+            </li>
             <li>
               <button
                 onClick={() => {

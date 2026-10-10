@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { authHelpers } from '@/lib/supabase';
 import { Logo } from '../../components/ui/Logo';
+import { TemaDegistir } from '@/components/TemaDegistir';
 import { validateEmail, sanitizeInput, loginRateLimiter } from '@/lib/security';
 
 // Hesap bazlı kilit (3 yanlış deneme → 1 saat): sunucu 429 + lockedUntil döner,
@@ -353,6 +354,11 @@ export default function LoginPage() {
         </svg>
         Ana Sayfa
       </Link>
+
+      {/* Tema anahtarı — Ana Sayfa'nın sağ aynası */}
+      <div className="absolute top-6 right-6">
+        <TemaDegistir />
+      </div>
 
       <main className="max-w-md w-full">
         {/* Logo */}

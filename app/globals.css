@@ -2,6 +2,10 @@
 @import "tailwindcss/preflight" layer(base);
 @import "tailwindcss/utilities" layer(utilities);
 
+/* Karanlık tema — next-themes html'e .dark class'ı ekler (class-stratejisi).
+   prefers-color-scheme KULLANILMAZ: manuel "Açık" seçimi sistem koyusunu ezemiyor. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #fff;
   --foreground: #171717
@@ -14,11 +18,9 @@
   --font-mono: var(--font-geist-mono)
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed
-  }
+.dark {
+  --background: #0a0a0a;
+  --foreground: #e2e8f0
 }
 
 body {
@@ -92,6 +94,19 @@ html {
 
 .thin-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #9ca3af; /* gray-400 */
+}
+
+/* Karanlık temada ince kaydırma çubuğu */
+.dark .thin-scrollbar {
+  scrollbar-color: #475569 transparent; /* slate-600 */
+}
+
+.dark .thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #475569; /* slate-600 */
+}
+
+.dark .thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #64748b; /* slate-500 */
 }
 
 /* Toast giriş animasyonu (Hedef tamamlandı bildirimi) */

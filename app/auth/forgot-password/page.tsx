@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Logo } from '../../components/ui/Logo';
+import { TemaDegistir } from '@/components/TemaDegistir';
 import { validateEmail, sanitizeInput } from '@/lib/security';
 import { dbHelpers } from '@/lib/supabase';
 
@@ -118,6 +119,11 @@ export default function ForgotPasswordPage() {
         </svg>
         Ana Sayfa
       </Link>
+
+      {/* Tema anahtarı — Ana Sayfa'nın sağ aynası */}
+      <div className="absolute top-4 right-6">
+        <TemaDegistir />
+      </div>
 
       <main className="max-w-md w-full">
         {/* Logo */}
