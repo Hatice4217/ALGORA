@@ -35,7 +35,7 @@ const DURUM_DOSYASI = 'scripts/soru-fabrikasi/cikti/dogrulama_backfill_durum.jso
 const CSV_DOSYASI = 'scripts/soru-fabrikasi/cikti/dogrulama_kalibrasyon.csv';
 const GERCEK_YAZIM = process.argv.includes('--yaz');
 
-const ISTEK_ARASI_BEKLEME_MS = 30_000; // soru başına 5 paralel çağrı → ~10 istek/dk (ücretsiz katman RPM nezaketi)
+const ISTEK_ARASI_BEKLEME_MS = 75_000; // soru başına 5 paralel çağrı → ~4 istek/dk ort., 5'li burst (gemini-flash-latest ücretsiz katman RPM dar: 10/dk — 30sn'de 429'a düşüyordu)
 const BEKLE_429_MS = 60_000;
 const MAX_429_DENEME = 5;
 // Art arda bu kadar soru TÜMÜ-429'la dönerse kota dolu demektir: 90 soru ×

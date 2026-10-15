@@ -12,11 +12,20 @@ function OzellikListesi({ ozellikler }: { ozellikler: string[] }) {
     <ul className="space-y-3 mb-8">
       {ozellikler.map((feature, index) => {
         const aciklama = ozellikAciklamasi(feature);
+        // "(Yakında)" maddeler onay işaretiyle DEĞİL saat ikonuyla gösterilir —
+        // ✓ işareti "dahil" izlenimi verir, saat "henüz gelmedi" der.
+        const yakinda = feature.endsWith('(Yakında)');
         return (
           <li key={index} className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-            </svg>
+            {yakinda ? (
+              <svg className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            )}
             <div>
               <span className="text-gray-700 dark:text-slate-300 text-sm font-medium">{feature}</span>
               {aciklama && <p className="text-gray-500 dark:text-slate-400 text-xs mt-0.5">{aciklama}</p>}

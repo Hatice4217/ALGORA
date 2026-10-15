@@ -76,7 +76,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
 // features dizileriyle birebir eşleşir; eşleşmeyen madde açıklamasız kalır.
 const PLAN_OZELLIK_ACIKLAMALARI: Record<string, string> = {
   'Havuzdan Soru Çözme: Sınırsız':
-    'Binlerce onaylanmış soruluk havuzdan dilediğiniz kadar soru çözersiniz — kredi harcamaz.',
+    'Yapay zekâ ile üretilen ve doğrulanan soru havuzundan dilediğiniz kadar soru çözersiniz — kredi harcamaz.',
   '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz':
     'Takıldığınız soruda çözümü ifşa etmeyen, sizi adım adım düşündüren 3 kademeli ipucu.',
   'Platform arayüzüne tam erişim':
