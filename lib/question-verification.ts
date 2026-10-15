@@ -244,7 +244,21 @@ export async function soruyuDogrula(params: {
   const n_eff = gecerli.length;
 
   if (n_eff === 0) {
-    throw new GeminiUpstreamError('Doğrulama yapılamadı', 502);
+    // Altyapı arızası — fail-closed. Ancak durum kodunu KORU: tüm çözümler
+    // 429'a düştüyse 429 fırlat (backfill'in bekle-tekrar döngüsü kota
+    // nabzına göre bekler; 502'ye sarılırsa bu şans kaybolur).
+    const hepsi429 =
+      denemeler.length > 0 &&
+      denemeler.every(
+        (d) =>
+          d.status === 'rejected' &&
+          d.reason instanceof GeminiUpstreamError &&
+          d.reason.status === 429
+      );
+    throw new GeminiUpstreamError(
+      hepsi429 ? 'Doğrulayıcı kullanım limiti aşıldı' : 'Doğrulama yapılamadı',
+      hepsi429 ? 429 : 502
+    );
   }
 
   const k = gecerli.filter((i) => i === params.correctAnswer).length;

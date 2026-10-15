@@ -35,9 +35,13 @@ const DURUM_DOSYASI = 'scripts/soru-fabrikasi/cikti/dogrulama_backfill_durum.jso
 const CSV_DOSYASI = 'scripts/soru-fabrikasi/cikti/dogrulama_kalibrasyon.csv';
 const GERCEK_YAZIM = process.argv.includes('--yaz');
 
-const ISTEK_ARASI_BEKLEME_MS = 1_000;
+const ISTEK_ARASI_BEKLEME_MS = 30_000; // soru başına 5 paralel çağrı → ~10 istek/dk (ücretsiz katman RPM nezaketi)
 const BEKLE_429_MS = 60_000;
 const MAX_429_DENEME = 5;
+// Art arda bu kadar soru TÜMÜ-429'la dönerse kota dolu demektir: 90 soru ×
+// 5 deneme × 60 sn bekleme yerine çalışmayı kibarca durdur (resume sonraki
+// günde kalanları tekrar dener).
+const KOTA_DOLU_ESIK = 3;
 
 // Durum dosyası: id → doğrulama sonucu (yazildi=false → --yaz çalışması yazar)
 interface DurumGirdisi {
@@ -124,6 +128,8 @@ async function main() {
     : {};
 
   let islenen = 0;
+  let ustUste429 = 0;
+  let kotaDolu = false;
   for (const q of adaylar) {
     islenen++;
     const iz = izBul(q.tags);
@@ -148,9 +154,23 @@ async function main() {
         choices: q.choices,
         correctAnswer: q.correct_answer,
       });
+      ustUste429 = 0;
     } catch (e) {
       const mesaj = e instanceof Error ? e.message : String(e);
       console.log(`✗ arıza: ${mesaj}`);
+
+      // TÜMÜ-429 art arda KOTA_DOLU_ESIK soruyu aşarsa kota dolu: dur
+      if (e instanceof GeminiUpstreamError && e.status === 429) {
+        ustUste429++;
+        if (ustUste429 >= KOTA_DOLU_ESIK) {
+          console.log(`\n⛔ ${KOTA_DOLU_ESIK} soru üst üste kullanım limitine çarptı — doğrulayıcı kotası dolu görünüyor.`);
+          console.log('   Çalışma durduruldu; kota resetlenince yeniden çalıştırın (resume kalanları tekrar dener).');
+          kotaDolu = true;
+          break;
+        }
+      } else {
+        ustUste429 = 0;
+      }
       durum[q.id] = {
         ...(onceki ?? {}),
         iz,
@@ -234,6 +254,7 @@ async function main() {
 
   console.log(`\n📊 Kalibrasyon CSV: ${CSV_DOSYASI} (${dogrulanmis.length} satır, U artan sıralı)`);
   console.log(`   Bant dağılımı: ${JSON.stringify(bantSayaci)} | arızalı: ${hataSayisi} (sonraki çalışmada yeniden denenir)`);
+  if (kotaDolu) console.log('   ⛔ Çalışma KOTA DOLU nedeniyle erken durduruldu — kalan sorular resume ile sonra denenir.');
   if (!GERCEK_YAZIM) console.log("   🔵 DRY-RUN — DB'ye yazılmadı; --yaz ile bantlar PATCH edilir.");
 }
 
