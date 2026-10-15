@@ -55,16 +55,16 @@ export function MobileMenu({ isOpen, onClose, children }: MobileMenuProps) {
 
       {/* Mobile Menu Panel */}
       <div
-        className={`md:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white z-50 transform transition-transform duration-300 ease-in-out shadow-2xl gpu-accel will-change-transform ${
+        className={`md:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white dark:bg-slate-900 z-50 transform transition-transform duration-300 ease-in-out shadow-2xl gpu-accel will-change-transform ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Menu Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <span className="text-lg font-semibold text-gray-900">Menü</span>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-slate-700">
+          <span className="text-lg font-semibold text-gray-900 dark:text-slate-100">Menü</span>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-900 transition-colors p-2 hover:bg-gray-100 rounded-lg"
+            className="text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100 transition-colors p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg"
             aria-label="Kapat"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,7 +89,7 @@ export function MobileMenu({ isOpen, onClose, children }: MobileMenuProps) {
                     e.preventDefault();
                     handleLinkClick('#features');
                   }}
-                  className="block px-4 py-3 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all font-medium"
+                  className="block px-4 py-3 text-gray-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all font-medium"
                 >
                   Özellikler
                 </a>
@@ -101,7 +101,7 @@ export function MobileMenu({ isOpen, onClose, children }: MobileMenuProps) {
                     e.preventDefault();
                     handleLinkClick('#how-it-works');
                   }}
-                  className="block px-4 py-3 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all font-medium"
+                  className="block px-4 py-3 text-gray-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all font-medium"
                 >
                   Nasıl Çalışır?
                 </a>
@@ -113,7 +113,7 @@ export function MobileMenu({ isOpen, onClose, children }: MobileMenuProps) {
                     e.preventDefault();
                     handleLinkClick('#pricing');
                   }}
-                  className="block px-4 py-3 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all font-medium"
+                  className="block px-4 py-3 text-gray-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all font-medium"
                 >
                   Fiyatlandırma
                 </a>
@@ -121,7 +121,7 @@ export function MobileMenu({ isOpen, onClose, children }: MobileMenuProps) {
             </ul>
 
             {/* Divider */}
-            <div className="my-6 border-t border-gray-200" />
+            <div className="my-6 border-t border-gray-200 dark:border-slate-800" />
 
             {/* Auth Links */}
             <ul className="space-y-2">
@@ -129,7 +129,7 @@ export function MobileMenu({ isOpen, onClose, children }: MobileMenuProps) {
                 <Link
                   href="/auth/login"
                   onClick={() => handleLinkClick('/auth/login')}
-                  className="block px-4 py-3 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all font-medium"
+                  className="block px-4 py-3 text-gray-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all font-medium"
                 >
                   Giriş Yap
                 </Link>
@@ -138,7 +138,7 @@ export function MobileMenu({ isOpen, onClose, children }: MobileMenuProps) {
                 <Link
                   href="/auth/register"
                   onClick={() => handleLinkClick('/auth/register')}
-                  className="block px-4 py-3 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all font-medium"
+                  className="block px-4 py-3 text-gray-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all font-medium"
                 >
                   Kayıt Ol
                 </Link>
@@ -149,35 +149,35 @@ export function MobileMenu({ isOpen, onClose, children }: MobileMenuProps) {
           )}
 
           {/* Footer Info */}
-          <div className="px-6 py-6 border-t border-gray-200 bg-gray-50">
+          <div className="px-6 py-6 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
             <div className="space-y-3">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-slate-300">
                 <strong>ALGORA</strong> - AI destekli öğrenme platformu
               </p>
-              <div className="flex gap-4 text-xs text-gray-500">
+              <div className="flex gap-4 text-xs text-gray-500 dark:text-slate-400">
                 <Link
                   href="/legal/privacy"
                   onClick={() => handleLinkClick('/legal/privacy')}
-                  className="hover:text-purple-600 transition"
+                  className="hover:text-purple-600 dark:hover:text-purple-400 transition"
                 >
                   Gizlilik
                 </Link>
                 <Link
                   href="/legal/terms"
                   onClick={() => handleLinkClick('/legal/terms')}
-                  className="hover:text-purple-600 transition"
+                  className="hover:text-purple-600 dark:hover:text-purple-400 transition"
                 >
                   Şartlar
                 </Link>
                 <Link
                   href="/legal/cookies"
                   onClick={() => handleLinkClick('/legal/cookies')}
-                  className="hover:text-purple-600 transition"
+                  className="hover:text-purple-600 dark:hover:text-purple-400 transition"
                 >
                   Çerezler
                 </Link>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-slate-400">
                 © 2026 ALGORA. Tüm hakları saklıdır.
               </p>
             </div>
@@ -193,24 +193,24 @@ export function HamburgerButton({ onClick, isOpen }: { onClick: () => void; isOp
   return (
     <button
       onClick={onClick}
-      className={`flex md:!hidden flex-col items-center justify-center gap-1.5 p-2 rounded-lg transition-all hover:bg-gray-100 gpu-accel will-change-shadow ${
-        isOpen ? 'bg-gray-100' : ''
+      className={`flex md:!hidden flex-col items-center justify-center gap-1.5 p-2 rounded-lg transition-all hover:bg-gray-100 dark:hover:bg-slate-800 gpu-accel will-change-shadow ${
+        isOpen ? 'bg-gray-100 dark:bg-slate-800' : ''
       }`}
       aria-label={isOpen ? 'Menüyü Kapat' : 'Menüyü Aç'}
       aria-expanded={isOpen}
     >
       <span
-        className={`w-6 h-0.5 bg-gray-700 rounded-full transition-all duration-300 gpu-accel will-change-transform ${
+        className={`w-6 h-0.5 bg-gray-700 dark:bg-slate-300 rounded-full transition-all duration-300 gpu-accel will-change-transform ${
           isOpen ? 'rotate-45 translate-y-1' : ''
         }`}
       />
       <span
-        className={`w-6 h-0.5 bg-gray-700 rounded-full transition-all duration-300 gpu-accel will-change-opacity ${
+        className={`w-6 h-0.5 bg-gray-700 dark:bg-slate-300 rounded-full transition-all duration-300 gpu-accel will-change-opacity ${
           isOpen ? 'opacity-0' : ''
         }`}
       />
       <span
-        className={`w-6 h-0.5 bg-gray-700 rounded-full transition-all duration-300 gpu-accel will-change-transform ${
+        className={`w-6 h-0.5 bg-gray-700 dark:bg-slate-300 rounded-full transition-all duration-300 gpu-accel will-change-transform ${
           isOpen ? '-rotate-45 -translate-y-1' : ''
         }`}
       />

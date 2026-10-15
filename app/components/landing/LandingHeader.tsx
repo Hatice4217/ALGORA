@@ -29,21 +29,21 @@ export function LandingHeader() {
             <a
               href="#features"
               onClick={(e) => handleSmoothScroll(e, 'features')}
-              className="text-gray-600 hover:text-purple-600 transition"
+              className="text-gray-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 transition"
             >
               Özellikler
             </a>
             <a
               href="#how-it-works"
               onClick={(e) => handleSmoothScroll(e, 'how-it-works')}
-              className="text-gray-600 hover:text-purple-600 transition"
+              className="text-gray-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 transition"
             >
               Nasıl Çalışır?
             </a>
             <a
               href="#pricing"
               onClick={(e) => handleSmoothScroll(e, 'pricing')}
-              className="text-gray-600 hover:text-purple-600 transition"
+              className="text-gray-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 transition"
             >
               Fiyatlandırma
             </a>
@@ -64,8 +64,9 @@ export function LandingHeader() {
             </Link>
           </div>
 
-          {/* Mobile: Tema anahtarı + Hamburger Button */}
-          <div className="flex md:hidden items-center gap-1">
+          {/* Mobile: Tema anahtarı + Hamburger Button
+              (md:!hidden — önemli: flex+md:hidden important'sız yazışırsa masaüstünde gizlenmeyebilir) */}
+          <div className="flex md:!hidden items-center gap-1">
             <TemaDegistir />
             <HamburgerButton
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

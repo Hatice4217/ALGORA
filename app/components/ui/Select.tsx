@@ -30,7 +30,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label
             htmlFor={selectId}
-            className="block text-sm font-medium text-gray-700 mb-1.5"
+            className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5"
           >
             {label}
           </label>
@@ -41,11 +41,11 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             id={selectId}
             className={cn(
               'block w-full appearance-none rounded-lg border',
-              'px-4 py-2.5 pr-10 text-gray-900',
+              'px-4 py-2.5 pr-10 text-gray-900 dark:text-slate-100',
               'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent',
-              'disabled:bg-gray-100 disabled:cursor-not-allowed',
-              'bg-white',
-              error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300',
+              'disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed',
+              'bg-white dark:bg-slate-900',
+              error ? 'border-red-300 dark:border-red-500/50 focus:ring-red-500' : 'border-gray-300 dark:border-slate-700',
               className
             )}
             {...props}
@@ -65,7 +65,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           </select>
           <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
             <svg
-              className="h-5 w-5 text-gray-400"
+              className="h-5 w-5 text-gray-400 dark:text-slate-400"
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
               fill="currentColor"
@@ -80,10 +80,10 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           </div>
         </div>
         {error && (
-          <p className="mt-1 text-sm text-red-600">{error}</p>
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>
         )}
         {helperText && !error && (
-          <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{helperText}</p>
         )}
       </div>
     );

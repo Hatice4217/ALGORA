@@ -136,10 +136,10 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center px-6 py-4 relative">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center px-6 py-4 relative">
       <Link
         href="/"
-        className="absolute top-4 left-6 text-gray-600 hover:text-purple-600 transition-colors text-sm font-medium flex items-center gap-1"
+        className="absolute top-4 left-6 text-gray-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-sm font-medium flex items-center gap-1"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -159,7 +159,7 @@ export default function ResetPasswordPage() {
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6">
           {!sessionChecked && (
             <div className="text-center py-6 space-y-4">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full animate-pulse">
@@ -167,7 +167,7 @@ export default function ResetPasswordPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </div>
-              <h1 className="text-xl font-bold text-gray-900">Bağlantı doğrulanıyor...</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">Bağlantı doğrulanıyor...</h1>
             </div>
           )}
 
@@ -178,8 +178,8 @@ export default function ResetPasswordPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Bağlantı Geçersiz</h1>
-              <p className="text-gray-600 text-sm">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Bağlantı Geçersiz</h1>
+              <p className="text-gray-600 dark:text-slate-300 text-sm">
                 Bu şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş. Yeni bir bağlantı talep edin.
               </p>
               <Link
@@ -193,10 +193,10 @@ export default function ResetPasswordPage() {
 
           {sessionChecked && hasRecoverySession && (
             <>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-2">
                 Yeni Şifre Belirle
               </h1>
-              <p className="text-gray-600 mb-6 text-sm">
+              <p className="text-gray-600 dark:text-slate-300 mb-6 text-sm">
                 Hesabın için yeni bir şifre oluştur
               </p>
 

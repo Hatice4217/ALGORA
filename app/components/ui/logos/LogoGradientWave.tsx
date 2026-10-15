@@ -36,7 +36,7 @@ export const LogoGradientWave: React.FC<LogoGradientWaveProps> = ({
         </div>
 
         {/* Small Dot */}
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full border-2 border-white dark:border-purple-900" />
+        <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full border-2 border-white" />
       </div>
 
       {/* Text */}

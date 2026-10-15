@@ -29,7 +29,7 @@ export const LogoWordmark: React.FC<LogoWordmarkProps> = ({
         </span>
 
         {/* "gora" in Dark Gray */}
-        <span className={`${config.text} font-bold text-gray-900 dark:text-gray-100`}>
+        <span className={`${config.text} font-bold text-gray-900 dark:text-slate-100`}>
           gora
         </span>
 
@@ -40,7 +40,7 @@ export const LogoWordmark: React.FC<LogoWordmarkProps> = ({
       {/* Subtitle - Only for md and lg */}
       {showText && (size === 'md' || size === 'lg') && (
         <div className="flex flex-col">
-          <span className="text-xs text-gray-600 dark:text-gray-400 font-medium tracking-wide">
+          <span className="text-xs text-gray-600 dark:text-slate-300 font-medium tracking-wide">
             AI PLATFORM
           </span>
         </div>

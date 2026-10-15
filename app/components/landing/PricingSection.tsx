@@ -14,12 +14,12 @@ function OzellikListesi({ ozellikler }: { ozellikler: string[] }) {
         const aciklama = ozellikAciklamasi(feature);
         return (
           <li key={index} className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
             </svg>
             <div>
-              <span className="text-gray-700 text-sm font-medium">{feature}</span>
-              {aciklama && <p className="text-gray-500 text-xs mt-0.5">{aciklama}</p>}
+              <span className="text-gray-700 dark:text-slate-300 text-sm font-medium">{feature}</span>
+              {aciklama && <p className="text-gray-500 dark:text-slate-400 text-xs mt-0.5">{aciklama}</p>}
             </div>
           </li>
         );
@@ -41,21 +41,21 @@ export function PricingSection() {
 
   return (
     <section id="pricing" className="w-full px-4 md:px-6 lg:px-8 py-12 min-[480px]:py-16 md:py-20">
-      <h2 className="text-3xl min-[480px]:text-4xl font-bold text-center text-gray-900 mb-4">
+      <h2 className="text-3xl min-[480px]:text-4xl font-bold text-center text-gray-900 dark:text-slate-100 mb-4">
         Fiyatlandırma
       </h2>
-      <p className="text-lg min-[480px]:text-xl text-center text-gray-600 mb-10 min-[480px]:mb-14 md:mb-16">
+      <p className="text-lg min-[480px]:text-xl text-center text-gray-600 dark:text-slate-300 mb-10 min-[480px]:mb-14 md:mb-16">
         Size en uygun paketi seçin ve sınava hazırlanmaya başlayın
       </p>
 
       <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 gap-6 min-[480px]:gap-8 w-full">
         {/* Başlangıç Paketi */}
         <div
-          className="bg-white border border-gray-200 rounded-2xl p-6 min-[480px]:p-8 hover:shadow-md transition-all duration-300 gpu-accel will-change-shadow flex flex-col"
+          className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 min-[480px]:p-8 hover:shadow-md transition-all duration-300 gpu-accel will-change-shadow flex flex-col"
         >
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">Başlangıç</h3>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-2">Başlangıç</h3>
           <div className="mb-8">
-            <span className="text-4xl font-black text-gray-900">Ücretsiz</span>
+            <span className="text-4xl font-black text-gray-900 dark:text-slate-100">Ücretsiz</span>
           </div>
           <OzellikListesi
             ozellikler={[
@@ -75,14 +75,14 @@ export function PricingSection() {
         </div>
 
         {/* Pro Öğrenci Paketi */}
-        <div className="bg-white border-2 border-purple-500 rounded-2xl p-6 min-[480px]:p-8 shadow-lg shadow-purple-200 md:scale-105 relative flex flex-col">
+        <div className="bg-white dark:bg-slate-900 border-2 border-purple-500 rounded-2xl p-6 min-[480px]:p-8 shadow-lg shadow-purple-200 dark:shadow-purple-500/20 md:scale-105 relative flex flex-col">
           <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-purple-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
             En Çok Tercih Edilen
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2 mt-2">Pro Öğrenci</h3>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-2 mt-2">Pro Öğrenci</h3>
           <div className="mb-8">
-            <span className="text-4xl font-black text-gray-900">₺199</span>
-            <span className="text-gray-600 ml-2">/ ay</span>
+            <span className="text-4xl font-black text-gray-900 dark:text-slate-100">₺199</span>
+            <span className="text-gray-600 dark:text-slate-300 ml-2">/ ay</span>
           </div>
           <OzellikListesi
             ozellikler={[
@@ -104,12 +104,12 @@ export function PricingSection() {
 
         {/* Premium Paket */}
         <div
-          className="bg-white border border-gray-200 rounded-2xl p-6 min-[480px]:p-8 hover:shadow-md transition-all duration-300 gpu-accel will-change-shadow flex flex-col min-[480px]:col-span-2 md:col-span-1"
+          className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 min-[480px]:p-8 hover:shadow-md transition-all duration-300 gpu-accel will-change-shadow flex flex-col min-[480px]:col-span-2 md:col-span-1"
         >
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">Premium AI Koçluk</h3>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-2">Premium AI Koçluk</h3>
           <div className="mb-8">
-            <span className="text-4xl font-black text-gray-900">₺499</span>
-            <span className="text-gray-600 ml-2">/ ay</span>
+            <span className="text-4xl font-black text-gray-900 dark:text-slate-100">₺499</span>
+            <span className="text-gray-600 dark:text-slate-300 ml-2">/ ay</span>
           </div>
           <OzellikListesi
             ozellikler={[

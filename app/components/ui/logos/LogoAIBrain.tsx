@@ -35,7 +35,7 @@ export const LogoAIBrain: React.FC<LogoAIBrainProps> = ({
 
         {/* AI Badge with "A" */}
         <div className={`absolute -bottom-1 -right-1 ${config.badge} bg-white dark:bg-purple-900 rounded-full flex items-center justify-center border-2 border-purple-600 shadow-lg`}>
-          <span className="text-purple-600 dark:text-purple-300 font-bold text-xs">A</span>
+          <span className="text-purple-600 dark:text-purple-400 font-bold text-xs">A</span>
         </div>
 
         {/* Tech Dots */}
@@ -49,7 +49,7 @@ export const LogoAIBrain: React.FC<LogoAIBrainProps> = ({
           <span className={`${config.text} font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent`}>
             ALGORA
           </span>
-          <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+          <span className="text-xs text-gray-600 dark:text-slate-300 font-medium">
             🧠 AI Learning
           </span>
         </div>

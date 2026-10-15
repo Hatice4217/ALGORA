@@ -85,7 +85,7 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center px-6">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center px-6">
       <main className="max-w-md w-full text-center">
         {/* Logo */}
         <div className="mb-8">
@@ -93,14 +93,14 @@ export default function AuthCallbackPage() {
         </div>
 
         {/* Status Messages */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-8">
           {status === 'loading' && (
             <div>
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100 mb-2">
                 Giriş Yapılıyor...
               </h2>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-slate-300">
                 Lütfen bekleyin, sizi yönlendiriyoruz.
               </p>
             </div>
@@ -108,15 +108,15 @@ export default function AuthCallbackPage() {
 
           {status === 'success' && (
             <div>
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100 mb-2">
                 Giriş Başarılı!
               </h2>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-slate-300">
                 Dashboard&apos;a yönlendiriliyorsunuz...
               </p>
             </div>
@@ -124,18 +124,18 @@ export default function AuthCallbackPage() {
 
           {status === 'error' && (
             <div>
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100 mb-2">
                 Giriş Başarısız
               </h2>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 dark:text-slate-300 mb-4">
                 {errorMessage}
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-slate-400">
                 Giriş sayfasına yönlendiriliyorsunuz...
               </p>
             </div>

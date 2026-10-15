@@ -9,7 +9,7 @@ import { LandingScrollRestorer } from './components/landing/LandingScrollRestore
 // Server-side rendered landing page for optimal LCP
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Yasal sayfalardan dönüşte kaydırma konumunu geri yükler */}
       <LandingScrollRestorer />
 

@@ -54,7 +54,7 @@ export const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
           onClick={handleChange}
           className={cn(
             'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2',
-            isChecked ? 'bg-purple-600' : 'bg-gray-200',
+            isChecked ? 'bg-purple-600' : 'bg-gray-200 dark:bg-slate-700',
             disabled && 'opacity-50 cursor-not-allowed'
           )}
         >
@@ -74,13 +74,13 @@ export const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
               htmlFor={toggleId}
               className={cn(
                 'text-sm font-medium',
-                disabled ? 'text-gray-400' : 'text-gray-700'
+                disabled ? 'text-gray-400 dark:text-slate-400' : 'text-gray-700 dark:text-slate-300'
               )}
             >
               {label}
             </label>
             {helperText && (
-              <p className="text-xs text-gray-500">{helperText}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{helperText}</p>
             )}
           </div>
         )}

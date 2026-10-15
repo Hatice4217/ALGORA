@@ -243,7 +243,7 @@ export default function RegisterPage() {
       case 'weak': return 'bg-red-500';
       case 'medium': return 'bg-yellow-500';
       case 'strong': return 'bg-green-500';
-      default: return 'bg-gray-300';
+      default: return 'bg-gray-300 dark:bg-slate-700';
     }
   };
 
@@ -257,13 +257,13 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex flex-col">
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center px-6 py-4 relative">
         {/* Back to Home Link */}
         <Link
         href="/"
-        className="absolute top-4 left-6 text-gray-600 hover:text-purple-600 transition-colors text-sm font-medium flex items-center gap-1"
+        className="absolute top-4 left-6 text-gray-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-sm font-medium flex items-center gap-1"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -285,16 +285,16 @@ export default function RegisterPage() {
         </div>
 
         {/* Register Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-5">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-5">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-1">
             Algora&apos;ya Hoş Geldin 🎉
           </h1>
-          <p className="text-gray-600 mb-4 text-sm">
+          <p className="text-gray-600 dark:text-slate-300 mb-4 text-sm">
             Ücretsiz hesabını oluştur ve sınav hazırlığına başla
           </p>
 
           {/* Email Notice */}
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-lg">
             <div className="flex items-start gap-2">
               <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -411,13 +411,13 @@ export default function RegisterPage() {
             {passwordStrength && formData.password && (
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                  <div className="flex-1 bg-gray-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
                     <div
                       className={`h-full ${getStrengthColor(passwordStrength.strength)} transition-all duration-300`}
                       style={{ width: `${(passwordStrength.score / 3) * 100}%` }}
                     />
                   </div>
-                  <span className="text-xs font-medium text-gray-600">
+                  <span className="text-xs font-medium text-gray-600 dark:text-slate-300">
                     {getStrengthText(passwordStrength.strength)}
                   </span>
                 </div>
@@ -425,7 +425,7 @@ export default function RegisterPage() {
                 {/* Password Requirements - Inline */}
                 <div className="flex items-center gap-1.5 text-xs flex-wrap">
                   {passwordStrength.requirements.map((req, index) => (
-                    <span key={index} className={`px-1.5 py-0.5 rounded ${req.met ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    <span key={index} className={`px-1.5 py-0.5 rounded ${req.met ? 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400'}`}>
                       {req.met ? '✓' : '○'} {req.text}
                     </span>
                   ))}
@@ -434,12 +434,12 @@ export default function RegisterPage() {
             )}
 
             {/* Security Notice - Compact */}
-            <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded px-2 py-1.5">
+            <div className="text-xs text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded px-2 py-1.5">
               Güçlü şifre ile hesabınızı koruyun. Şifrenizi kimseyle paylaşmayın.
             </div>
 
             {/* Legal Terms - Compact */}
-            <div className="text-xs text-gray-500 leading-tight">
+            <div className="text-xs text-gray-500 dark:text-slate-400 leading-tight">
               Kayıt olarak{' '}
               <Link href="/legal/terms" className="text-purple-600 hover:text-purple-700">
                 Kullanım Şartları
@@ -486,10 +486,10 @@ export default function RegisterPage() {
 
           <div className="relative my-4">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+              <div className="w-full border-t border-gray-200 dark:border-slate-700"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">veya</span>
+              <span className="px-2 bg-white dark:bg-slate-900 text-gray-500 dark:text-slate-400">veya</span>
             </div>
           </div>
 
@@ -500,7 +500,7 @@ export default function RegisterPage() {
             fullWidth
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+            className="border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:border-gray-400 dark:hover:border-slate-600"
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path
@@ -524,7 +524,7 @@ export default function RegisterPage() {
           </Button>
         </div>
 
-        <p className="text-center text-gray-600 mt-3 text-sm">
+        <p className="text-center text-gray-600 dark:text-slate-300 mt-3 text-sm">
           Zaten hesabın var mı?{' '}
           <Link href="/auth/login" className="text-purple-600 hover:text-purple-700 font-medium">
             Giriş Yap

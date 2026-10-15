@@ -36,10 +36,10 @@ export function FeaturesSection() {
 
   return (
     <section id="features" className="w-full px-4 md:px-6 lg:px-8 py-20">
-      <h2 className="text-3xl sm:text-4xl font-bold text-center text-gray-900 mb-4">
+      <h2 className="text-3xl sm:text-4xl font-bold text-center text-gray-900 dark:text-slate-100 mb-4">
         Neden ALGORA?
       </h2>
-      <p className="text-lg sm:text-xl text-center text-gray-600 mb-14">
+      <p className="text-lg sm:text-xl text-center text-gray-600 dark:text-slate-300 mb-14">
         Sınav hazırlığında yapay zekâ destekli öğrenme deneyimi
       </p>
 
@@ -47,15 +47,15 @@ export function FeaturesSection() {
         {features.map((feature, index) => (
           <div
             key={index}
-            className="bg-white p-6 sm:p-8 rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-purple-200 transition-all duration-300 hover:-translate-y-1 cursor-default gpu-accel will-change-transform"
+            className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm hover:shadow-lg hover:border-purple-200 dark:hover:border-purple-500/40 transition-all duration-300 hover:-translate-y-1 cursor-default gpu-accel will-change-transform"
           >
-            <div className="text-purple-600 text-5xl sm:text-6xl font-black mb-4 leading-none">
+            <div className="text-purple-600 dark:text-purple-400 text-5xl sm:text-6xl font-black mb-4 leading-none">
               {feature.number}
             </div>
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-slate-100 mb-3">
               {feature.title}
             </h3>
-            <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+            <p className="text-gray-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
               {feature.description}
             </p>
           </div>
