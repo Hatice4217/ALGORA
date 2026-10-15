@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../../../lib/supabase';
 import { rateLimit } from '../../../../lib/rate-limit';
 import { getSubjects, isKnownTopic } from '../../../../lib/constants/syllabus';
+import { GeminiUpstreamError } from '../../../../lib/question-generation';
+import { soruyuDogrula } from '../../../../lib/question-verification';
 
 // Yapay zekaya gönderilecek katı sistem promptu
 const SYSTEM_PROMPT = `Sen Türkiye'deki üniversite sınavlarına (TYT, AYT) hazırlık yapan öğrenciler için soru üreten bir yapay zeka asistanısın.
@@ -433,7 +435,21 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
       throw new Error('Yapay zekadan geçersiz soru formatı alındı');
     }
 
-    // 9.5 Üretilen soruyu questions tablosuna kaydet.
+    // 9.5 ÇİFT-AI DOĞRULAMA — çekirdek değişmez: DOĞRULANMAMIŞ SORU HAVUZA GİRMEZ.
+    // Bu route UI'dan çağrılmıyor (yalnız tests/docs referanslı) ama canlıda
+    // açık kaldığı için /next ile AYNI bant semantiği uygulanır:
+    //   tam_uyum  → soru öğrenciye döner (200)
+    //   kismi_uyum→ satır active+kismi_uyum kalır (insan inceleme kuyruğu), 503
+    //   uyumsuz   → satır rejected saklanır (teşhis jsonb'siyle), 503
+    // Legacy tek-denetim: yeniden üretim döngüsü yok (canlı akış /next'tedir).
+    const dogrulama = await soruyuDogrula({
+      question: questionData.question,
+      choices: questionData.choices,
+      correctAnswer: questionData.correctAnswer,
+      uretimTur: 0,
+    });
+
+    // 9.6 Üretilen soruyu questions tablosuna kaydet.
     // answers.question_id sütunu questions(id)'e FK — soru kaydedilmeden cevap kaydedilemez,
     // istatistik view'ları da questions ile JOIN yapar.
     let questionId = crypto.randomUUID(); // insert başarısızsa yedek (cevap kaydı bu durumda düşer)
@@ -449,6 +465,8 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
         correct_answer: questionData.correctAnswer,
         explanation: questionData.explanation,
         created_by: user.id,
+        verification_status: dogrulama.bant,
+        verification: dogrulama.kayit,
       })
       .select('id')
       .single();
@@ -460,6 +478,16 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     }
     questionData.id = questionId;
 
+    if (dogrulama.bant !== 'tam_uyum') {
+      console.warn(
+        `generate: bant=${dogrulama.bant} (U=${dogrulama.kayit.u}) — soru öğrenciye sunulmadı (id=${questionId})`
+      );
+      return NextResponse.json(
+        { error: 'Şu anda bu derste uygun soru hazırlanamadı. Lütfen kısa süre sonra tekrar deneyin.' },
+        { status: 503 }
+      );
+    }
+
     // 10. Başarılı cevabı gönder
     return NextResponse.json({
       success: true,
@@ -467,6 +495,10 @@ Yanıtı KESİNLİKLE JSON formatında ver.`;
     });
 
   } catch (error: unknown) {
+    // Doğrulayıcı/üretim upstream hataları → uygun statü (fail-closed 502 dahil)
+    if (error instanceof GeminiUpstreamError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     // Hata yönetimi
     console.error('❌ Gemini AI Question Generation Error:', error);
     console.error('Error message:', (error as Error)?.message);

@@ -110,9 +110,13 @@ function ZayifKonuKarti({ konuCoz }: { konuCoz: AnalysisPanelProps['konuCoz'] })
         const { user } = await authHelpers.getCurrentUser();
         if (!user) return;
         // RLS: yalnız kendi cevapları görünür (CoachPanel deseni)
+        // ADİL PUANLAMA KURALI: zayıf konu analizi yalnız status='active'
+        // soruların cevaplarından hesaplanır. RLS suspended soruları zaten
+        // gizler; buradaki açık status denetimi sözleşmeyi görünür kılar
+        // (service-role yollarıyla aynı kural — w ağırlığı ileride ortak kurala bağlanır).
         const { data } = await supabase!
           .from('answers')
-          .select('is_correct, question:questions(subject, exam_type, topic)')
+          .select('is_correct, question:questions(subject, exam_type, topic, status)')
           .eq('user_id', user.id)
           .order('answered_at', { ascending: false })
           .limit(1000);
@@ -120,10 +124,10 @@ function ZayifKonuKarti({ konuCoz }: { konuCoz: AnalysisPanelProps['konuCoz'] })
         const harita = new Map<string, KonuSayaci>();
         for (const satir of data as unknown as Array<{
           is_correct: boolean;
-          question: { subject: string; exam_type: string; topic: string } | null;
+          question: { subject: string; exam_type: string; topic: string; status: string } | null;
         }>) {
           const q = satir.question;
-          if (!q?.topic) continue;
+          if (!q?.topic || q.status !== 'active') continue;
           const anahtar = `${q.subject}|${q.exam_type}|${q.topic}`;
           const kayit = harita.get(anahtar) ?? {
             ders: q.subject, tur: q.exam_type, konu: q.topic, dogru: 0, toplam: 0,

@@ -11,6 +11,11 @@
 //          sorulardan kişisel klon üretir (clone_of=kök, intended_for=öğrenci,
 //          MAX 2 tur). Dashboard'daki "Eksiklerini Kapat" banner'ı bunları teslim eder.
 //
+// ÇİFT-AI DOĞRULAMA KAPSAMI NOTU (database/cift_ai_dogrulama.sql): gece
+// vardiyası klonları v1 doğrulama DIŞIDIR — tek öğrenciye servis edilirler,
+// havuza (genel RPC p_bands filtresi) girmezler. Kaynak soru suspend/reject
+// olursa report_question klon kaskadı (FLAT graf, tek hop) onları da askıya alır.
+//
 // Tetikleyici: GitHub Actions (night-shift.yml, pencere içinde 6 kez) —
 // admin key header'ıyla POST. Aynı key yanlışsa 404 MASKESİ (admin deseni).
 //

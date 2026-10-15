@@ -164,9 +164,13 @@ export async function POST(request: Request) {
       .select('subject, exam_type, total_questions, correct_answers')
       .eq('user_id', user.id);
 
+    // ADİL PUANLAMA KURALI: ortalama çözme süresi yalnız status='active'
+    // soruların cevaplarından hesaplanır (suspended/rejected sorular kapasite
+    // tahminini çarpıtmaz). İleride w=1 / w=0,3 ağırlığı buraya işlenecek.
     const { data: sureler } = await adminClient
       .from('answers')
-      .select('time_spent')
+      .select('time_spent, question:questions!inner(status)')
+      .eq('question.status', 'active')
       .eq('user_id', user.id)
       .order('answered_at', { ascending: false })
       .limit(500);

@@ -24,6 +24,7 @@ import {
   generateQuestionViaGemini,
   GeminiUpstreamError,
 } from '../../../../lib/question-generation';
+import { soruyuDogrula } from '../../../../lib/question-verification';
 
 // Sunucu tarafı girdi whitelist'i — MEB_SYLLABUS'taki tüm derslerden türetilir
 const VALID_SUBJECTS: readonly string[] = [
@@ -35,6 +36,17 @@ const PREVIOUS_QUESTION_MAX_LENGTH = 2000;
 // Oturumda görülen sorular: havuz RPC'sine exclude olarak geçilir (mükerrer önleme)
 const EXCLUDE_MAX_ITEMS = 100;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// ÇİFT-AI SERVİS BANTLARI: havuzdan hangi doğrulama bantları servis edilir?
+// env csv ('tam_uyum,kismi_uyum'); eksik/boşsa yalnız 'tam_uyum'. Bantı NULL
+// olan (doğrulanmamış legacy) sorular RPC'de daima geçer — backfill penceresi.
+const SERVED_BANDS: string[] = (() => {
+  const liste = (process.env.SERVED_VERIFICATION_BANDS || '')
+    .split(',')
+    .map((b) => b.trim())
+    .filter(Boolean);
+  return liste.length > 0 ? liste : ['tam_uyum'];
+})();
 
 // 'otomatik' zorluk çözümlendikten sonra RPC/prompt'un anladığı gerçek DB
 // değerleriyle Türkçe metin eşlemesi (Gemini prompt'una "Otomatik" sızmasın)
@@ -54,9 +66,15 @@ async function adaptifZorlukCoz(
   examType: string
 ): Promise<string> {
   try {
+    // ADİL PUANLAMA KURALI: performans penceresi yalnız status='active'
+    // soruların cevaplarından hesaplanır (suspended/rejected soruların
+    // cevapları zorluk sinyalini çarpıtmaz). İleride w=1 / w=0,3 ağırlığı
+    // buraya işlenecek; filtre merkezi olarak da subject_breakdown view + Koç
+    // planı aynı kuralı uygular (cift_ai_dogrulama.sql Bölüm 6).
     const { data, error } = await adminClient
       .from('answers')
-      .select('is_correct, question:questions(subject, exam_type)')
+      .select('is_correct, question:questions!inner(subject, exam_type, status)')
+      .eq('question.status', 'active')
       .eq('user_id', userId)
       .order('answered_at', { ascending: false })
       .limit(200);
@@ -68,7 +86,7 @@ async function adaptifZorlukCoz(
     const pencere: boolean[] = [];
     for (const raw of (data || []) as unknown as Array<{
       is_correct: boolean;
-      question: { subject: string; exam_type: string } | null;
+      question: { subject: string; exam_type: string; status: string } | null;
     }>) {
       if (raw.question?.subject === subject && raw.question.exam_type === examType) {
         pencere.push(raw.is_correct);
@@ -230,6 +248,8 @@ export async function POST(request: Request) {
         p_topic: safeTopic || null,
         p_difficulty: dbDifficulty,
         p_exclude: excludeIds,
+        // ÇİFT-AI: yalnız servis bantları (veya doğrulanmamış legacy — RPC'de NULL daima geçer)
+        p_bands: SERVED_BANDS,
       });
       if (rpcError) {
         // Kritik: RPC yoksa (migration çalıştırılmadı) HER istek fallback'e düşer
@@ -264,8 +284,12 @@ export async function POST(request: Request) {
       });
     }
 
-    // 4. FALLBACK — havuz tükendi: Gemini üretir, soru havuza eklenir
-    console.log(`next: pool MISS → Gemini fallback — ${effectiveExamType}/${subject}/${safeTopic || 'Genel'}/${dbDifficulty}`);
+    // 4. FALLBACK — havuz tükendi: Gemini üretir → ÇİFT-AI DOĞRULAMA → havuza eklenir.
+    // Üretim döngüsü (Karar 4): 'uyumsuz' çıkan soru havuza girmez, en fazla 2 tur
+    // yeniden üretilir (hepsi rejected olarak saklanır — teşhis jsonb'siyle).
+    // 'tam_uyum' → öğrenciye sunulur; 'kismi_uyum' → satır active+kismi_uyum KALIR
+    // (insan inceleme kuyruğu) ama öğrenciye sunulmaz (503).
+    console.log(`next: pool MISS → Gemini fallback + çift-AI doğrulama — ${effectiveExamType}/${subject}/${safeTopic || 'Genel'}/${dbDifficulty}`);
 
     // Tekrar önleme: bu öğrencinin bu derste ürettiği son 5 soru + istemciden
     // gelen son soru metni, Gemini'ye yasak liste olarak girer
@@ -296,63 +320,106 @@ export async function POST(request: Request) {
       ])
     );
 
-    const generated = await generateQuestionViaGemini({
-      subject,
-      topic: safeTopic || 'Genel',
-      difficultyText,
-      examType: effectiveExamType,
-      bannedQuestions,
-    });
+    const URETIM_TUR_LIMITI = 2; // uyumsuz üretimde en fazla 2 tur
+    // İstek-seviyesi deadline: platform kill (Fluid 300 sn) altında kalmak için
+    // tur 2 yalnızca yeterli süre kaldıysa denenir (üretim ~90sn + n=5 doğrulama payı)
+    const URETIM_DEADLINE_MS = 200_000;
 
-    if (!generated.question || generated.choices.length !== 5) {
-      console.error('next: geçersiz soru formatı:', generated);
-      throw new Error('Yapay zekadan geçersiz soru formatı alındı');
-    }
+    for (let uretimTur = 1; uretimTur <= URETIM_TUR_LIMITI; uretimTur++) {
+      if (uretimTur > 1 && Date.now() - startedAt > URETIM_DEADLINE_MS) {
+        console.warn('next: istek deadline aşıldı — yeniden üretim turu atlanır (platform kill koruması)');
+        break;
+      }
 
-    // 5. Havuza ekle (ipuçlarıyla birlikte; created_by = tetikleyen öğrenci —
-    // istatistik/iz öğretir, soru GLOBAL havuza girer)
-    let questionId = crypto.randomUUID(); // insert başarısızsa yedek (cevap kaydı bu durumda düşer)
-    const { data: insertedQuestion, error: insertError } = await adminClient
-      .from('questions')
-      .insert({
+      const generated = await generateQuestionViaGemini({
         subject,
         topic: safeTopic || 'Genel',
-        difficulty: dbDifficulty,
-        exam_type: effectiveExamType,
-        question_text: generated.question,
-        choices: generated.choices,
-        correct_answer: generated.correctAnswer,
-        explanation: generated.explanation,
-        hints: generated.hints.length === 3 ? generated.hints : null,
-        created_by: user.id,
-      })
-      .select('id')
-      .single();
-    if (insertError) {
-      // Soruyu kullanıcıya vermeye devam et; sadece logla
-      console.error('next: questions insert hatası:', insertError.message);
-    } else {
-      questionId = insertedQuestion.id;
-    }
+        difficultyText,
+        examType: effectiveExamType,
+        bannedQuestions,
+      });
 
-    console.log(`next: fallback üretim tamam ${Math.round((Date.now() - startedAt) / 1000)}s`);
+      if (!generated.question || generated.choices.length !== 5) {
+        console.error('next: geçersiz soru formatı:', generated);
+        throw new Error('Yapay zekadan geçersiz soru formatı alındı');
+      }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        id: questionId,
+      // ÇİFT-AI: doğru cevabı GÖRMEDEN n kör çözüm. n_eff=0 → GeminiUpstreamError
+      // (502, fail-closed); kismi/uyumsuz → aşağıdaki bant semantiği.
+      const dogrulama = await soruyuDogrula({
         question: generated.question,
         choices: generated.choices,
         correctAnswer: generated.correctAnswer,
-        explanation: generated.explanation,
-        hints: generated.hints,
-        subject,
-        topic: safeTopic || 'Genel',
-        difficulty: dbDifficulty,
-        exam_type: effectiveExamType,
-        source: 'generated',
-      },
-    });
+        uretimTur,
+      });
+
+      // 5. Havuza ekle — bant etiketiyle (ipuçlarıyla birlikte; created_by =
+      // tetikleyen öğrenci — istatistik/iz öğretir, soru GLOBAL havuza girer).
+      // tam_uyum/kismi_uyum → active; uyumsuz → rejected (CHECK bütünlüğü).
+      let questionId = crypto.randomUUID(); // insert başarısızsa yedek (cevap kaydı bu durumda düşer)
+      const { data: insertedQuestion, error: insertError } = await adminClient
+        .from('questions')
+        .insert({
+          subject,
+          topic: safeTopic || 'Genel',
+          difficulty: dbDifficulty,
+          exam_type: effectiveExamType,
+          question_text: generated.question,
+          choices: generated.choices,
+          correct_answer: generated.correctAnswer,
+          explanation: generated.explanation,
+          hints: generated.hints.length === 3 ? generated.hints : null,
+          created_by: user.id,
+          verification_status: dogrulama.bant,
+          verification: dogrulama.kayit,
+        })
+        .select('id')
+        .single();
+      if (insertError) {
+        // Soruyu kullanıcıya vermeye devam et; sadece logla
+        console.error('next: questions insert hatası:', insertError.message);
+      } else {
+        questionId = insertedQuestion.id;
+      }
+
+      if (dogrulama.bant === 'tam_uyum') {
+        console.log(`next: fallback üretim tamam (tur ${uretimTur}, U=${dogrulama.kayit.u}) ${Math.round((Date.now() - startedAt) / 1000)}s`);
+        return NextResponse.json({
+          success: true,
+          data: {
+            id: questionId,
+            question: generated.question,
+            choices: generated.choices,
+            correctAnswer: generated.correctAnswer,
+            explanation: generated.explanation,
+            hints: generated.hints,
+            subject,
+            topic: safeTopic || 'Genel',
+            difficulty: dbDifficulty,
+            exam_type: effectiveExamType,
+            source: 'generated',
+          },
+        });
+      }
+
+      if (dogrulama.bant === 'kismi_uyum') {
+        // Şüpheli soru ELENMEZ: satır inceleme kuyruğunda kalır, öğrenciye
+        // sunulmaz. Yeniden üretim YOK (yalnız uyumsuz turlar yenilenir).
+        console.warn(`next: kismi_uyum (U=${dogrulama.kayit.u}) — inceleme kuyruğu, öğrenciye 503 (id=${questionId})`);
+        break;
+      }
+
+      console.warn(
+        `next: uyumsuz üretim (tur ${uretimTur}/${URETIM_TUR_LIMITI}, U=${dogrulama.kayit.u}) — rejected saklandı (id=${questionId})`
+      );
+    }
+
+    // 2 turda da tam_uyum üretilemedi (veya deadline) → nazik 503. Satırlar
+    // saklandı: kismi → inceleme kuyruğu, uyumsuz → rejected + teşhis jsonb.
+    return NextResponse.json(
+      { error: 'Şu anda bu derste uygun soru hazırlanamadı. Lütfen kısa süre sonra tekrar deneyin.' },
+      { status: 503 }
+    );
   } catch (error: unknown) {
     if (error instanceof GeminiUpstreamError) {
       return NextResponse.json(

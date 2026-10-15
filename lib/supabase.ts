@@ -581,6 +581,11 @@ export const dbHelpers = {
 
   // "Günlük Seri" kartı: kullanıcının son N gündeki cevap zamanları (ISO string listesi).
   // Seri hesabı istemcide yerel tarihe göre yapılır (lib/utils hesaplaGunlukSeri).
+  // ADİL PUANLAMA NOTU (Çift-AI, cift_ai_dogrulama.sql): bu sorgu BİLİNÇLİ
+  // FİLTRELENMEZ — günlük seri AKTİVİTE ölçütüdür, performans değil; askıya
+  // alınmış bir soruya verilmiş cevap da öğrencinin o gün çalıştığını gösterir.
+  // Performans metrikleri (subject_breakdown, Koç planı, adaptif zorluk, Analiz)
+  // ayrı filtreye tabidir: yalnız status='active' sorular sayılır.
   getAnswerDates: async (userId: string, sonGunSayisi: number = 60, client?: SupabaseClient) => {
     const db = client || supabase!;
     return withConnectionCheck(

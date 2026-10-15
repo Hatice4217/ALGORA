@@ -143,8 +143,10 @@ function buildPrompt(params: {
 Yanıtı KESİNLİKLE JSON formatında ver.`;
 }
 
-// Ham Gemini yanıtını esnek yöntemlerle JSON'a çevirir (doğrudan → markdown bloğu → süslü parantez)
-function extractJson(aiResponse: string): GeminiSoru | null {
+// Ham Gemini yanıtını esnek yöntemlerle JSON'a çevirir (doğrudan → markdown bloğu → süslü parantez).
+// EXPORT (Çift-AI): lib/question-verification.ts de aynı ayrıştırıcıyı kullanır —
+// kopya/prompt drift yok, tek kaynak.
+export function extractJson(aiResponse: string): GeminiSoru | null {
   try {
     return JSON.parse(aiResponse);
   } catch {

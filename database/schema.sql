@@ -105,8 +105,17 @@ CREATE TABLE IF NOT EXISTS questions (
   status TEXT NOT NULL DEFAULT 'active' CONSTRAINT questions_status_check CHECK (status IN ('active', 'suspended', 'rejected')),
   clone_of UUID REFERENCES questions(id) ON DELETE SET NULL, -- klonun kaynağı (NULL = orijinal)
   intended_for UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- kişisel klon sahibi (NULL = genel havuz)
+  -- Çift-AI doğrulama (database/cift_ai_dogrulama.sql): NULL = doğrulanmamış
+  -- (legacy backfill penceresi — servis dışı kalmaz); üç bant: tam_uyum servis,
+  -- kismi_uyum inceleme kuyruğu, uyumsuz → rejected (aşağıdaki CHECK zorunlu kılar)
+  verification_status TEXT CONSTRAINT questions_verification_status_check
+    CHECK (verification_status IS NULL OR verification_status IN ('tam_uyum', 'kismi_uyum', 'uyumsuz')),
+  verification JSONB, -- { n, n_eff, k, u, cozumler, dogrulayici, esikler, temperature, tarih, uretim_tur, neden?, dagilim?, insan_onayi? }
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  -- 'uyumsuz' bantı havuza ASLA girmez (bant-rejected bütünlüğü)
+  CONSTRAINT questions_uyumsuz_rejected_check
+    CHECK (verification_status IS DISTINCT FROM 'uyumsuz' OR status = 'rejected')
 );
 
 -- Answers Table
@@ -163,6 +172,10 @@ GROUP BY a.user_id, up.exam_type, up.target_score, up.subjects, up.current_strea
 -- User performance by subject, broken down by exam type (TYT/AYT/YDT) —
 -- aynı ders farklı sınav türlerinde ayrı satır (ör. "Coğrafya (TYT)" / "Coğrafya (AYT)")
 -- security_invoker = true (gerekçe yukarıda, user_stats yorumunda)
+-- ADİL PUANLAMA KURALI: yalnız status='active' soruların cevapları sayılır
+-- (suspended/rejected sorular başarı oranını çarpıtmaz). İleride w=1 / w=0,3
+-- ağırlığına evrilebilir — filtre merkezi burasıdır. Günlük aktivite serisi
+-- (getAnswerDates) bilinçli FILTRELENMEZ: aktivite ≠ performans.
 CREATE OR REPLACE VIEW subject_breakdown WITH (security_invoker = true) AS
 SELECT
   a.user_id,
@@ -176,7 +189,33 @@ SELECT
   ) as accuracy_rate
 FROM answers a
 JOIN questions q ON a.question_id = q.id
+WHERE q.status = 'active'
 GROUP BY a.user_id, q.subject, q.exam_type;
+
+-- İnceleme Kuyruğu View (Çift-AI doğrulama — database/cift_ai_dogrulama.sql)
+-- kismi_uyum (şüpheli) bantındaki sorular: ELENMEZLER, insan inceleme için
+-- burada birikirler. Yalnızca service-role SELECT (admin inceleme route'u).
+CREATE OR REPLACE VIEW inceleme_kuyrugu WITH (security_invoker = true) AS
+SELECT
+  id,
+  subject,
+  topic,
+  difficulty,
+  exam_type,
+  question_text,
+  choices,
+  correct_answer,
+  tags,
+  verification,
+  created_at
+FROM questions
+WHERE status = 'active'
+  AND verification_status = 'kismi_uyum'
+  AND clone_of IS NULL
+  AND intended_for IS NULL;
+
+REVOKE ALL ON inceleme_kuyrugu FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON inceleme_kuyrugu TO service_role;
 
 -- ===================================
 -- INDEXES
@@ -538,13 +577,16 @@ $$;
 
 -- Havuzdan öğrencinin sıradaki sorusu (çözmedikleri + oturumda görülenler hariç;
 -- ipuçlu sorular tercih edilir). Havuz boşsa NULL → route Gemini fallback.
+-- p_bands (Çift-AI): yalnız servis bantları (SERVED_VERIFICATION_BANDS) veya
+-- doğrulanmamış (NULL) sorular; canlıya kurulum: database/cift_ai_dogrulama.sql
 CREATE OR REPLACE FUNCTION get_next_pool_question(
   p_user_id uuid,
   p_exam_type text,
   p_subject text,
   p_topic text DEFAULT NULL,
   p_difficulty text DEFAULT NULL,
-  p_exclude uuid[] DEFAULT '{}'
+  p_exclude uuid[] DEFAULT '{}',
+  p_bands text[] DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE sql
@@ -573,6 +615,7 @@ AS $$
     AND q.subject = p_subject
     AND (p_difficulty IS NULL OR q.difficulty = p_difficulty)
     AND (p_topic IS NULL OR p_topic = 'Genel' OR q.topic = p_topic)
+    AND (p_bands IS NULL OR q.verification_status IS NULL OR q.verification_status = ANY(p_bands))
     AND NOT EXISTS (
       SELECT 1 FROM answers a
       WHERE a.user_id = p_user_id
@@ -583,7 +626,9 @@ AS $$
   LIMIT 1
 $$;
 
--- Kitle kaynaklı askıya alma: 2 FARKLI kullanıcının bildirimi → status='suspended'
+-- Kitle kaynaklı askıya alma: 2 FARKLI kullanıcının bildirimi → status='suspended'.
+-- Klon kaskadı (Çift-AI Karar 5): graf FLAT (clone_of = kök, tek hop) — rapor
+-- edilen soru klon ise kök + kardeş klonlar, kök ise tüm klonlar da suspend.
 CREATE OR REPLACE FUNCTION report_question(
   p_question_id uuid,
   p_user_id uuid,
@@ -597,6 +642,7 @@ AS $$
 DECLARE
   v_status   text;
   v_distinct int;
+  v_kok      uuid;
 BEGIN
   SELECT status INTO v_status FROM questions WHERE id = p_question_id;
   IF v_status IS NULL THEN
@@ -620,6 +666,12 @@ BEGIN
     SET status = 'suspended'
     WHERE id = p_question_id
       AND status = 'active';
+
+    SELECT COALESCE(clone_of, id) INTO v_kok FROM questions WHERE id = p_question_id;
+    UPDATE questions c
+    SET status = 'suspended'
+    WHERE c.status = 'active'
+      AND (c.id = v_kok OR c.clone_of = v_kok);
   END IF;
 
   SELECT status INTO v_status FROM questions WHERE id = p_question_id;
@@ -630,9 +682,9 @@ $$;
 
 -- RPC yetkileri: yalnızca service_role (üçlü REVOKE zorunlu —
 -- Supabase default-privileges tuzağı)
-REVOKE EXECUTE ON FUNCTION get_next_pool_question(uuid, text, text, text, text, uuid[])
+REVOKE EXECUTE ON FUNCTION get_next_pool_question(uuid, text, text, text, text, uuid[], text[])
   FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION get_next_pool_question(uuid, text, text, text, text, uuid[])
+GRANT EXECUTE ON FUNCTION get_next_pool_question(uuid, text, text, text, text, uuid[], text[])
   TO service_role;
 
 REVOKE EXECUTE ON FUNCTION report_question(uuid, uuid, text)
