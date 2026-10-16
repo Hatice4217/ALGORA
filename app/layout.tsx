@@ -72,6 +72,12 @@ export default function RootLayout({
             .flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}
             .gap-3{gap:0.75rem}.gap-4{gap:1rem}.gap-8{gap:2rem}
             .text-purple-600{color:#9333ea}.text-gray-900{color:#111827}.text-gray-600{color:#4b5563}
+            /* Koyu tema eşlenikleri — bu inline blok <head>'de stylesheet link'ten SONRA
+               geldiğinden eşit özgüllükte (0,1,0) koşulsuz açık-tema rengi dark: utility'yi
+               EZİYORDU (kök neden: koyu temada metinler okunmuyordu). html.dark önekli
+               (0,2,0) kurallar her iki katmanı da geçer; değerler Tailwind paletiyle aynı
+               (slate-100/purple-400/slate-300) → chunk yüklenince görsel fark yok. */
+            html.dark .text-purple-600{color:#c084fc}html.dark .text-gray-900{color:#f1f5f9}html.dark .text-gray-600{color:#cbd5e1}
             .font-bold{font-weight:700}.text-5xl{font-size:3rem;line-height:1}.text-xl{font-size:1.25rem}
             .mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}
             .py-4{padding-top:1rem;padding-bottom:1rem}.py-20{padding-top:5rem;padding-bottom:5rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}
