@@ -22,9 +22,17 @@
 // Kullanım:
 //   npx tsx scripts/soru-fabrikasi/dogrulama_backfill.ts           → dry-run
 //   npx tsx scripts/soru-fabrikasi/dogrulama_backfill.ts --yaz     → DB PATCH
+//
+// OLLAMA MODU (yerel denetleyici — Gemini kotası yok, DB'ye hâlâ yalnız --yaz ile):
+//   npx tsx scripts/soru-fabrikasi/dogrulama_backfill.ts \
+//     --provider=ollama --model=gemma3:4b[,qwen2.5:7b] [--meb] [--limit=3] [--yaz]
+//   Modeller SIRALI çalışır (6GB VRAM — aynı anda ikisi yüklenmez); her model
+//   kendi durum (resume) dosyasını ve cikti/dogrulama_kalibrasyon_<model>.csv
+//   dosyasını üretir. --meb yalnız MEB etiketli (iz'li) adaylara iner.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import {
   soruyuDogrula,
+  OLLAMA_TABAN,
   type DogrulamaKaydi,
   type DogrulamaBanti,
 } from '../../lib/question-verification';
@@ -34,6 +42,19 @@ const SUPABASE_URL = 'https://nfdjxwmhvalwokzyyvre.supabase.co';
 const DURUM_DOSYASI = 'scripts/soru-fabrikasi/cikti/dogrulama_backfill_durum.json';
 const CSV_DOSYASI = 'scripts/soru-fabrikasi/cikti/dogrulama_kalibrasyon.csv';
 const GERCEK_YAZIM = process.argv.includes('--yaz');
+
+// ——— Ollama modu bayrakları (yalnız yerel çalıştırma) ———
+const bayrakDegeri = (ad: string): string | undefined =>
+  process.argv.find((a) => a.startsWith(`--${ad}=`))?.split('=').slice(1).join('=');
+const OLLAMA_MODU = bayrakDegeri('provider') === 'ollama';
+const MODELLER = (bayrakDegeri('model') ?? process.env.OLLAMA_VERIFIER_MODEL ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const LIMIT = Math.max(1, Number.parseInt(bayrakDegeri('limit') ?? '', 10) || Number.MAX_SAFE_INTEGER);
+const SADECE_MEB = process.argv.includes('--meb');
+// Dosya adlarında ':' Windows'ta yasak → gemma3:4b → gemma3-4b
+const dosyaGuvende = (model: string): string => model.replace(/[^a-zA-Z0-9._-]/g, '-');
 
 const ISTEK_ARASI_BEKLEME_MS = 75_000; // soru başına 5 paralel çağrı → ~4 istek/dk ort., 5'li burst (gemini-flash-latest ücretsiz katman RPM dar: 10/dk — 30sn'de 429'a düşüyordu)
 const BEKLE_429_MS = 60_000;
@@ -70,9 +91,186 @@ function csvAlan(deger: string | number): string {
 }
 
 // Kör çözümleri harf dizgesine çevir (-1 = görsel/çözülemedi)
-function cozumHarfleri(cozumler: number[]): string {
+// ayrac: Gemini CSV ';' | Ollama CSV '|' (spec)
+function cozumHarfleri(cozumler: number[], ayrac = ';'): string {
   const harfler = ['A', 'B', 'C', 'D', 'E'];
-  return cozumler.map((i) => (i >= 0 && i <= 4 ? harfler[i] : '-')).join(';');
+  return cozumler.map((i) => (i >= 0 && i <= 4 ? harfler[i] : '-')).join(ayrac);
+}
+
+// ——— OLLAMA MODU: sıralı model akışı (üretim/Gemini yolu main() içinde değişmeden durur) ———
+
+interface AdaySoru {
+  id: string;
+  tags: string[] | null;
+  subject: string;
+  topic: string;
+  correct_answer: number;
+  question_text: string;
+  choices: string[];
+}
+
+function sureYaz(ms: number): string {
+  const sn = ms / 1000;
+  return sn >= 60 ? `${Math.floor(sn / 60)}dk ${Math.round(sn % 60)}sn` : `${sn.toFixed(1)}sn`;
+}
+
+async function modeliCalistir(model: string, adaylar: AdaySoru[], okumaHeaders: HeadersInit): Promise<void> {
+  const guvenliAd = dosyaGuvende(model);
+  const durumDosyasi = `scripts/soru-fabrikasi/cikti/dogrulama_backfill_durum_ollama_${guvenliAd}.json`;
+  const csvDosyasi = `scripts/soru-fabrikasi/cikti/dogrulama_kalibrasyon_${guvenliAd}.csv`;
+
+  const durum: DurumHaritasi = existsSync(durumDosyasi)
+    ? JSON.parse(readFileSync(durumDosyasi, 'utf8'))
+    : {};
+
+  const modelBaslangic = Date.now();
+  let islenen = 0;
+  for (const q of adaylar) {
+    islenen++;
+    const iz = izBul(q.tags);
+    const etiket = iz || q.id.slice(0, 8);
+
+    const onceki = durum[q.id];
+    if (onceki?.bant) {
+      console.log(`[${islenen}/${adaylar.length}] ${etiket} durum dosyasında mevcut — atlandı`);
+      continue;
+    }
+
+    process.stdout.write(`[${islenen}/${adaylar.length}] ${etiket} (${model}) doğrulanıyor... `);
+    const soruBaslangic = Date.now();
+    try {
+      const sonuc = await soruyuDogrula({
+        question: q.question_text,
+        choices: q.choices,
+        correctAnswer: q.correct_answer,
+        uretimTur: 0,
+        provider: 'ollama',
+        ollamaModel: model,
+      });
+      console.log(
+        `${sureYaz(Date.now() - soruBaslangic)} — bant=${sonuc.bant} k=${sonuc.kayit.k}/${sonuc.kayit.n_eff} ` +
+        `U=${sonuc.kayit.u} gecersiz_ornek=${sonuc.kayit.gecersiz_ornek ?? 0} ` +
+        `cozumler=${cozumHarfleri(sonuc.kayit.cozumler, '|')}`
+      );
+      durum[q.id] = {
+        iz,
+        ders: q.subject,
+        konu: q.topic,
+        kayitliCevap: 'ABCDE'[q.correct_answer] ?? '?',
+        bant: sonuc.bant,
+        kayit: sonuc.kayit,
+        yazildi: false,
+        tarih: new Date().toISOString(),
+      };
+    } catch (e) {
+      const mesaj = e instanceof Error ? e.message : String(e);
+      console.log(`✗ ${sureYaz(Date.now() - soruBaslangic)} — arıza: ${mesaj}`);
+      durum[q.id] = {
+        ...(onceki ?? {}),
+        iz,
+        ders: q.subject,
+        konu: q.topic,
+        kayitliCevap: 'ABCDE'[q.correct_answer] ?? '?',
+        hata: mesaj,
+        tarih: new Date().toISOString(),
+      };
+    }
+    writeFileSync(durumDosyasi, JSON.stringify(durum, null, 2));
+
+    // --yaz: Gemini yoluyla AYNI DB sözleşmesi (uyumsuz → rejected); dry-run'da dokunulmaz
+    const girdi = durum[q.id];
+    if (GERCEK_YAZIM && girdi?.bant && girdi.kayit && !girdi.yazildi) {
+      const patch = girdi.bant === 'uyumsuz'
+        ? { verification_status: girdi.bant, verification: girdi.kayit, status: 'rejected' }
+        : { verification_status: girdi.bant, verification: girdi.kayit };
+      const p = await fetch(`${SUPABASE_URL}/rest/v1/questions?id=eq.${q.id}`, {
+        method: 'PATCH',
+        headers: { ...okumaHeaders, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify(patch),
+      });
+      if (!p.ok) {
+        console.error(`  ❌ PATCH başarısız: HTTP ${p.status} — ${(await p.text()).slice(0, 200)}`);
+      } else {
+        girdi.yazildi = true;
+      }
+      writeFileSync(durumDosyasi, JSON.stringify(durum, null, 2));
+    }
+  }
+
+  // Spec CSV: resmi_dogru_cevap + resmi_fark BOŞ — kullanıcı PDF (s.33) anahtarından doldurur
+  const dogrulanmis = Object.entries(durum).filter(([, d]) => d.bant && d.kayit) as Array<
+    [string, DurumGirdisi & { bant: DogrulamaBanti; kayit: DogrulamaKaydi }]
+  >;
+  dogrulanmis.sort((a, b) => a[1].kayit.u - b[1].kayit.u || a[0].localeCompare(b[0]));
+  const basliklar = [
+    'soru_id', 'uretici_anahtari', 'denetleyici_cevaplari', 'k', 'n_gecerli', 'U', 'bant',
+    'resmi_dogru_cevap', 'resmi_fark',
+  ];
+  const satirlar = dogrulanmis.map(([id, d]) => [
+    csvAlan(id),
+    d.kayitliCevap,
+    csvAlan(cozumHarfleri(d.kayit.cozumler, '|')),
+    d.kayit.k,
+    d.kayit.n_eff,
+    d.kayit.u.toFixed(2),
+    d.bant,
+    '', // resmi_dogru_cevap
+    '', // resmi_fark
+  ].join(','));
+  writeFileSync(csvDosyasi, `${basliklar.join(',')}\n${satirlar.join('\n')}\n`);
+
+  const bantSayaci: Record<string, number> = {};
+  for (const [, d] of dogrulanmis) bantSayaci[d.bant] = (bantSayaci[d.bant] ?? 0) + 1;
+  const hataSayisi = Object.values(durum).filter((d) => d.hata).length;
+  console.log(
+    `\n📊 [${model}] kalibrasyon CSV: ${csvDosyasi} (${dogrulanmis.length} satır, U artan) — model süresi: ${sureYaz(Date.now() - modelBaslangic)}`
+  );
+  console.log(
+    `   Bantlar: ${JSON.stringify(bantSayaci)} | arızalı: ${hataSayisi}${hataSayisi ? ' (resume ile yeniden denenir)' : ''}`
+  );
+}
+
+async function ollamaModu(): Promise<void> {
+  if (MODELLER.length === 0) {
+    throw new Error('--model=gemma3:4b[,qwen2.5:7b] gerekli (veya OLLAMA_VERIFIER_MODEL env)');
+  }
+  // Nabız + kurulu model doğrulaması — sıralı akış ORTASINDA değil başta keşfedilsin
+  const nabiz = await fetch(`${OLLAMA_TABAN}/api/tags`).catch(() => null);
+  if (!nabiz?.ok) throw new Error(`Ollama erişilemiyor (${OLLAMA_TABAN}) — 'ollama serve' açık mı?`);
+  const kurulu = new Set(
+    ((await nabiz.json()) as { models?: Array<{ name: string }> }).models?.map((m) => m.name) ?? []
+  );
+  for (const m of MODELLER) {
+    if (!kurulu.has(m)) {
+      throw new Error(`Model kurulu değil: ${m} — kurulu olanlar: ${[...kurulu].join(', ')}`);
+    }
+  }
+
+  const env = readFileSync('.env.local', 'utf8');
+  const key = env.match(/^SUPABASE_SERVICE_ROLE_KEY=(.+)$/m)?.[1]?.trim();
+  if (!key) throw new Error('Service key bulunamadı');
+  const okumaHeaders = { apikey: key, Authorization: `Bearer ${key}` };
+
+  const adayUrl =
+    `${SUPABASE_URL}/rest/v1/questions?select=id,tags,subject,topic,correct_answer,question_text,choices` +
+    `&status=eq.active&verification_status=is.null&clone_of=is.null&intended_for=is.null` +
+    `&order=created_at.asc`;
+  const adaylarR = await fetch(adayUrl, { headers: okumaHeaders });
+  if (!adaylarR.ok) throw new Error(`Aday sorgusu başarısız: HTTP ${adaylarR.status}`);
+  let adaylar = (await adaylarR.json()) as AdaySoru[];
+  if (SADECE_MEB) adaylar = adaylar.filter((q) => izBul(q.tags) !== '');
+  adaylar = adaylar.slice(0, LIMIT);
+
+  console.log(
+    `${GERCEK_YAZIM ? '🔴 GERÇEK YAZIM (--yaz)' : '🔵 DRY-RUN (DB yazılmaz)'} — ollama modu ` +
+    `[${MODELLER.join(' → ')} sıralı] — ${adaylar.length} aday${SADECE_MEB ? ' (yalnız MEB)' : ''}\n`
+  );
+
+  const genelBaslangic = Date.now();
+  for (const model of MODELLER) {
+    await modeliCalistir(model, adaylar, okumaHeaders);
+  }
+  console.log(`\n⏱ GENEL TOPLAM: ${sureYaz(Date.now() - genelBaslangic)} (${MODELLER.length} model sıralı)`);
 }
 
 async function soruDogrulaDayanikli(params: {
@@ -99,6 +297,7 @@ async function soruDogrulaDayanikli(params: {
 }
 
 async function main() {
+  if (OLLAMA_MODU) return ollamaModu();
   const env = readFileSync('.env.local', 'utf8');
   const key = env.match(/^SUPABASE_SERVICE_ROLE_KEY=(.+)$/m)?.[1]?.trim();
   if (!key) throw new Error('Service key bulunamadı');

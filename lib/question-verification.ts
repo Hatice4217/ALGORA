@@ -12,10 +12,12 @@
 // Tüm üretim yolları (/next fallback, legacy /generate, Soru Fabrikası
 // yükleyicisi, backfill) bu modülün soruyuDogrula() çağrısını geçmek ZORUNDADIR.
 //
-// SAĞLAYICI NOTU: model/endpoint/anahtar env'den okunur ancak istek formatı
-// ŞİMDİLİK Gemini generateContent şemasına özgüdür. VERIFIER_PROVIDER
-// (gemini | openai_uyumlu) bağdaştırıcı katmanı SONRA eklenecek — o katmanla
-// tek env değişimiyle başka sağlayıcıya geçilebilir hale gelecek.
+// SAĞLAYICI NOTU: üretim doğrulayıcısının istek formatı Gemini generateContent
+// şemasına özgüdür. soruyuDogrula İSTEğE BAĞLI provider parametresi kabul eder:
+// 'ollama' dalı YALNIZCA yerel script'ler içindir (backfill --provider=ollama —
+// kalibrasyon, Gemini kotası olmadan). Üretim çağrıları provider GEÇMEZ ve
+// Vercel'de VERIFIER_PROVIDER env yoktur → varsayılan 'gemini' dalı, davranış
+// birebir aynı. (openai_uyumlu bağdaştırıcı hâlâ sonra.)
 //
 // Adil puanlama bağlantısı: bantlar DB'de questions.verification_status'ta
 // yaşar; performans istatistikleri yalnız status='active' soruları sayar
@@ -48,6 +50,8 @@ export interface DogrulamaKaydi {
   neden?: string;
   /** Geçerli çözümlerin harf dağılımı — uyumsuzluk teşhisi için */
   dagilim?: Record<string, number>;
+  /** Yalnız ollama dalı: 'CEVAP: X' kalıbı okunamayıp n_eff'ten düşen örnek sayısı */
+  gecersiz_ornek?: number;
   /** Admin inceleme kararı (inceleme route'u yazar) */
   insan_onayi?: { karar: string; onceki_bant: string; tarih: string };
 }
@@ -204,6 +208,159 @@ async function tekKorCozum(config: VerifierConfig, prompt: string): Promise<TekC
   return { index, modelVersion: data.modelVersion };
 }
 
+// ===================================
+// OLLAMA DALI — YALNIZ YEREL SCRIPT (backfill --provider=ollama)
+// ===================================
+// Üretim değildir (localhost:11434 Vercel'de yok). Amaç Gemini kotası olmadan
+// KALİBRASYON: yerel modeller aynı kör-çözüm protokolüyle ölçülür. Anahtar
+// yine ASLA gösterilmez; cevap yalnız metindeki SON 'CEVAP: X' kalıbından okunur.
+
+export const OLLAMA_TABAN = 'http://localhost:11434';
+
+// Spec istemi: çözüm serbest metin, son satırda tek harf. Görsel sorusu için
+// ayrı çıkış yolu yok — okunamayan örnek geçersiz sayılır (n_gecerli düşer).
+function ollamaCozumPromptYaz(soruMetni: string, choices: string[]): string {
+  const harfler = ['A', 'B', 'C', 'D', 'E'];
+  const siklar = choices
+    .slice(0, 5)
+    .map((s, i) => `${harfler[i]}) ${s}`)
+    .join('\n');
+  return `Bu soruyu adım adım kısaca çöz. Son satıra sadece şunu yaz: CEVAP: X (X yerine A, B, C, D veya E).
+
+Soru: ${soruMetni}
+
+ŞIKLAR:
+${siklar}`;
+}
+
+// SON 'CEVAP: X' kalıbından harf → 0-4 indeks. Model 'D) 4' gibi uzun yazsa bile
+// kalıptan sonraki harf alınır (metnin başındaki harflere bakılmaz).
+function ollamaCevapOku(metin: string): number | null {
+  const desen = /CEVAP\s*:\s*\**\s*\(?([A-E])\b/gi;
+  let eslesme: RegExpExecArray | null;
+  let son: RegExpExecArray | null = null;
+  while ((eslesme = desen.exec(metin)) !== null) son = eslesme;
+  return son ? 'ABCDE'.indexOf(son[1].toUpperCase()) : null;
+}
+
+// Tek örnek: kalıpsız yanıt → AYNI örnek en fazla 2 kez daha denenir (3 toplam),
+// hâlâ yoksa null (geçersiz örnek). Taşıma/HTTP arızası throw edilir: arıza
+// üretimle aynı sözleşmede (GeminiUpstreamError) fail-closed işaretlenir.
+async function tekOllamaOrnek(model: string, prompt: string): Promise<number | null> {
+  for (let deneme = 1; deneme <= 3; deneme++) {
+    let response: Response;
+    try {
+      response = await fetch(`${OLLAMA_TABAN}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(240_000), // yerel GPU: model yüklenme + ~800 token üretim
+        body: JSON.stringify({
+          model,
+          prompt,
+          stream: false,
+          options: { temperature: 0.7, num_ctx: 4096, num_predict: 800 },
+        }),
+      });
+    } catch (e) {
+      throw new GeminiUpstreamError(
+        `Ollama'ya ulaşılamadı (${OLLAMA_TABAN}): ${(e as Error).message}`,
+        502,
+      );
+    }
+    if (!response.ok) {
+      const govde = await response.text().catch(() => '');
+      throw new GeminiUpstreamError(`Ollama HTTP ${response.status}: ${govde.slice(0, 150)}`, 502);
+    }
+    const data = (await response.json()) as { response?: string };
+    const index = ollamaCevapOku(data.response ?? '');
+    if (index !== null) return index;
+    if (deneme < 3) {
+      console.warn(`  ollama[${model}]: CEVAP kalıbı yok (deneme ${deneme}/3) — aynı örnek tekrar`);
+    }
+  }
+  return null;
+}
+
+async function ollamaIleDogrula(
+  params: { question: string; choices: string[]; correctAnswer: number; uretimTur: number },
+  model: string,
+): Promise<DogrulamaSonucu> {
+  if (!model) {
+    throw new Error('ollama sağlayıcısı için model gerekli (--model veya OLLAMA_VERIFIER_MODEL)');
+  }
+  // API anahtarı GEREKMEZ (verifierConfigOku çağrılmaz); n ve eşikler aynı env default'ları
+  const n = Math.min(10, Math.max(1, Math.round(sayiEnv('VERIFIER_N', 5))));
+  const tamEsik = sayiEnv('VERIFIER_TAM_ESIK', 1.0);
+  const kismiEsik = sayiEnv('VERIFIER_KISMI_ESIK', 0.6);
+  const prompt = ollamaCozumPromptYaz(params.question, params.choices);
+
+  // SIRALI örnekler — 6GB VRAM: model zaten yüklü, paralel istek KV cache'i bölmez
+  const cozumler: number[] = [];
+  let gecersizOrnek = 0;
+  for (let i = 0; i < n; i++) {
+    const ornek = await tekOllamaOrnek(model, prompt);
+    cozumler.push(ornek ?? -1);
+    if (ornek === null) gecersizOrnek++;
+  }
+
+  const gecerli = cozumler.filter((i) => i >= 0 && i <= 4);
+  const n_eff = gecerli.length;
+  if (n_eff === 0) {
+    // Tek okunabilir cevap yok — model/istem uyumsuzluğu: fail-closed (hata kaydı,
+    // bant YAZILMAZ; küçük bir modelin tüm havuzu 'uyumsuz'la zehirlemesinin önü kesilir)
+    throw new GeminiUpstreamError(
+      `Ollama hiç geçerli CEVAP döndürmedi (n_gecerli=0, model=${model})`,
+      502,
+    );
+  }
+
+  const k = gecerli.filter((i) => i === params.correctAnswer).length;
+  const u = Math.round((k / n_eff) * 100) / 100;
+
+  // Bant eşikleri Gemini dalıyla AYNI (dokunulmaz): n_eff<3 → kismi+dogrulama_eksik
+  let bant: DogrulamaBanti;
+  let neden: string | undefined;
+  if (n_eff < 3) {
+    bant = 'kismi_uyum';
+    neden = 'dogrulama_eksik';
+  } else if (u >= tamEsik) {
+    bant = 'tam_uyum';
+  } else if (u >= kismiEsik) {
+    bant = 'kismi_uyum';
+    neden = 'esik_alti';
+  } else {
+    bant = 'uyumsuz';
+  }
+
+  const harfler = ['A', 'B', 'C', 'D', 'E'];
+  const dagilim: Record<string, number> = {};
+  for (const i of gecerli) {
+    const harf = harfler[i] ?? String(i);
+    dagilim[harf] = (dagilim[harf] ?? 0) + 1;
+  }
+
+  const kayit: DogrulamaKaydi = {
+    n,
+    n_eff,
+    k,
+    u,
+    cozumler,
+    dogrulayici: { model, modelVersion: model, endpoint_base: OLLAMA_TABAN },
+    esikler: { tam: tamEsik, kismi: kismiEsik },
+    temperature: 0.7,
+    tarih: new Date().toISOString(),
+    uretim_tur: params.uretimTur,
+    ...(neden ? { neden } : {}),
+    dagilim,
+    ...(gecersizOrnek > 0 ? { gecersiz_ornek: gecersizOrnek } : {}),
+  };
+
+  console.log(
+    `question-verification[ollama:${model}]: bant=${bant} k=${k}/${n_eff} (n=${n}, geçersiz=${gecersizOrnek}) U=${u}`
+  );
+  return { bant, kayit };
+}
+
 /**
  * Bir soruyu çift-AI doğrulamadan geçirir: n paralel kör çözüm → n_eff, k, U
  * hesapları + bant kararı + tam jsonb kayıt. Bant eşikleri env'den gelir ve
@@ -220,7 +377,18 @@ export async function soruyuDogrula(params: {
   correctAnswer: number;
   /** 0 = havuz/MEB yüklemesi, 1+ = fallback yeniden üretim turu */
   uretimTur: number;
+  /** Varsayılan: env VERIFIER_PROVIDER==='ollama' ise ollama, değilse gemini.
+   *  Üretim çağrıları parametre GEÇMEZ → 'gemini' dalı, davranış değişmez. */
+  provider?: 'gemini' | 'ollama';
+  /** provider='ollama' için model adı (yoksa OLLAMA_VERIFIER_MODEL env) */
+  ollamaModel?: string;
 }): Promise<DogrulamaSonucu> {
+  if (
+    (params.provider ?? (process.env.VERIFIER_PROVIDER === 'ollama' ? 'ollama' : 'gemini')) ===
+    'ollama'
+  ) {
+    return ollamaIleDogrula(params, params.ollamaModel ?? process.env.OLLAMA_VERIFIER_MODEL ?? '');
+  }
   const config = verifierConfigOku();
   const prompt = korCozumPromptYaz(params.question, params.choices);
 
