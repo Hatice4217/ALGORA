@@ -12,7 +12,7 @@
 //      - Puan → hedef YÜKÜ: hedef puan / 10 (450 puan → ~45 soru/gün hedefi)
 //      - Madde zorluğu başarıya göre: <40% Başlangıç, <75% Orta, ≥75% İleri
 //   2. GEMINI KİŞİSEL NOTU (2-3 cümle motivasyon — kural planının üstüne):
-//      - flash-lite, 12sn timeout; hata/timeout'ta statik yedek mesaj (akış durmaz)
+//      - flash-lite, 6sn timeout; hata/timeout'ta statik yedek mesaj (akış durmaz)
 //
 // Plan Talep-Başına türetilir (günlük saklama yok); ilerleme takibi istemci
 // tarafında answers tablosundan günün gerçek cevaplarıyla yapılır.
@@ -81,7 +81,10 @@ Adı belli değilse "sen" diye hitap et; ASLA "[Öğrencinin Adı]" gibi yer tut
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        signal: AbortSignal.timeout(12_000),
+        // 6sn: sağlıklı koşulda not 3-5 sn'de gelir; serbest katman takıldığında
+        // (ölçüm: 3 istekten 2'si >12 sn asılı) kullanıcının tüm sekme açışı
+        // 13 sn beklemesin — sürede statik yedeğe düşer, plan gecikmez.
+        signal: AbortSignal.timeout(6_000),
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0.8, maxOutputTokens: 300 },

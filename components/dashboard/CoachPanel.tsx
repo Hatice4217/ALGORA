@@ -61,18 +61,48 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
   useEffect(() => {
     let iptal = false;
 
+    // Sekme-özel plan önbelleği: Koç sekmesine HER dönüş CoachPanel'i yeniden
+    // mount eder ve eskisi her seferinde uçtan uca plan isteği atardı — Gemini
+    // yavaşken ~13 sn iskelet, 60 sn'de 5 istek burst limitine takılınca 429 →
+    // "Yeniden Dene" (tam sayfa reload) döngüsü = "Koç 1 dakikada açılıyor".
+    // Şimdi: önbellek VARSA anında boyar, tazelemeyi arka planda sessizce yapar;
+    // tazeleme başarısızsa bayat plan sessizce kalır (hata kartı YOK). Anahtar
+    // kullanıcıya özeldir (hesap karışması — bkz. UserPreferencesProvider).
     const planiCek = async () => {
+      const { user } = await authHelpers.getCurrentUser();
+      if (iptal) return;
+      const onbellekAnahtari = `algora_koc_plan:${user?.id ?? 'anon'}`;
+      let onbellekVardi = false;
+      try {
+        const raw = sessionStorage.getItem(onbellekAnahtari);
+        if (raw) {
+          const p = JSON.parse(raw) as PlanVerisi;
+          if (p && Array.isArray(p.maddeler)) {
+            setPlan(p);
+            onbellekVardi = true;
+            setYukleniyor(false);
+          }
+        }
+      } catch {
+        // bozuk JSON / storage erişilemez → normal akış
+      }
+
       try {
         const response = await authFetch('/api/coach/plan', { method: 'POST' });
         const data = await response.json().catch(() => ({}));
         if (iptal) return;
         if (!response.ok || !data.success) {
-          setHata(data.error || 'Plan alınamadı.');
-          return;
+          if (!onbellekVardi) setHata(data.error || 'Plan alınamadı.');
+          return; // önbellek varsa bayat plan gösterilmeye devam eder
         }
         setPlan(data.data as PlanVerisi);
+        try {
+          sessionStorage.setItem(onbellekAnahtari, JSON.stringify(data.data));
+        } catch {
+          // kota dolu → oturumluk kalır
+        }
       } catch {
-        if (!iptal) setHata('Bağlantı hatası — internet bağlantını kontrol edip tekrar deneyebilirsin.');
+        if (!onbellekVardi) setHata('Bağlantı hatası — internet bağlantını kontrol edip tekrar deneyebilirsin.');
       } finally {
         if (!iptal) setYukleniyor(false);
       }
