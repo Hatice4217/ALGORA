@@ -125,8 +125,9 @@ export function PricingSection() {
               'Havuzdan Soru Çözme: Sınırsız',
               '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz',
               'AI Üst Beyin Kredisi (Günlük Limit): 30 Kredi / Gün',
-              'Yapay Zeka Destekli YKS Koçu (Yakında)',
-              'Detaylı Gelişim ve Zayıf Konu Analitiği (Yakında)',
+              'Yapay Zeka Destekli YKS Koçu',
+              'Zayıf Konu Analizi (Canlı)',
+              'Gelişim Zaman Serisi & Trend Analizi (Yakında)',
               'Kaynak Yükleme & Çoklu Sentez — RAG (Yakında)',
               'AI Sınav Komutanı — Yol Haritası (Yakında)'
             ]}

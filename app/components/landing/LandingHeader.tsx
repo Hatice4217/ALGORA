@@ -65,8 +65,9 @@ export function LandingHeader() {
           </div>
 
           {/* Mobile: Tema anahtarı + Hamburger Button
-              (md:!hidden — önemli: flex+md:hidden important'sız yazışırsa masaüstünde gizlenmeyebilir) */}
-          <div className="flex md:!hidden items-center gap-1">
+              (md:hidden! — Tailwind v4 important SONEĞİ; masaüstünde gizlenmesi
+              md:flex desktop grubuna yenilmesin diye important şart) */}
+          <div className="flex md:hidden! items-center gap-1">
             <TemaDegistir />
             <HamburgerButton
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

@@ -28,10 +28,8 @@ const THEMES = [
   { value: 'dark', label: 'Koyu' },
 ];
 
-const LANGUAGES = [
-  { value: 'tr', label: 'Türkçe' },
-  { value: 'en', label: 'English' },
-];
+// Dil tek (Türkçe) — seçici YOK: ölü "English" seçeneği kaldırıldı.
+// formData.language veri akışı değişmedi (DB kolonu canlı, kaydetmede aynen gider).
 
 // Gerçek temayı localStorage'dan (next-themes) oku — DB'deki değer yalnız yazılır,
 // geri okunmaz (cihaz tercihi ezilmesin + başka cihazda flash olmasın)
@@ -595,14 +593,6 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
                     handleInputChange('theme', e.target.value);
                   }}
                   placeholder="Tema seçin"
-                />
-
-                <Select
-                  label="Dil"
-                  options={LANGUAGES}
-                  value={formData.language}
-                  onChange={(e) => handleInputChange('language', e.target.value)}
-                  placeholder="Dil seçin"
                 />
               </div>
             </div>

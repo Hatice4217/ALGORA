@@ -63,8 +63,12 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       'Havuzdan Soru Çözme: Sınırsız',
       '3 Adımlı Sokratik İpucu: Sınırsız ve Ücretsiz',
       'AI Üst Beyin Kredisi (Günlük Limit): 30 Kredi / Gün',
-      'Yapay Zeka Destekli YKS Koçu (Yakında)',
-      'Detaylı Gelişim ve Zayıf Konu Analitiği (Yakında)',
+      // CANLI özellikler "Yakında" ETİKETSİZ listelenir — Koç sekmesi (/api/coach/plan)
+      // ve Zayıf Konu Analizi (Analiz sekmesi) herkese açık kullanımda.
+      'Yapay Zeka Destekli YKS Koçu',
+      'Zayıf Konu Analizi (Canlı)',
+      // Zaman serisi/trend = yol haritası madde 9 (henüz yok) — ayrı (Yakında) satır.
+      'Gelişim Zaman Serisi & Trend Analizi (Yakında)',
       'Kaynak Yükleme & Çoklu Sentez — RAG (Yakında)',
       'AI Sınav Komutanı — Yol Haritası (Yakında)',
     ],
@@ -81,6 +85,10 @@ const PLAN_OZELLIK_ACIKLAMALARI: Record<string, string> = {
     'Takıldığınız soruda çözümü ifşa etmeyen, sizi adım adım düşündüren 3 kademeli ipucu.',
   'Platform arayüzüne tam erişim':
     'Analiz paneli, hedefler, günlük seri ve tüm ders araçlarına erişiminiz tamdır.',
+  'Yapay Zeka Destekli YKS Koçu':
+    'Hedef puanınıza göre günlük çalışma planı ve kişisel AI koç notu — Koç sekmesinde sizi bekliyor.',
+  'Zayıf Konu Analizi (Canlı)':
+    'En çok zorlandığınız konular gerçek yanıtlarınızdan hesaplanır; tek tıkla o konudan soru çözmeye geçersiniz.',
 };
 
 // Kredi maddesi plana göre farklı yazıldığı için ("N Kredi / Gün") baştan eşleşir
