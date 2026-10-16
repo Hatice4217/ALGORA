@@ -379,28 +379,28 @@ export default function LoginPage() {
 
           {/* Registered Success Message */}
           {registeredMessage && (
-            <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="mb-6 bg-green-50 dark:bg-emerald-500/15 border border-green-200 dark:border-emerald-500/30 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-green-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <p className="text-sm text-green-800">{registeredMessage}</p>
+                <p className="text-sm text-green-800 dark:text-emerald-300">{registeredMessage}</p>
               </div>
             </div>
           )}
 
           {/* Rate Limit Warning */}
           {rateLimitError && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="mb-6 bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-500/30 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-red-900 mb-1">Güvenlik Uyarısı:</p>
-                  <p className="text-sm text-red-800">{rateLimitError}</p>
+                  <p className="text-sm font-medium text-red-900 dark:text-red-200 mb-1">Güvenlik Uyarısı:</p>
+                  <p className="text-sm text-red-800 dark:text-red-300">{rateLimitError}</p>
                   {remainingTime > 0 && (
-                    <p className="text-xs text-red-700 mt-1">
+                    <p className="text-xs text-red-700 dark:text-red-400 mt-1">
                       Kalan süre: {formatCountdown(remainingTime)}
                     </p>
                   )}
@@ -459,7 +459,7 @@ export default function LoginPage() {
               <div className="absolute right-0 top-0">
                 <Link
                   href="/auth/forgot-password"
-                  className="text-sm text-purple-600 hover:text-purple-700"
+                  className="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
                 >
                   Şifremi Unuttum
                 </Link>

@@ -565,7 +565,14 @@ export default function DashboardPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Sunucu hatası' }));
         console.error('API Error:', errorData.error);
-        setHataMesaji(`Soru alınamadı: ${errorData.error || 'Bilinmeyen hata'}`);
+        // 429'da route Retry-After (saniye) header'ı gönderir — boş "tekrar dene"
+        // uyarması yerine öğrenciye kesin beklemeyi söyle
+        const retryAfter = response.headers.get('Retry-After');
+        const beklemeNotu =
+          response.status === 429 && retryAfter
+            ? ` (${retryAfter} sn içinde tekrar deneyebilirsin)`
+            : '';
+        setHataMesaji(`Soru alınamadı: ${errorData.error || 'Bilinmeyen hata'}${beklemeNotu}`);
         return;
       }
 

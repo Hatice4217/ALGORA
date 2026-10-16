@@ -57,6 +57,9 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
   // Bonus hedef: ders hedefine ulaşınca kullanıcı +5'lik ek hedef açabilir
   // (oturumluk — plan zaten her gün yeniden üretiliyor)
   const [bonusHedef, setBonusHedef] = useState<Record<string, number>>({});
+  // 429 "Yeniden Dene" → tam sayfa reload yerine planiCek'i sessizce yeniden
+  // tetikler (önbellek varsa anında boyar; "1 dakika reload döngüsü" bitti)
+  const [yenidenDeneAnahtari, setYenidenDeneAnahtari] = useState(0);
 
   useEffect(() => {
     let iptal = false;
@@ -92,7 +95,15 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
         const data = await response.json().catch(() => ({}));
         if (iptal) return;
         if (!response.ok || !data.success) {
-          if (!onbellekVardi) setHata(data.error || 'Plan alınamadı.');
+          if (!onbellekVardi) {
+            // 429'da route Retry-After (saniye) gönderir — kesin beklemeyi söyle
+            const retryAfter = response.headers.get('Retry-After');
+            const beklemeNotu =
+              response.status === 429 && retryAfter
+                ? ` Lütfen ${retryAfter} saniye sonra tekrar deneyin.`
+                : '';
+            setHata((data.error || 'Plan alınamadı.') + beklemeNotu);
+          }
           return; // önbellek varsa bayat plan gösterilmeye devam eder
         }
         setPlan(data.data as PlanVerisi);
@@ -138,7 +149,7 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
     return () => {
       iptal = true;
     };
-  }, []);
+  }, [yenidenDeneAnahtari]);
 
   // Yükleniyor iskeleti
   if (yukleniyor) {
@@ -163,7 +174,11 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
           <span className="text-3xl">😕</span>
           <p className="mt-3 text-slate-600 dark:text-slate-300 text-sm">{hata || 'Plan yüklenemedi.'}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              setHata(null);
+              setYukleniyor(true);
+              setYenidenDeneAnahtari((k) => k + 1);
+            }}
             className="mt-4 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition-colors"
           >
             Yeniden Dene

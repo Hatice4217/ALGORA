@@ -296,10 +296,10 @@ export default function RegisterPage() {
           {/* Email Notice */}
           <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-lg">
             <div className="flex items-start gap-2">
-              <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-xs text-blue-800">
+              <p className="text-xs text-blue-800 dark:text-blue-300">
                 <strong>Bilgi:</strong> Kayıt olduktan sonra e-posta adresinize bir onay linki gönderilecektir. Giriş yapabilmek için bu linke tıklamanız gerekmektedir.
               </p>
             </div>
@@ -441,11 +441,11 @@ export default function RegisterPage() {
             {/* Legal Terms - Compact */}
             <div className="text-xs text-gray-500 dark:text-slate-400 leading-tight">
               Kayıt olarak{' '}
-              <Link href="/legal/terms" className="text-purple-600 hover:text-purple-700">
+              <Link href="/legal/terms" className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300">
                 Kullanım Şartları
               </Link>{' '}
               ve{' '}
-              <Link href="/legal/privacy" className="text-purple-600 hover:text-purple-700">
+              <Link href="/legal/privacy" className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300">
                 Gizlilik Politikası
               </Link>{' '}
               &apos;nı kabul etmiş olursunuz.

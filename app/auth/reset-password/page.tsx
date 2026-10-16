@@ -32,8 +32,11 @@ export default function ResetPasswordPage() {
   // PKCE kodu kaçırılırsa açıkça çeviririz, sonra kısa süre session'ı yoklarız
   useEffect(() => {
     let attempts = 0;
+    let zamanlayici: ReturnType<typeof setTimeout> | null = null;
+    let iptal = false; // unmount sonrası async state set riskini kapatır
     const checkSession = async () => {
       const { user } = await authHelpers.getCurrentUser();
+      if (iptal) return;
       if (user) {
         setHasRecoverySession(true);
         setSessionChecked(true);
@@ -41,7 +44,7 @@ export default function ResetPasswordPage() {
       }
       attempts += 1;
       if (attempts < 10) {
-        setTimeout(checkSession, 500);
+        zamanlayici = setTimeout(checkSession, 500);
       } else {
         setSessionChecked(true);
       }
@@ -64,6 +67,10 @@ export default function ResetPasswordPage() {
     };
 
     init();
+    return () => {
+      iptal = true;
+      if (zamanlayici) clearTimeout(zamanlayici);
+    };
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

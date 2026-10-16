@@ -28,6 +28,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://algora-sigma.vercel.app"),
   title: "ALGORA - AI Destekli Sınav Hazırlığı",
   description: "YKS (TYT/AYT) sınavına hazırlık için yapay zeka destekli kişiselleştirilmiş sorular, detaylı analizler ve sürekli ilerleme takibi.",
   keywords: ["YKS", "TYT", "AYT", "sınav", "hazırlık", "AI", "yapay zeka", "öğrenme", "eğitim"],
@@ -42,6 +43,10 @@ export const metadata: Metadata = {
     description: "YKS (TYT/AYT) sınavına yapay zeka ile hazırlanın",
     type: "website",
     locale: "tr_TR",
+    // Görsel app/opengraph-image.tsx'ten (ImageResponse) otomatik gelir
+  },
+  twitter: {
+    card: "summary_large_image",
   },
   other: {
     // No duplicate DNS hints - using preconnect in head instead

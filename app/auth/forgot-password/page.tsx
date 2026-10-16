@@ -161,8 +161,8 @@ export default function ForgotPasswordPage() {
               <div className={`
                 flex items-center gap-3 px-4 py-3 rounded-lg
                 ${formMessage.type === 'success'
-                  ? 'bg-green-50 border border-green-200 text-green-800'
-                  : 'bg-red-50 border border-red-200 text-red-800'
+                  ? 'bg-green-50 dark:bg-emerald-500/15 border border-green-200 dark:border-emerald-500/30 text-green-800 dark:text-emerald-300'
+                  : 'bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-500/30 text-red-800 dark:text-red-300'
                 }
               `}>
                 {formMessage.type === 'success' ? (
@@ -192,7 +192,7 @@ export default function ForgotPasswordPage() {
           <div className="mt-5 text-center">
             <Link
               href="/auth/login"
-              className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+              className="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 font-medium"
             >
               ← Giriş Sayfasına Dön
             </Link>
@@ -201,7 +201,7 @@ export default function ForgotPasswordPage() {
 
         <p className="text-center text-gray-600 dark:text-slate-300 mt-4 text-sm">
           Hesabın yok mu?{' '}
-          <Link href="/auth/register" className="text-purple-600 hover:text-purple-700 font-medium">
+          <Link href="/auth/register" className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 font-medium">
             Kayıt Ol
           </Link>
         </p>

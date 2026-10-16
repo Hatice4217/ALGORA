@@ -277,6 +277,37 @@ export function SoruModali({
     return () => clearInterval(timer);
   }, [soruUretiliyor]);
 
+  // Klavye erişilebilirliği: ESC modalı kapatır; Tab tuzağı odağı kartın
+  // içinde döngüler (klavye/ekran okuyucu kullanıcısı arka plana sızmasın).
+  useEffect(() => {
+    const klavye = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        modalKapat();
+        return;
+      }
+      if (e.key !== 'Tab' || !kartRef.current) return;
+      const odakli = kartRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+      );
+      if (odakli.length === 0) return;
+      const ilk = odakli[0];
+      const son = odakli[odakli.length - 1];
+      if (e.shiftKey && document.activeElement === ilk) {
+        e.preventDefault();
+        son.focus();
+      } else if (!e.shiftKey && document.activeElement === son) {
+        e.preventDefault();
+        ilk.focus();
+      } else if (!kartRef.current.contains(document.activeElement)) {
+        e.preventDefault();
+        ilk.focus();
+      }
+    };
+
+    document.addEventListener('keydown', klavye);
+    return () => document.removeEventListener('keydown', klavye);
+  }, [modalKapat]);
+
   // Açıklama görünürlüğü: YANLIŞ cevap → KESİNLİKLE açık (öğrenci hatasını
   // görmek zorunda); DOĞRU cevap → isteğe bağlı, kapalı başlar, öğrenci
   // isterse "Açıklamayı Gör" ile açar. Yeni soruda her durumda sıfırlanır.
@@ -293,6 +324,9 @@ export function SoruModali({
     >
       <div
         ref={kartRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Soru ve çözüm penceresi"
         style={
           !tamEkran && kayitliBoyut
             ? { width: kayitliBoyut.w, height: kayitliBoyut.h }
@@ -529,6 +563,7 @@ export function SoruModali({
                         okuduktan sonra öğrenci toplayabilir. */}
                     <button
                       onClick={() => setAciklamaAcik((v) => !v)}
+                      aria-expanded={aciklamaAcik}
                       className="text-sm font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
                     >
                       {aciklamaAcik ? 'Kapat' : 'Açıklamayı Gör →'}

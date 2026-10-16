@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -19,21 +19,44 @@ export function Modal({
   size = 'md'
 }: ModalProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsMounted(true);
     return () => setIsMounted(false);
   }, []);
 
+  // ESC kapatır; Tab odağı kartın içinde döngüler (klavye/ekran okuyucu
+  // kullanıcısı arka plana sızmasın).
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+    const handleKey = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+      if (e.key === 'Escape') {
         onClose();
+        return;
+      }
+      if (e.key === 'Tab' && modalRef.current) {
+        const odakli = modalRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+        );
+        if (odakli.length === 0) return;
+        const ilk = odakli[0];
+        const son = odakli[odakli.length - 1];
+        if (e.shiftKey && document.activeElement === ilk) {
+          e.preventDefault();
+          son.focus();
+        } else if (!e.shiftKey && document.activeElement === son) {
+          e.preventDefault();
+          ilk.focus();
+        } else if (!modalRef.current.contains(document.activeElement)) {
+          e.preventDefault();
+          ilk.focus();
+        }
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
   }, [isOpen, onClose]);
 
   useEffect(() => {
@@ -70,6 +93,10 @@ export function Modal({
 
         {/* Modal */}
         <div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={title ?? 'İletişim penceresi'}
           className={`
             relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full
             ${sizeClasses[size]}
