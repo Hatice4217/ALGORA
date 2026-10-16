@@ -824,9 +824,9 @@ export default function DashboardPage() {
     {/* Çift-oturum koruması: başka hesap bu sekmenin oturumunu devralırsa
         opak kilit + "Oturumunuz kapatıldı" + landing'e yönlendirme */}
     <SessionGuard />
-    <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
+    <div className="h-screen bg-slate-50 dark:bg-slate-950 flex flex-col overflow-hidden">
       {/* Üst Bar */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
         <div className="w-full px-4 md:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between md:mb-4">
             <div className="flex items-center gap-3">
@@ -842,7 +842,7 @@ export default function DashboardPage() {
               {subscriptionSummary?.subscription && (
                 <button
                   onClick={() => setActiveTab('package')}
-                  className="hidden md:flex items-center gap-1.5 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-sm font-semibold transition-colors"
+                  className="hidden md:flex items-center gap-1.5 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:hover:bg-purple-500/15 dark:text-purple-400 rounded-full text-sm font-semibold transition-colors"
                   title="Aboneliğim sekmesine git"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -870,15 +870,15 @@ export default function DashboardPage() {
           </div>
 
           {/* Sekmeler — yalnızca tablet/masaüstünde; mobilde hamburger menüden erişilir */}
-          <div className="hidden md:flex gap-2 border-t border-gray-100 pt-4">
+          <div className="hidden md:flex gap-2 border-t border-gray-100 dark:border-slate-800 pt-4">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-3 py-2.5 lg:px-6 lg:py-3 text-sm lg:text-base font-medium transition-all relative rounded-t-lg whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'text-purple-600 bg-purple-50'
-                    : 'text-gray-600 hover:text-purple-600 hover:bg-gray-50'
+                    ? 'text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-500/15'
+                    : 'text-gray-600 hover:text-purple-600 hover:bg-gray-50 dark:text-slate-300 dark:hover:text-purple-400 dark:hover:bg-slate-800'
                 }`}
               >
                 {tab.label}
@@ -909,8 +909,8 @@ export default function DashboardPage() {
                   aria-current={activeTab === tab.id ? 'page' : undefined}
                   className={`w-full text-left px-4 py-3 rounded-lg transition-all font-medium flex items-center justify-between ${
                     activeTab === tab.id
-                      ? 'bg-purple-100 text-purple-700'
-                      : 'text-gray-700 hover:text-purple-600 hover:bg-purple-50'
+                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400'
+                      : 'text-gray-700 hover:text-purple-600 hover:bg-purple-50 dark:text-slate-300 dark:hover:text-purple-400 dark:hover:bg-purple-500/15'
                   }`}
                 >
                   <span>{tab.label}</span>
@@ -925,7 +925,7 @@ export default function DashboardPage() {
           </ul>
 
           {/* Divider — sekmelerden hesap işlemlerine */}
-          <div className="my-6 border-t border-gray-200" />
+          <div className="my-6 border-t border-gray-200 dark:border-slate-700" />
 
           <ul className="space-y-2">
             {subscriptionSummary?.subscription && (
@@ -935,10 +935,10 @@ export default function DashboardPage() {
                     setActiveTab('package');
                     setIsMobileMenuOpen(false);
                   }}
-                  className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all font-medium"
+                  className="w-full flex items-center justify-between px-4 py-3 text-gray-700 hover:text-purple-600 hover:bg-purple-50 dark:text-slate-300 dark:hover:text-purple-400 dark:hover:bg-purple-500/15 rounded-lg transition-all font-medium"
                 >
                   <span>Kredilerim</span>
-                  <span className="text-purple-700 font-semibold">
+                  <span className="text-purple-700 dark:text-purple-400 font-semibold">
                     {subscriptionSummary.subscription.credits_remaining} / {subscriptionSummary.subscription.credits_limit}
                   </span>
                 </button>
@@ -953,7 +953,7 @@ export default function DashboardPage() {
                   setIsMobileMenuOpen(false);
                   handleLogout();
                 }}
-                className="w-full text-left px-4 py-2 text-sm font-normal text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="w-full text-left px-4 py-2 text-sm font-normal text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/15 rounded-lg transition-colors"
               >
                 Çıkış Yap
               </button>
@@ -969,12 +969,12 @@ export default function DashboardPage() {
             {/* Hoş Geldin Mesajı — solda karşılama, sağda hedef kutusu (üni üstte / bölüm altta).
                 sm yerine min-[480px]: 640 altındaki laptop ekranları da (Windows %125-150 ölçekleme)
                 yan yana düzende görür; gerçek telefonlar (360-480px) alt alta kalır. */}
-            <div className="bg-white rounded-2xl shadow-sm p-4 md:p-5 flex flex-col min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between gap-3">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-4 md:p-5 flex flex-col min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between gap-3">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-1">
                   {userName ? `Merhaba, ${userName}! 👋` : 'Yükleniyor...'}
                 </h1>
-                <p className="text-gray-600 text-sm">
+                <p className="text-gray-600 dark:text-slate-300 text-sm">
                   Bugün sınav hazırlığına devam etmeye hazır mısın?
                 </p>
               </div>
@@ -1138,15 +1138,15 @@ export default function DashboardPage() {
 
       {/* Çıkış yapılıyor ekranı */}
       {isLoggingOut && (
-        <div className="fixed inset-0 z-50 bg-white/90 backdrop-blur-sm flex items-center justify-center">
+        <div className="fixed inset-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm flex items-center justify-center">
           <div className="text-center space-y-4">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full">
-              <svg className="w-8 h-8 text-purple-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 dark:bg-purple-500/15 rounded-full">
+              <svg className="w-8 h-8 text-purple-600 dark:text-purple-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </div>
-            <p className="text-lg font-semibold text-gray-900">Güvenli şekilde çıkış yapılıyor...</p>
-            <p className="text-sm text-gray-600">Görüşmek üzere! 👋</p>
+            <p className="text-lg font-semibold text-gray-900 dark:text-slate-100">Güvenli şekilde çıkış yapılıyor...</p>
+            <p className="text-sm text-gray-600 dark:text-slate-300">Görüşmek üzere! 👋</p>
           </div>
         </div>
       )}

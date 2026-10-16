@@ -23,12 +23,12 @@ export function QuotaExhaustedModal({ periodEnd, onClose, onUpgrade }: QuotaExha
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative"
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full p-6 relative"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-300 transition-colors"
           aria-label="Kapat"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -37,9 +37,9 @@ export function QuotaExhaustedModal({ periodEnd, onClose, onUpgrade }: QuotaExha
         </button>
 
         <div className="text-center">
-          <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-purple-100 dark:bg-purple-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg
-              className="w-8 h-8 text-purple-600"
+              className="w-8 h-8 text-purple-600 dark:text-purple-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -53,17 +53,17 @@ export function QuotaExhaustedModal({ periodEnd, onClose, onUpgrade }: QuotaExha
             </svg>
           </div>
 
-          <h3 className="text-xl font-bold text-gray-900">Günlük AI Hoca Hakkınız Doldu</h3>
-          <p className="text-sm text-gray-600 mt-2">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100">Günlük AI Hoca Hakkınız Doldu</h3>
+          <p className="text-sm text-gray-600 dark:text-slate-300 mt-2">
             Bugünlük {PLAN_LIMITS.free} AI Üst Beyin kredinizin tamamını kullandınız.
             Soru çözmeye havuzdan sınırsız devam edebilirsiniz.
           </p>
         </div>
 
         {/* Yenilenme bilgisi */}
-        <div className="mt-5 bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3">
+        <div className="mt-5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex items-start gap-3">
           <svg
-            className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5"
+            className="w-5 h-5 text-slate-500 dark:text-slate-400 flex-shrink-0 mt-0.5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -76,17 +76,17 @@ export function QuotaExhaustedModal({ periodEnd, onClose, onUpgrade }: QuotaExha
             ></path>
           </svg>
           <div>
-            <p className="text-sm font-semibold text-gray-800">
+            <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">
               {periodEnd
                 ? `AI krediniz ${formatDate(periodEnd)} tarihinde yenilenecek`
                 : 'AI krediniz yarın yenilenecek'}
             </p>
             {periodEnd && (
-              <p className="text-2xl font-bold text-purple-600 mt-1.5">
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1.5">
                 <QuotaCountdown periodEnd={periodEnd} />
               </p>
             )}
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
               Yenilenme otomatiktir, ekstra bir işlem yapmanıza gerek yok.
             </p>
           </div>
@@ -94,9 +94,9 @@ export function QuotaExhaustedModal({ periodEnd, onClose, onUpgrade }: QuotaExha
 
         {/* Yükseltme seçeneği */}
         <div className="mt-5 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-slate-300">
             Beklemek istemiyor musunuz? {PLANS.pro.name} paketine geçerek her gün{' '}
-            <span className="font-semibold text-gray-800">{PLAN_LIMITS.pro} AI Üst Beyin kredisi</span> ile
+            <span className="font-semibold text-gray-800 dark:text-slate-200">{PLAN_LIMITS.pro} AI Üst Beyin kredisi</span> ile
             devam edin.
           </p>
           <div className="mt-4">
@@ -106,7 +106,7 @@ export function QuotaExhaustedModal({ periodEnd, onClose, onUpgrade }: QuotaExha
           </div>
           <button
             onClick={onClose}
-            className="mt-3 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            className="mt-3 text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300 transition-colors"
           >
             Yarın devam edeceğim
           </button>

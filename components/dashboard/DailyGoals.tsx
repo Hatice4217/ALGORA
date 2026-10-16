@@ -34,15 +34,15 @@ export function DailyGoals() {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Bugünün Hedefleri 🎯</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-slate-100">Bugünün Hedefleri 🎯</h3>
         {todays.length > 0 && (
           <span
             className={`text-xs font-semibold rounded-full px-2.5 py-1 ${
               completed.length === todays.length
-                ? 'text-green-600 bg-green-50'
-                : 'text-gray-500 bg-gray-100'
+                ? 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-500/15'
+                : 'text-gray-500 bg-gray-100 dark:text-slate-400 dark:bg-slate-800'
             }`}
           >
             {completed.length}/{todays.length} hedef
@@ -61,7 +61,7 @@ export function DailyGoals() {
           }}
           placeholder="örn. Türevden 30 soru çöz"
           maxLength={200}
-          className="flex-1 min-w-0 px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          className="flex-1 min-w-0 px-4 py-2.5 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
         />
         <button
           onClick={submit}
@@ -74,7 +74,7 @@ export function DailyGoals() {
 
       {/* Liste — yalnız bugünün tamamlanmamış hedefleri */}
       {!hydrated ? null : open.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-6">
+        <p className="text-sm text-gray-400 dark:text-slate-400 text-center py-6">
           {todays.length > 0
             ? 'Bugünün tüm hedeflerini tamamladın — harikasın! 🎉'
             : 'Henüz hedef yok — bugün ne başarmak istersin?'}
@@ -87,7 +87,7 @@ export function DailyGoals() {
               className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-500 ease-out overflow-hidden ${
                 exitingId === goal.id
                   ? 'opacity-0 -translate-x-8 max-h-0 py-0 border-transparent'
-                  : 'opacity-100 translate-x-0 max-h-24 border-gray-100 hover:border-purple-200 hover:bg-purple-50/40'
+                  : 'opacity-100 translate-x-0 max-h-24 border-gray-100 hover:border-purple-200 hover:bg-purple-50/40 dark:border-slate-800 dark:hover:border-purple-500/40 dark:hover:bg-purple-500/15'
               }`}
             >
               <input
@@ -99,14 +99,14 @@ export function DailyGoals() {
               />
               <span
                 className={`flex-1 text-sm break-words transition-colors duration-300 ${
-                  exitingId === goal.id ? 'line-through text-gray-400' : 'text-gray-700'
+                  exitingId === goal.id ? 'line-through text-gray-400 dark:text-slate-400' : 'text-gray-700 dark:text-slate-300'
                 }`}
               >
                 {goal.text}
               </span>
               <button
                 onClick={() => deleteGoal(goal.id)}
-                className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0 md:opacity-0 md:group-hover:opacity-100"
+                className="text-gray-300 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors flex-shrink-0 md:opacity-0 md:group-hover:opacity-100"
                 aria-label="Hedefi sil"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

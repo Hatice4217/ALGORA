@@ -173,12 +173,12 @@ export function QuestionPractice({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full items-start lg:grid-rows-[minmax(0,1fr)] lg:items-stretch">
         {/* Sol Kolon - Branş-Öncelikli Ders Kartları (2 birim) */}
         <div className="lg:col-span-8 lg:min-h-0">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm h-full lg:min-h-0">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm h-full lg:min-h-0">
             <div className="p-6 md:p-8 h-full flex flex-col lg:min-h-0 lg:overflow-y-auto thin-scrollbar">
-              <h2 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2 tracking-tight">
                 Soru Çözmeye Başla
               </h2>
-              <p className="text-slate-500 mb-6 text-sm">
+              <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">
                 Ders kartına dokun — soru havuzdan anında açılır (varsayılan: tüm konular, otomatik
                 zorluk — AI uyarlar). İstersen ⚙️ ile konu ve zorluk seçebilirsin.
               </p>
@@ -186,13 +186,13 @@ export function QuestionPractice({
               {/* Hata banner'ı (T2-UX1): soru modalı KAPALIYKEN üretim hatası
                   burada görünür (modal açıkken modal içinde gösterilir) */}
               {hataMesaji && !mevcutSoru && (
-                <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 flex items-start gap-3">
+                <div className="mb-4 rounded-xl bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-500/40 px-4 py-3 flex items-start gap-3">
                   <span className="text-base leading-none mt-0.5 shrink-0">⚠️</span>
-                  <p className="flex-1 text-sm text-red-700">{hataMesaji}</p>
+                  <p className="flex-1 text-sm text-red-700 dark:text-red-400">{hataMesaji}</p>
                   <button
                     onClick={hataKapat}
                     aria-label="Hatayı kapat"
-                    className="p-1 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-100 transition-colors shrink-0"
+                    className="p-1 rounded-lg text-red-400 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shrink-0"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -203,12 +203,12 @@ export function QuestionPractice({
 
               {/* Hızlı yolda üretim geri bildiriminin tek yeri: inline bekleme banner'ı */}
               {soruUretiliyor && (
-                <div className="mb-4 rounded-xl bg-purple-50 border border-purple-200 px-4 py-3 flex items-center gap-3">
-                  <svg className="animate-spin h-5 w-5 text-purple-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <div className="mb-4 rounded-xl bg-purple-50 dark:bg-purple-500/15 border border-purple-200 dark:border-purple-500/40 px-4 py-3 flex items-center gap-3">
+                  <svg className="animate-spin h-5 w-5 text-purple-600 dark:text-purple-400 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span className="text-sm font-medium text-purple-700">
+                  <span className="text-sm font-medium text-purple-700 dark:text-purple-400">
                     Soru hazırlanıyor... ({beklemeSaniye} sn)
                   </span>
                 </div>
@@ -218,8 +218,8 @@ export function QuestionPractice({
                   (Koç ile Analizler arasında); burada yalnız sayaç + yönlendirme.
                   Liste boşken hiç render edilmez. */}
               {bekleyenKlonlar.length > 0 && (
-                <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
-                  <p className="text-sm text-amber-800 flex items-center gap-2 flex-wrap min-w-0">
+                <div className="mb-4 rounded-xl bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/40 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                  <p className="text-sm text-amber-800 dark:text-amber-400 flex items-center gap-2 flex-wrap min-w-0">
                     <span className="text-base leading-none">🧺</span>
                     <span>
                       Hata Sepeti&apos;nde <strong>{bekleyenKlonlar.length} telafi soru</strong> bekliyor
@@ -247,21 +247,21 @@ export function QuestionPractice({
                         ⚙️ KARDEŞ butondur, içine gömülü değil) */}
                     <button
                       onClick={() => dersKartinaBas(kart)}
-                      className="w-full h-full px-4 py-4 pt-5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-purple-300 hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-start gap-2 text-left"
+                      className="w-full h-full px-4 py-4 pt-5 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:border-purple-300 dark:hover:border-purple-500/40 hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-start gap-2 text-left"
                     >
                       <span
                         className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${getSubjectColor(kart.ders)}`}
                       >
                         {dersIkonlari[kart.ders] || '📚'}
                       </span>
-                      <span className="text-sm font-semibold text-slate-800 leading-tight">
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
                         {kart.ders}
                       </span>
                       <span className="flex gap-1 flex-wrap">
                         {kart.turler.map((tur) => (
                           <span
                             key={tur}
-                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700"
+                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400"
                           >
                             {tur}
                           </span>
@@ -273,7 +273,7 @@ export function QuestionPractice({
                       onClick={() => detayiAc(kart)}
                       aria-label={`${kart.ders} için detaylı seçim`}
                       title="Konu ve zorluk seç"
-                      className="absolute top-2 right-2 p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-all"
+                      className="absolute top-2 right-2 p-1.5 rounded-lg text-slate-400 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/15 transition-all"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
@@ -289,7 +289,7 @@ export function QuestionPractice({
                 ))}
               </div>
 
-              <p className="text-xs text-slate-400 text-center mt-6">
+              <p className="text-xs text-slate-400 dark:text-slate-400 text-center mt-6">
                 Sorular havuzdan anında gelir; havuz boşsa yapay zeka yeni soru üretir. Soru çözmek
                 sınırsız ve ücretsizdir.
               </p>
@@ -299,21 +299,21 @@ export function QuestionPractice({
 
         {/* Sağ Kolon - Son Çözülenler (1 birim) — liste kendi içinde kayar, sayfa uzamaz */}
         <div className="lg:col-span-4 lg:min-h-0">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm h-full lg:min-h-0">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm h-full lg:min-h-0">
             <div className="p-6 lg:h-full lg:min-h-0 lg:flex lg:flex-col">
-              <h3 className="text-lg font-semibold text-slate-800 mb-1 flex items-center gap-2 lg:shrink-0">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-2 lg:shrink-0">
+                <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Son Çözülenler
               </h3>
-              <p className="text-xs text-slate-500 mb-4 lg:shrink-0">Geçmiş çalışma kayıtların</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 lg:shrink-0">Geçmiş çalışma kayıtların</p>
 
               <div className="space-y-3 lg:flex-1 lg:min-h-0 lg:overflow-y-auto thin-scrollbar lg:pr-1">
                 {sonCozulenler.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center">
-                    <p className="text-sm text-slate-500">Henüz çözülmüş soru yok.</p>
-                    <p className="text-xs text-slate-400 mt-1">
+                  <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700 p-6 text-center">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Henüz çözülmüş soru yok.</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-400 mt-1">
                       Soru çözdükçe kayıtların burada birikir.
                     </p>
                   </div>
@@ -321,31 +321,31 @@ export function QuestionPractice({
                   sonCozulenler.map((kayit) => (
                     <div
                       key={kayit.id}
-                      className="group border border-slate-200 rounded-lg p-3 hover:border-purple-300 hover:shadow-md transition-all"
+                      className="group border border-slate-200 dark:border-slate-700 rounded-lg p-3 hover:border-purple-300 dark:hover:border-purple-500/40 hover:shadow-md transition-all"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="px-2 py-0.5 rounded text-xs font-bold bg-purple-100 text-purple-700">
+                            <span className="px-2 py-0.5 rounded text-xs font-bold bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400">
                               {kayit.question.exam_type}
                             </span>
                             <span className={`px-2 py-0.5 rounded text-xs font-medium ${getSubjectColor(kayit.question.subject)} text-white`}>
                               {kayit.question.subject}
                             </span>
-                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                               {difficultyEtiketleri[kayit.question.difficulty] ?? kayit.question.difficulty}
                             </span>
                           </div>
-                          <p className="text-sm font-medium text-slate-700 mb-1">{kayit.question.topic}</p>
-                          <p className="text-xs text-slate-500">{gecmisZamaniEtiketi(kayit.answered_at)}</p>
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{kayit.question.topic}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{gecmisZamaniEtiketi(kayit.answered_at)}</p>
                         </div>
                         <button
                           onClick={() => kayitIncele(kayit)}
-                          className="ml-2 p-1.5 rounded-lg hover:bg-purple-50 opacity-0 group-hover:opacity-100 transition-all"
+                          className="ml-2 p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-500/15 opacity-0 group-hover:opacity-100 transition-all"
                           aria-label="Soruyu tekrar görüntüle"
                           title="Soruyu tekrar görüntüle"
                         >
-                          <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
@@ -364,11 +364,11 @@ export function QuestionPractice({
           Ortalanmış overlay (z-40): mobilde taşma yok, soru modalı (z-50) üstte kalır */}
       {chooserKarti && (
         <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-bold text-slate-800 mb-1 text-center">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-1 text-center">
               {chooserKarti.ders}
             </h3>
-            <p className="text-sm text-slate-500 mb-5 text-center">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-5 text-center">
               Hangi sınav için çalışmak istersin?
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -380,10 +380,10 @@ export function QuestionPractice({
                     setChooserKarti(null);
                     dersBaslat(kart.ders, tur);
                   }}
-                  className="py-8 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-purple-400 hover:bg-purple-50 hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-center gap-2"
+                  className="py-8 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:border-purple-400 dark:hover:border-purple-500/40 hover:bg-purple-50 dark:hover:bg-purple-500/15 hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-center gap-2"
                 >
-                  <span className="text-2xl font-bold text-slate-800">{tur}</span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-2xl font-bold text-slate-800 dark:text-slate-200">{tur}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     {tur === 'TYT' ? 'Temel Yeterlilik' : 'Alan Yeterlilik'}
                   </span>
                 </button>
@@ -391,7 +391,7 @@ export function QuestionPractice({
             </div>
             <button
               onClick={() => setChooserKarti(null)}
-              className="mt-4 w-full py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
+              className="mt-4 w-full py-2.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
             >
               Vazgeç
             </button>
@@ -403,18 +403,18 @@ export function QuestionPractice({
           Konu artık opsiyonel: "Tümü (Karışık)" geçerli bir seçimdir */}
       {detayKarti && (
         <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-slate-800 mb-1">Detaylı Seçim</h3>
-            <p className="text-sm text-slate-500 mb-6">{detayKarti.ders}</p>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-1">Detaylı Seçim</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{detayKarti.ders}</p>
 
             <div className="space-y-6">
               {/* Sınav Türü — yalnız paylaşılan derslerde görünür (tek türlüde sormak anlamsız) */}
               {detayKarti.turler.length > 1 && (
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                     Sınav Türü
                   </label>
-                  <div className="bg-slate-100 p-1.5 rounded-xl flex">
+                  <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl flex">
                     {detayKarti.turler.map((tur) => (
                       <button
                         key={tur}
@@ -427,8 +427,8 @@ export function QuestionPractice({
                         }}
                         className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-all ${
                           detayTur === tur
-                            ? 'bg-white text-purple-700 shadow-sm'
-                            : 'text-slate-600 hover:text-slate-800'
+                            ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-400 shadow-sm'
+                            : 'text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100'
                         }`}
                       >
                         {tur}
@@ -440,14 +440,14 @@ export function QuestionPractice({
 
               {/* Konu — "Tümü (Karışık)" boş değer olarak GEÇERLİ */}
               <div>
-                <label htmlFor="detay-konu" className="block text-sm font-semibold text-slate-700 mb-3">
+                <label htmlFor="detay-konu" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                   Konu
                 </label>
                 <select
                   id="detay-konu"
                   value={detayKonu}
                   onChange={(e) => setDetayKonu(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-700 font-medium text-sm focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 font-medium text-sm focus:outline-none focus:border-purple-400 dark:focus:border-purple-500/40 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/30 transition-all cursor-pointer"
                 >
                   <option value="">Tümü (Karışık)</option>
                   {getTopics(detayTur, detayKarti.ders).map((konu) => (
@@ -460,10 +460,10 @@ export function QuestionPractice({
 
               {/* Zorluk — 4 seçenek (Otomatik dahil): dar ekranda 2x2 ızgara */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-3">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                   Zorluk Seviyesi
                 </label>
-                <div className="bg-slate-100 p-1.5 rounded-xl grid grid-cols-2 gap-1">
+                <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl grid grid-cols-2 gap-1">
                   {ZORLUKLER.map((zorluk) => (
                     <button
                       key={zorluk.deger}
@@ -475,15 +475,15 @@ export function QuestionPractice({
                       }
                       className={`w-full py-2.5 px-4 rounded-lg font-medium text-sm transition-all ${
                         detayZorluk === zorluk.deger
-                          ? 'bg-white text-purple-700 shadow-sm'
-                          : 'text-slate-600 hover:text-slate-800'
+                          ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-400 shadow-sm'
+                          : 'text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100'
                       }`}
                     >
                       {zorluk.etiket}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="text-xs text-slate-400 dark:text-slate-400 mt-2">
                   Otomatik: yapay zeka son cevaplarına göre zorluğu uyarlar.
                 </p>
               </div>
@@ -501,7 +501,7 @@ export function QuestionPractice({
               </button>
               <button
                 onClick={() => setDetayKarti(null)}
-                className="w-full py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
+                className="w-full py-2.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
               >
                 Vazgeç
               </button>

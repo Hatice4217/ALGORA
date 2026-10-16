@@ -114,12 +114,12 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
   if (yukleniyor) {
     return (
       <div className="max-w-4xl mx-auto space-y-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 animate-pulse">
-          <div className="h-6 bg-slate-200 rounded w-2/3 mb-3"></div>
-          <div className="h-4 bg-slate-100 rounded w-1/2"></div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 animate-pulse">
+          <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-2/3 mb-3"></div>
+          <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-1/2"></div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 animate-pulse">
-          <div className="h-20 bg-slate-100 rounded"></div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 animate-pulse">
+          <div className="h-20 bg-slate-100 dark:bg-slate-800 rounded"></div>
         </div>
       </div>
     );
@@ -129,9 +129,9 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
   if (hata || !plan) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 text-center">
           <span className="text-3xl">😕</span>
-          <p className="mt-3 text-slate-600 text-sm">{hata || 'Plan yüklenemedi.'}</p>
+          <p className="mt-3 text-slate-600 dark:text-slate-300 text-sm">{hata || 'Plan yüklenemedi.'}</p>
           <button
             onClick={() => window.location.reload()}
             className="mt-4 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition-colors"
@@ -147,10 +147,10 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
   if (plan.hedefYok) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 text-center">
           <span className="text-4xl">🎯</span>
-          <h2 className="mt-4 text-xl font-bold text-slate-800">Koçun hazır — hedefini söyleyin</h2>
-          <p className="mt-2 text-slate-600 text-sm max-w-md mx-auto">
+          <h2 className="mt-4 text-xl font-bold text-slate-800 dark:text-slate-200">Koçun hazır — hedefini söyleyin</h2>
+          <p className="mt-2 text-slate-600 dark:text-slate-300 text-sm max-w-md mx-auto">
             Günlük çalışma planı üretebilmem için hedef puanını ve günlük çalışma saatini
             Ayarlar &gt; Sınav Hedefleri bölümüne girmen gerekiyor. Koç, bu hedefleri
             gerçek başarı verilerinle birleştirip her gün kişiye özel plan çıkarır.
@@ -174,50 +174,50 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-4">
       {/* Hedef çerçevesi — puan ve saat BURADA anlam kazanır */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 md:p-6">
-        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 flex-wrap">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 md:p-6">
+        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 flex-wrap">
           <span>🧭</span> Bugünün Planın
-          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-xs font-semibold">
+          <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-semibold">
             {plan.examType}
           </span>
         </h2>
         <div className="mt-3 grid grid-cols-1 min-[480px]:grid-cols-3 gap-3">
-          <div className="rounded-xl bg-purple-50 border border-purple-100 px-4 py-3">
-            <p className="text-xs text-purple-500 font-semibold">Hedefin</p>
-            <p className="text-lg font-bold text-purple-700">{plan.hedefPuan} puan</p>
+          <div className="rounded-xl bg-purple-50 dark:bg-purple-500/15 border border-purple-100 dark:border-purple-500/40 px-4 py-3">
+            <p className="text-xs text-purple-500 dark:text-purple-400 font-semibold">Hedefin</p>
+            <p className="text-lg font-bold text-purple-700 dark:text-purple-400">{plan.hedefPuan} puan</p>
           </div>
-          <div className="rounded-xl bg-sky-50 border border-sky-100 px-4 py-3">
-            <p className="text-xs text-sky-500 font-semibold">Kalan süre</p>
-            <p className="text-lg font-bold text-sky-700">{plan.gunKaldi} gün</p>
+          <div className="rounded-xl bg-sky-50 dark:bg-sky-500/15 border border-sky-100 dark:border-sky-500/40 px-4 py-3">
+            <p className="text-xs text-sky-500 dark:text-sky-400 font-semibold">Kalan süre</p>
+            <p className="text-lg font-bold text-sky-700 dark:text-sky-400">{plan.gunKaldi} gün</p>
           </div>
-          <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-3">
-            <p className="text-xs text-emerald-500 font-semibold">Günlük</p>
-            <p className="text-lg font-bold text-emerald-700">{plan.saat} saat</p>
+          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-100 dark:border-emerald-500/40 px-4 py-3">
+            <p className="text-xs text-emerald-500 dark:text-emerald-400 font-semibold">Günlük</p>
+            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{plan.saat} saat</p>
           </div>
         </div>
-        <p className="mt-3 text-sm text-slate-600">{plan.mesaj}</p>
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{plan.mesaj}</p>
       </div>
 
       {/* AI koç notu — kişiselleştirilmiş */}
-      <div className="rounded-2xl border border-purple-200 bg-gradient-to-r from-purple-50 via-white to-pink-50 p-5">
+      <div className="rounded-2xl border border-purple-200 dark:border-purple-500/40 bg-gradient-to-r from-purple-50 via-white to-pink-50 p-5">
         <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
-          <h3 className="text-sm font-bold text-purple-800 flex items-center gap-2">
+          <h3 className="text-sm font-bold text-purple-800 dark:text-purple-400 flex items-center gap-2">
             <span>✨</span> AI Koç Notu
           </h3>
-          <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-600 text-[11px] font-semibold">
+          <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-500/15 text-purple-600 dark:text-purple-400 text-[11px] font-semibold">
             {plan.motivasyonKaynak === 'gemini' ? 'Sana özel üretildi' : 'Koçundan'}
           </span>
         </div>
-        <p className="text-sm text-slate-700 leading-relaxed">{plan.motivasyon}</p>
+        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{plan.motivasyon}</p>
       </div>
 
       {/* Plan tamamlandı kutlaması */}
       {hepsiTamam && (
-        <div className="rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 px-5 py-4 animate-toast-in">
-          <h3 className="text-sm font-bold text-emerald-800 flex items-center gap-2">
+        <div className="rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 dark:border-emerald-500/40 px-5 py-4 animate-toast-in">
+          <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-2">
             <span className="text-base">🎉</span> Bugünün planı tamam!
           </h3>
-          <p className="text-xs text-emerald-700 mt-1">
+          <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
             {plan.maddeler.length} branştaki tüm hedefini bugün tamamladın — hedef puanına bir adım daha yaklaştın.
           </p>
         </div>
@@ -234,21 +234,21 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
           return (
             <div
               key={madde.ders}
-              className={`bg-white rounded-xl shadow-sm border p-3.5 flex flex-col gap-2.5 transition-colors ${
-                tamam ? 'border-emerald-200' : 'border-slate-200'
+              className={`bg-white dark:bg-slate-900 rounded-xl shadow-sm border p-3.5 flex flex-col gap-2.5 transition-colors ${
+                tamam ? 'border-emerald-200 dark:border-emerald-500/40' : 'border-slate-200 dark:border-slate-700'
               }`}
             >
               <div className="flex items-center justify-between gap-2">
                 <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold ${getSubjectColor(madde.ders)} text-white truncate`}>
                   {madde.ders}
                 </span>
-                <span className="text-xs font-bold text-slate-700 shrink-0">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">
                   {tamam ? '✓ ' : ''}{Math.min(cozulen, hedef)}/{hedef}
                 </span>
               </div>
               {/* İlerleme çubuğu: bugünkü GERÇEK cevaplarla dolar */}
               <div
-                className="h-2 rounded-full bg-slate-100 overflow-hidden"
+                className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden"
                 role="progressbar"
                 aria-valuenow={yuzde}
                 aria-valuemin={0}
@@ -266,11 +266,11 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
               </div>
               <div className="flex items-center justify-between gap-2">
                 {tamam ? (
-                  <span className="text-[11px] font-semibold text-emerald-600 truncate">
+                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 truncate">
                     🎉 {cozulen} soru çözüldü
                   </span>
                 ) : (
-                  <span className="text-[11px] text-slate-400 truncate">
+                  <span className="text-[11px] text-slate-400 dark:text-slate-400 truncate">
                     {madde.neden} · {ZORLUK_ETIKET[madde.zorluk] ?? madde.zorluk}
                   </span>
                 )}
@@ -300,7 +300,7 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
         })}
       </div>
 
-      <p className="text-xs text-slate-400 text-center pb-2">
+      <p className="text-xs text-slate-400 dark:text-slate-400 text-center pb-2">
         Plan; hedef puanın, günlük saatini ve gerçek başarı verilerini birleştirerek her gün yeniden hazırlanır.
         Çözdüğün her soru ilerlemeyi anında doldurur.
       </p>

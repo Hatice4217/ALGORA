@@ -69,11 +69,11 @@ export function ProfileAvatar({
       {acik && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50"
+          className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 py-2 z-50"
         >
           {/* Kimlik */}
-          <div className="px-4 py-2 border-b border-gray-100">
-            <p className="text-sm font-semibold text-gray-900 truncate">
+          <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-800">
+            <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 truncate">
               {userName || 'Öğrenci'}
             </p>
           </div>
@@ -81,12 +81,12 @@ export function ProfileAvatar({
           {/* Paket + kredi durumu */}
           <div className="px-4 py-2 space-y-1.5">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Paket</span>
-              <span className="font-medium text-gray-800">{planName ?? '—'}</span>
+              <span className="text-gray-500 dark:text-slate-400">Paket</span>
+              <span className="font-medium text-gray-800 dark:text-slate-200">{planName ?? '—'}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">AI Kredisi</span>
-              <span className="font-semibold text-purple-700">
+              <span className="text-gray-500 dark:text-slate-400">AI Kredisi</span>
+              <span className="font-semibold text-purple-700 dark:text-purple-400">
                 {creditsRemaining ?? '—'} / {creditsLimit ?? '—'}
               </span>
             </div>
@@ -98,11 +98,11 @@ export function ProfileAvatar({
           </div>
 
           {/* Çıkış — kibar, ince kırmızı link (belirgin buton DEĞİL) */}
-          <div className="border-t border-gray-100 mt-1 pt-1">
+          <div className="border-t border-gray-100 dark:border-slate-800 mt-1 pt-1">
             <button
               role="menuitem"
               onClick={onLogout}
-              className="w-full text-left px-4 py-2 text-sm font-normal text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="w-full text-left px-4 py-2 text-sm font-normal text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/15 rounded-lg transition-colors"
             >
               Çıkış Yap
             </button>

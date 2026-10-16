@@ -23,20 +23,20 @@ const shiftDate = (dateStr: string, delta: number): string => {
 // Arşiv satırı: tamamlananlar yeşil tikli + üstü çizili, tamamlanmayanlar normal
 function ArsivSatir({ goal }: { goal: Goal }) {
   return (
-    <li className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
+    <li className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
       {goal.isCompleted ? (
-        <span className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-          <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <span className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-500/15 flex items-center justify-center flex-shrink-0">
+          <svg className="w-3 h-3 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
           </svg>
         </span>
       ) : (
-        <span className="w-5 h-5 rounded-full border-2 border-gray-300 flex-shrink-0" aria-hidden="true"></span>
+        <span className="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-slate-600 flex-shrink-0" aria-hidden="true"></span>
       )}
-      <span className={`flex-1 text-sm break-words ${goal.isCompleted ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+      <span className={`flex-1 text-sm break-words ${goal.isCompleted ? 'line-through text-gray-400 dark:text-slate-400' : 'text-gray-700 dark:text-slate-300'}`}>
         {goal.text}
       </span>
-      {goal.isCompleted && <span className="text-xs font-medium text-green-600 flex-shrink-0">Tamamlandı</span>}
+      {goal.isCompleted && <span className="text-xs font-medium text-green-600 dark:text-green-400 flex-shrink-0">Tamamlandı</span>}
     </li>
   );
 }
@@ -67,9 +67,9 @@ interface ZorlukVerisi {
 }
 
 const ZORLUK_SATIRLARI = [
-  { deger: 'beginner', etiket: 'Başlangıç', bar: 'bg-green-500', metin: 'text-green-600' },
-  { deger: 'intermediate', etiket: 'Orta', bar: 'bg-yellow-500', metin: 'text-yellow-600' },
-  { deger: 'advanced', etiket: 'İleri', bar: 'bg-purple-500', metin: 'text-purple-600' },
+  { deger: 'beginner', etiket: 'Başlangıç', bar: 'bg-green-500', metin: 'text-green-600 dark:text-green-400' },
+  { deger: 'intermediate', etiket: 'Orta', bar: 'bg-yellow-500', metin: 'text-yellow-600 dark:text-yellow-400' },
+  { deger: 'advanced', etiket: 'İleri', bar: 'bg-purple-500', metin: 'text-purple-600 dark:text-purple-400' },
 ];
 
 // Gerçek yüzdelerden kural bazlı koç yorumu (sahte metin değil — canlı veriye bağlı)
@@ -152,21 +152,21 @@ function ZayifKonuKarti({ konuCoz }: { konuCoz: AnalysisPanelProps['konuCoz'] })
   }, []);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-6 flex flex-col">
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <h2 className="font-semibold text-gray-900">Zayıf Konu Analizi 🎯</h2>
-        <span className="text-xs text-gray-400">en çok yanlış yapılan konular</span>
+        <h2 className="font-semibold text-gray-900 dark:text-slate-100">Zayıf Konu Analizi 🎯</h2>
+        <span className="text-xs text-gray-400 dark:text-slate-400">en çok yanlış yapılan konular</span>
       </div>
 
       {yukleniyor ? (
         <div className="flex-1 space-y-3 animate-pulse">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-10 bg-gray-100 rounded-lg"></div>
+            <div key={i} className="h-10 bg-gray-100 dark:bg-slate-800 rounded-lg"></div>
           ))}
         </div>
       ) : !satirlar || satirlar.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-center py-6">
-          <p className="text-sm text-gray-400 max-w-[240px]">
+          <p className="text-sm text-gray-400 dark:text-slate-400 max-w-[240px]">
             En az 2 soru çözdüğün konularda en zayıfların burada listelenir.
           </p>
         </div>
@@ -178,18 +178,18 @@ function ZayifKonuKarti({ konuCoz }: { konuCoz: AnalysisPanelProps['konuCoz'] })
             return (
               <li
                 key={`${k.ders}-${k.tur}-${k.konu}`}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors min-w-0"
+                className="flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors min-w-0"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${getSubjectColor(k.ders)}`}>
                       {k.ders}
                     </span>
-                    <span className="text-xs text-gray-400">{k.tur}</span>
-                    <span className="text-sm font-medium text-gray-700 truncate">{k.konu}</span>
+                    <span className="text-xs text-gray-400 dark:text-slate-400">{k.tur}</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-slate-300 truncate">{k.konu}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden min-w-[60px]">
+                    <div className="flex-1 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden min-w-[60px]">
                       <div
                         className={`h-full rounded-full ${
                           yuzde >= 60 ? 'bg-green-500' : 'bg-red-400'
@@ -197,8 +197,8 @@ function ZayifKonuKarti({ konuCoz }: { konuCoz: AnalysisPanelProps['konuCoz'] })
                         style={{ width: `${yuzde}%` }}
                       />
                     </div>
-                    <span className="text-xs text-gray-500 shrink-0">
-                      {k.dogru}/{k.toplam} doğru · <span className="font-semibold text-red-500">{yanlis} yanlış</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400 shrink-0">
+                      {k.dogru}/{k.toplam} doğru · <span className="font-semibold text-red-500 dark:text-red-400">{yanlis} yanlış</span>
                     </span>
                   </div>
                 </div>
@@ -269,8 +269,8 @@ function ZorlukAnaliziKarti() {
     s && s.toplam > 0 ? Math.round((s.dogru / s.toplam) * 100) : null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col">
-      <h2 className="font-semibold text-gray-900 mb-3">Zorluk Analizi 🧗‍♀️</h2>
+    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-6 flex flex-col">
+      <h2 className="font-semibold text-gray-900 dark:text-slate-100 mb-3">Zorluk Analizi 🧗‍♀️</h2>
 
       {/* Filtre satırı: sınav + ders (YDT'de tek ders olduğundan ders seçici gizlenir) */}
       <div className="flex gap-2 mb-4">
@@ -278,7 +278,7 @@ function ZorlukAnaliziKarti() {
           value={seciliSinav}
           onChange={(e) => sinavDegistir(e.target.value as 'Genel' | 'TYT' | 'AYT' | 'YDT')}
           aria-label="Zorluk analizi sınav filtresi"
-          className="flex-1 px-3 py-1.5 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer"
+          className="flex-1 px-3 py-1.5 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/20 transition-all cursor-pointer"
         >
           {SECILEBILIR_SINAVLAR.map((s) => (
             <option key={s} value={s}>
@@ -291,7 +291,7 @@ function ZorlukAnaliziKarti() {
             value={seciliDers}
             onChange={(e) => setSeciliDers(e.target.value)}
             aria-label="Zorluk analizi ders filtresi"
-            className="flex-1 px-3 py-1.5 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all cursor-pointer"
+            className="flex-1 px-3 py-1.5 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/20 transition-all cursor-pointer"
           >
             <option value="">Tüm dersler</option>
             {getSubjects(seciliSinav).map((d) => (
@@ -311,15 +311,15 @@ function ZorlukAnaliziKarti() {
           return (
             <div key={satir.deger}>
               <div className="flex items-center justify-between mb-1.5 text-sm">
-                <span className="font-medium text-gray-700">{satir.etiket}</span>
+                <span className="font-medium text-gray-700 dark:text-slate-300">{satir.etiket}</span>
                 <span className={`font-medium ${satir.metin}`}>
                   {y !== null ? `%${y}` : '—'}
                   {s && s.toplam > 0 && (
-                    <span className="text-xs text-gray-400 ml-1">({s.dogru}/{s.toplam})</span>
+                    <span className="text-xs text-gray-400 dark:text-slate-400 ml-1">({s.dogru}/{s.toplam})</span>
                   )}
                 </span>
               </div>
-              <div className="bg-gray-200 rounded-full h-2">
+              <div className="bg-gray-200 dark:bg-slate-700 rounded-full h-2">
                 <div
                   className={`h-2 rounded-full transition-all duration-500 ${satir.bar}`}
                   style={{ width: `${y ?? 0}%` }}
@@ -331,7 +331,7 @@ function ZorlukAnaliziKarti() {
       </div>
 
       {/* Koç yorumu — gerçek yüzdelerden üretilir */}
-      <div className="mt-5 bg-purple-50 p-3 rounded-lg flex gap-2 text-sm text-purple-800">
+      <div className="mt-5 bg-purple-50 dark:bg-purple-500/15 p-3 rounded-lg flex gap-2 text-sm text-purple-800 dark:text-purple-400">
         <span className="flex-shrink-0">💡</span>
         <span>
           <span className="font-semibold">AI Koç Yorumu:</span>{' '}
@@ -364,27 +364,27 @@ export function AnalysisPanel({ istatistikler, konuCoz }: AnalysisPanelProps) {
       {/* ÜST BLOK: arşiv + zorluk analizi yan yana (mobilde alt alta) */}
       <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Hedef Arşivi — tarih gezinmeli kalıcı kayıt; liste kendi içinde kayar, sayfa uzamaz */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-6">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-          <h2 className="font-semibold text-gray-900">Hedef Arşivi 📚</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-slate-100">Hedef Arşivi 📚</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSeciliTarih(shiftDate(seciliTarih, -1))}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-500/15 hover:text-purple-600 dark:hover:text-purple-400 hover:border-purple-200 dark:hover:border-purple-500/40 transition-colors"
               aria-label="Önceki gün"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <span className="text-sm font-medium text-gray-700 min-w-[140px] text-center">
+            <span className="text-sm font-medium text-gray-700 dark:text-slate-300 min-w-[140px] text-center">
               {formatGun(seciliTarih)}
-              {seciliTarih === bugun && <span className="text-purple-600"> (Bugün)</span>}
+              {seciliTarih === bugun && <span className="text-purple-600 dark:text-purple-400"> (Bugün)</span>}
             </span>
             <button
               onClick={() => setSeciliTarih(shiftDate(seciliTarih, 1))}
               disabled={seciliTarih >= bugun}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-500"
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-500/15 hover:text-purple-600 dark:hover:text-purple-400 hover:border-purple-200 dark:hover:border-purple-500/40 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-500 dark:disabled:hover:text-slate-400"
               aria-label="Sonraki gün"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -395,7 +395,7 @@ export function AnalysisPanel({ istatistikler, konuCoz }: AnalysisPanelProps) {
         </div>
 
         {!hydrated ? null : gununHedefleri.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6">
+          <p className="text-sm text-gray-400 dark:text-slate-400 text-center py-6">
             Bu tarihte kayıtlı hedef yok.
           </p>
         ) : (
@@ -421,18 +421,18 @@ export function AnalysisPanel({ istatistikler, konuCoz }: AnalysisPanelProps) {
           <ZayifKonuKarti konuCoz={konuCoz} />
 
           {/* Ders Performans Analizi — rozetler + progress bar ızgarası */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 lg:min-h-0 lg:flex lg:flex-col">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-6 lg:min-h-0 lg:flex lg:flex-col">
             {/* Header: başlık + dinamik özet rozetleri */}
             <div className="flex items-center justify-between gap-3 mb-5 flex-wrap lg:shrink-0">
-              <h2 className="font-semibold text-gray-900">Ders Performans Analizi</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-slate-100">Ders Performans Analizi</h2>
               <div className="flex items-center gap-2 flex-wrap">
                 {enBasarili && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 border border-green-200 text-sm font-medium text-green-700">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-500/15 border border-green-200 dark:border-green-500/40 text-sm font-medium text-green-700 dark:text-green-400">
                     🏆 En Başarılı: {enBasarili.ders} ({enBasarili.examType})
                   </span>
                 )}
                 {odaklanilacak && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-sm font-medium text-orange-700">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-500/15 border border-orange-200 dark:border-orange-500/40 text-sm font-medium text-orange-700 dark:text-orange-400">
                     📈 Odaklanılmalı: {odaklanilacak.ders} ({odaklanilacak.examType})
                   </span>
                 )}
@@ -442,23 +442,23 @@ export function AnalysisPanel({ istatistikler, konuCoz }: AnalysisPanelProps) {
             {/* Body: ders kartları yan yana; ders sayısı artarsa ızgara kendi içinde kayar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto thin-scrollbar pr-2 lg:flex-1 lg:min-h-0">
               {istatistikler.dersler.map((ders) => (
-              <div key={`${ders.ders}-${ders.examType}`} className="p-4 border border-gray-200 rounded-lg">
+              <div key={`${ders.ders}-${ders.examType}`} className="p-4 border border-gray-200 dark:border-slate-700 rounded-lg">
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="font-medium text-gray-900">
-                    {ders.ders} <span className="text-xs font-normal text-gray-500">({ders.examType})</span>
+                  <span className="font-medium text-gray-900 dark:text-slate-100">
+                    {ders.ders} <span className="text-xs font-normal text-gray-500 dark:text-slate-400">({ders.examType})</span>
                   </span>
                   <span className={`text-sm font-medium ${
-                    ders.basari >= 80 ? 'text-green-600' :
-                    ders.basari >= 60 ? 'text-yellow-600' :
-                    'text-red-600'
+                    ders.basari >= 80 ? 'text-green-600 dark:text-green-400' :
+                    ders.basari >= 60 ? 'text-yellow-600 dark:text-yellow-400' :
+                    'text-red-600 dark:text-red-400'
                   }`}>
                     %{ders.basari}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
                   <span>{ders.dogru}/{ders.toplam} doğru</span>
                 </div>
-                <div className="mt-2 bg-gray-200 rounded-full h-1.5">
+                <div className="mt-2 bg-gray-200 dark:bg-slate-700 rounded-full h-1.5">
                   <div
                     className={`h-1.5 rounded-full ${
                       ders.basari >= 80 ? 'bg-green-500' :
@@ -474,14 +474,14 @@ export function AnalysisPanel({ istatistikler, konuCoz }: AnalysisPanelProps) {
           </div>
         </div>
       ) : (
-        <div className="md:col-span-2 bg-white rounded-2xl shadow-sm p-8 text-center">
+        <div className="md:col-span-2 bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-8 text-center">
           <div className="text-slate-400 mb-3">
             <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <h2 className="font-semibold text-gray-900 mb-2">Henüz ders verisi yok</h2>
-          <p className="text-gray-600 text-sm">
+          <h2 className="font-semibold text-gray-900 dark:text-slate-100 mb-2">Henüz ders verisi yok</h2>
+          <p className="text-gray-600 dark:text-slate-300 text-sm">
             Soru çözmeye başladığında ders bazlı performansın burada görünecek
           </p>
         </div>

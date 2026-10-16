@@ -41,18 +41,18 @@ export function StatisticsCards({ istatistikler, gunlukSeri }: StatisticsCardsPr
       deger: `${gunlukSeri} Gün`,
       ikon: '🔥',
       renk: 'bg-orange-500',
-      stil: 'bg-gradient-to-br from-orange-50 to-amber-100 border border-orange-200/70',
+      stil: 'bg-gradient-to-br from-orange-50 to-amber-100 border border-orange-200/70 dark:from-slate-800/50 dark:to-slate-800/50 dark:border-orange-500/40',
     },
   ];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
       {istatistikKartlari.map((kart, index) => (
-        <div key={index} className={`rounded-2xl shadow-sm p-3 ${kart.stil ?? 'bg-white'}`}>
+        <div key={index} className={`rounded-2xl shadow-sm p-3 ${kart.stil ?? 'bg-white dark:bg-slate-900'}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className={`text-sm mb-1 ${kart.stil ? 'text-orange-700' : 'text-gray-600'}`}>{kart.baslik}</p>
-              <p className={`text-2xl font-bold ${kart.stil ? 'text-orange-900' : 'text-gray-900'}`}>{kart.deger}</p>
+              <p className={`text-sm mb-1 ${kart.stil ? 'text-orange-700 dark:text-orange-400' : 'text-gray-600 dark:text-slate-300'}`}>{kart.baslik}</p>
+              <p className={`text-2xl font-bold ${kart.stil ? 'text-orange-900 dark:text-orange-400' : 'text-gray-900 dark:text-slate-100'}`}>{kart.deger}</p>
             </div>
             <div className={`w-10 h-10 ${kart.renk} rounded-lg flex items-center justify-center text-lg`}>
               {kart.ikon}

@@ -51,7 +51,7 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
 
   if (!summary?.subscription) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-600">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-8 text-center text-gray-600 dark:text-slate-300">
         Paket bilgisi yükleniyor...
       </div>
     );
@@ -69,7 +69,7 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
   return (
     <div className="space-y-4 -mt-4">
       {/* Sekme başlıkları — üç ana bölüm, aynı anda yalnız biri görünür */}
-      <div className="grid grid-cols-3 gap-1.5 bg-gray-100 rounded-xl p-1.5" role="tablist">
+      <div className="grid grid-cols-3 gap-1.5 bg-gray-100 dark:bg-slate-800 rounded-xl p-1.5" role="tablist">
         {BOLUMLER.map((b) => (
           <button
             key={b.id}
@@ -78,8 +78,8 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
             onClick={() => setBolum(b.id)}
             className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               bolum === b.id
-                ? 'bg-white text-purple-700 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-white dark:bg-slate-900 text-purple-700 shadow-sm dark:text-purple-400'
+                : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-slate-100'
             }`}
           >
             {b.etiket}
@@ -91,12 +91,12 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
       {bolum === 'paketim' && (
         <>
           {/* 1. Durum kartı */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-6">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Mevcut Paket</p>
-                <h2 className="text-2xl font-bold text-gray-900">{planConfig.name}</h2>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-gray-500 dark:text-slate-400 mb-1">Mevcut Paket</p>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{planConfig.name}</h2>
+                <p className="text-sm text-gray-600 dark:text-slate-300 mt-1">
                   {subscription.credits_remaining > 0 ? (
                     'Krediler her gün yenilenir — geri sayım kredi bitince başlar'
                   ) : (
@@ -104,7 +104,7 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                       Yenilenme: {formatDate(subscription.period_end)} ·{' '}
                       <QuotaCountdown
                         periodEnd={subscription.period_end}
-                        className="font-medium text-purple-600"
+                        className="font-medium text-purple-600 dark:text-purple-400"
                       />
                     </>
                   )}
@@ -112,25 +112,25 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                 {/* Ücretli planın satın alma bitişi (paid_until). "Yenilenme" = günlük
                     kredi dönemi (period_end) etiketiyle karışmasın — ayrı satır. */}
                 {subscription.plan !== 'free' && subscription.paid_until && (
-                  <p className="text-sm text-gray-600 mt-0.5">
+                  <p className="text-sm text-gray-600 dark:text-slate-300 mt-0.5">
                     Paket Bitiş:{' '}
-                    <span className="font-medium text-gray-800">
+                    <span className="font-medium text-gray-800 dark:text-slate-200">
                       {formatDate(subscription.paid_until)}
                     </span>
                   </p>
                 )}
               </div>
               <div className="text-right">
-                <p className="text-3xl font-black text-purple-600">
+                <p className="text-3xl font-black text-purple-600 dark:text-purple-400">
                   {subscription.credits_remaining}
                 </p>
-                <p className="text-sm text-gray-500">/ {subscription.credits_limit} AI kredisi</p>
+                <p className="text-sm text-gray-500 dark:text-slate-400">/ {subscription.credits_limit} AI kredisi</p>
               </div>
             </div>
 
             {/* Kredi progress bar */}
             <div className="mt-4">
-              <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-3 w-full bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
                     percent <= 10 ? 'bg-red-500' : percent <= 30 ? 'bg-orange-400' : 'bg-purple-600'
@@ -139,17 +139,17 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                 ></div>
               </div>
               {subscription.credits_remaining <= 0 && (
-                <div className="mt-2 text-sm text-red-600">
+                <div className="mt-2 text-sm text-red-600 dark:text-red-400">
                   <p>
                     {subscription.plan === 'free'
                       ? 'Günlük AI krediniz doldu — soru çözmeye devam edebilirsiniz, yenilenmesine kalan: '
                       : 'AI krediniz tükendi — soru çözmeye devam edebilirsiniz, yenilenmesine kalan: '}
                     <QuotaCountdown
                       periodEnd={subscription.period_end}
-                      className="font-bold text-red-700"
+                      className="font-bold text-red-700 dark:text-red-400"
                     />
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                     veya AI Üst Beyin kredinizi paket yükselterek artırabilirsiniz.
                   </p>
                 </div>
@@ -159,7 +159,7 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
 
           {/* 2. Bekleyen talep kartı */}
           {pending_claim && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+            <div className="bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/40 rounded-2xl p-5">
               <div className="flex items-start gap-3">
                 <svg
                   className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5"
@@ -175,8 +175,8 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                   ></path>
                 </svg>
                 <div>
-                  <h3 className="font-semibold text-amber-800">Ödeme talebiniz onay bekliyor</h3>
-                  <p className="text-sm text-amber-700 mt-1">
+                  <h3 className="font-semibold text-amber-800 dark:text-amber-400">Ödeme talebiniz onay bekliyor</h3>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
                     {PLANS[pending_claim.plan].name} paketi için oluşturduğunuz talep inceleniyor.
                     Onaydan sonra paketiniz ve kredileriniz anında aktif olur.
                     {pending_claim.created_at && ` (Talep: ${formatDateTime(pending_claim.created_at)})`}
@@ -188,15 +188,15 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
 
           {/* 3. Paketinin özellikleri — açıklayıcı dille (jenerik açıklama
               cümlesi kaldırıldı: madde altı metinler işi yapıyor) */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Paketinin Özellikleri</h3>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-6">
+            <h3 className="font-semibold text-gray-900 dark:text-slate-100 mb-4">Paketinin Özellikleri</h3>
             <ul className="space-y-4">
               {planConfig.features.map((feature, i) => {
                 const aciklama = ozellikAciklamasi(feature);
                 return (
                   <li key={i} className="flex items-start gap-3">
                     <svg
-                      className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0"
+                      className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -209,8 +209,8 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                       ></path>
                     </svg>
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{feature}</p>
-                      {aciklama && <p className="text-xs text-gray-500 mt-0.5">{aciklama}</p>}
+                      <p className="text-sm font-medium text-gray-800 dark:text-slate-200">{feature}</p>
+                      {aciklama && <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{aciklama}</p>}
                     </div>
                   </li>
                 );
@@ -224,9 +224,9 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
       {bolum === 'paketler' && (
         <>
           {subscription.plan === 'premium' && (
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-5 flex items-start gap-3">
+            <div className="bg-green-50 dark:bg-green-500/15 border border-green-200 dark:border-green-500/40 rounded-2xl p-5 flex items-start gap-3">
               <svg
-                className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5"
+                className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -238,7 +238,7 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 ></path>
               </svg>
-              <p className="text-sm text-green-800">
+              <p className="text-sm text-green-800 dark:text-green-400">
                 Şu an <span className="font-semibold">en üst pakettesiniz</span> — Premium AI
                 Koçluk. Tüm özelliklere erişiyorsunuz.
               </p>
@@ -252,14 +252,14 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
               return (
                 <div
                   key={id}
-                  className={`bg-white rounded-2xl p-5 flex flex-col ${
-                    config.highlighted ? 'border-2 border-purple-500 shadow-lg' : 'border border-gray-200'
+                  className={`bg-white dark:bg-slate-900 rounded-2xl p-5 flex flex-col ${
+                    config.highlighted ? 'border-2 border-purple-500 shadow-lg' : 'border border-gray-200 dark:border-slate-700'
                   }`}
                 >
-                  <h4 className="text-base font-bold text-gray-900">{config.name}</h4>
-                  <p className="text-xl font-black text-gray-900 mt-1">
+                  <h4 className="text-base font-bold text-gray-900 dark:text-slate-100">{config.name}</h4>
+                  <p className="text-xl font-black text-gray-900 dark:text-slate-100 mt-1">
                     ₺{config.price}
-                    <span className="text-sm font-normal text-gray-500 ml-1">/ ay</span>
+                    <span className="text-sm font-normal text-gray-500 dark:text-slate-400 ml-1">/ ay</span>
                   </p>
                   <ul className="mt-2 space-y-3 mb-4">
                     {config.features.map((feature, i) => {
@@ -267,7 +267,7 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                       return (
                         <li key={i} className="flex items-start gap-2">
                           <svg
-                            className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0"
+                            className="w-4 h-4 text-purple-600 dark:text-purple-400 mt-0.5 flex-shrink-0"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -280,8 +280,8 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                             ></path>
                           </svg>
                           <div>
-                            <p className="text-sm font-medium text-gray-800">{feature}</p>
-                            {aciklama && <p className="text-xs text-gray-500 mt-0.5">{aciklama}</p>}
+                            <p className="text-sm font-medium text-gray-800 dark:text-slate-200">{feature}</p>
+                            {aciklama && <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{aciklama}</p>}
                           </div>
                         </li>
                       );
@@ -290,11 +290,11 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
                   {/* mt-auto: CTA her iki kartta da alta hizalanır → kartlar eşit boyut */}
                   <div className="mt-auto">
                     {mevcutPaket ? (
-                      <span className="block text-center text-sm font-semibold text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                      <span className="block text-center text-sm font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-500/15 border border-green-200 dark:border-green-500/40 rounded-xl px-3 py-2">
                         ✓ Mevcut Paketiniz
                       </span>
                     ) : dusukPaket ? (
-                      <span className="block text-center text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                      <span className="block text-center text-sm text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2">
                         Mevcut paketinizin altında kalır
                       </span>
                     ) : (
@@ -317,24 +317,24 @@ export function PackagePanel({ summary, onUpgrade }: PackagePanelProps) {
 
       {/* ═══ SEKME 3: Geçmiş Kullanımlarım — kredi hareketleri, tam genişlik ═══ */}
       {bolum === 'gecmis' && (
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Kredi Hareketleri</h3>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-6">
+          <h3 className="font-semibold text-gray-900 dark:text-slate-100 mb-4">Kredi Hareketleri</h3>
           {history.length === 0 ? (
-            <p className="text-sm text-gray-500">Gösterilecek kredi hareketi yok.</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">Gösterilecek kredi hareketi yok.</p>
           ) : (
             <div className="max-h-[60vh] overflow-y-auto pr-2 thin-scrollbar">
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-gray-100 dark:divide-slate-800">
                 {history.map((tx) => (
                   <li key={tx.id} className="py-3 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{REASON_LABELS[tx.reason]}</p>
+                      <p className="text-sm font-medium text-gray-800 dark:text-slate-200">{REASON_LABELS[tx.reason]}</p>
                       {tx.created_at && (
-                        <p className="text-xs text-gray-500">{formatDateTime(tx.created_at)}</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400">{formatDateTime(tx.created_at)}</p>
                       )}
                     </div>
                     <span
                       className={`text-sm font-bold ${
-                        tx.amount > 0 ? 'text-green-600' : 'text-gray-700'
+                        tx.amount > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-slate-300'
                       }`}
                     >
                       {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
@@ -413,12 +413,12 @@ export function UpgradeModal({ plan, onClose, onClaimed }: UpgradeModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative"
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full p-6 relative"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-slate-300 transition-colors"
           aria-label="Kapat"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -428,41 +428,41 @@ export function UpgradeModal({ plan, onClose, onClaimed }: UpgradeModalProps) {
 
         {step === 'payment' && (
           <div>
-            <h3 className="text-xl font-bold text-gray-900">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100">
               {config.name} — ₺{config.price}/ay
             </h3>
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-sm text-gray-600 dark:text-slate-300 mt-2">
               Aşağıdaki hesaba havale/EFT ile ödemenizi yapın. Açıklama kısmına e-posta adresinizi yazmayı unutmayın.
             </p>
 
             <div className="mt-4 space-y-3">
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs text-gray-500">Banka</p>
-                <p className="text-sm font-medium text-gray-900">{PAYMENT_INFO.bankName}</p>
+              <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 dark:text-slate-400">Banka</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{PAYMENT_INFO.bankName}</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs text-gray-500">Hesap Sahibi</p>
-                <p className="text-sm font-medium text-gray-900">{PAYMENT_INFO.accountName}</p>
+              <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 dark:text-slate-400">Hesap Sahibi</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{PAYMENT_INFO.accountName}</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between gap-3">
+              <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs text-gray-500">IBAN</p>
-                  <p className="text-sm font-medium text-gray-900 break-all">{PAYMENT_INFO.iban}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">IBAN</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-slate-100 break-all">{PAYMENT_INFO.iban}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => copy(PAYMENT_INFO.iban, 'iban')}>
                   {copied === 'iban' ? 'Kopyalandı' : 'Kopyala'}
                 </Button>
               </div>
-              <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between gap-3">
+              <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs text-gray-500">Tutar</p>
-                  <p className="text-sm font-medium text-gray-900">₺{config.price}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">Tutar</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-slate-100">₺{config.price}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => copy(String(config.price), 'amount')}>
                   {copied === 'amount' ? 'Kopyalandı' : 'Kopyala'}
                 </Button>
               </div>
-              <p className="text-xs text-gray-500">{PAYMENT_INFO.descriptionNote}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{PAYMENT_INFO.descriptionNote}</p>
             </div>
 
             <div className="mt-6">
@@ -475,14 +475,14 @@ export function UpgradeModal({ plan, onClose, onClaimed }: UpgradeModalProps) {
 
         {step === 'form' && (
           <div>
-            <h3 className="text-xl font-bold text-gray-900">Ödeme Talebi Bilgileri</h3>
-            <p className="text-sm text-gray-600 mt-1">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100">Ödeme Talebi Bilgileri</h3>
+            <p className="text-sm text-gray-600 dark:text-slate-300 mt-1">
               Talebinizi hızlandırmak için ödeme bilgilerini paylaşın.
             </p>
 
             <div className="mt-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                   Gönderen Ad Soyad
                 </label>
                 <input
@@ -491,11 +491,11 @@ export function UpgradeModal({ plan, onClose, onClaimed }: UpgradeModalProps) {
                   onChange={(e) => setSenderName(e.target.value)}
                   placeholder="Havaleyi yapan kişi"
                   maxLength={200}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:focus:bg-slate-900"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                   Açıklama / Not (opsiyonel)
                 </label>
                 <textarea
@@ -504,13 +504,13 @@ export function UpgradeModal({ plan, onClose, onClaimed }: UpgradeModalProps) {
                   placeholder="İşlem referans no, tarih vb."
                   maxLength={500}
                   rows={3}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:focus:bg-slate-900"
                 />
               </div>
             </div>
 
             {error && (
-              <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-500/40 rounded-lg px-3 py-2">
                 {error}
               </p>
             )}
@@ -534,9 +534,9 @@ export function UpgradeModal({ plan, onClose, onClaimed }: UpgradeModalProps) {
 
         {step === 'done' && (
           <div className="text-center py-4">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-green-100 dark:bg-green-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
-                className="w-8 h-8 text-green-600"
+                className="w-8 h-8 text-green-600 dark:text-green-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -544,8 +544,8 @@ export function UpgradeModal({ plan, onClose, onClaimed }: UpgradeModalProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-gray-900">Talebiniz Alındı</h3>
-            <p className="text-sm text-gray-600 mt-2">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100">Talebiniz Alındı</h3>
+            <p className="text-sm text-gray-600 dark:text-slate-300 mt-2">
               Ödemeniz kontrol edildikten sonra {config.name} paketiniz aktif edilecek.
               Onay genellikle kısa sürede tamamlanır.
             </p>

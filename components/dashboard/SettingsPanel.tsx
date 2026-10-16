@@ -393,15 +393,15 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
 
         {/* Section Form */}
         {activeSection === 'profile' && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 max-w-2xl mx-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-700 p-6 max-w-2xl mx-auto">
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
+                <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-500/15 flex items-center justify-center text-xl">
                   👤
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">Profil Bilgileri</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Profil Bilgileri</h2>
               </div>
-              <p className="text-gray-600">Adınızı ve iletişim bilgilerinizi düzenleyin</p>
+              <p className="text-gray-600 dark:text-slate-300">Adınızı ve iletişim bilgilerinizi düzenleyin</p>
             </div>
 
             <div className="space-y-4">
@@ -444,15 +444,15 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
         )}
 
         {activeSection === 'exam' && (
-          <div className="bg-white rounded-xl shadow-sm p-5 md:p-6 max-w-2xl mx-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm p-5 md:p-6 max-w-2xl mx-auto">
             <div className="mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl shrink-0">
+                <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-500/15 flex items-center justify-center text-xl shrink-0">
                   🎯
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-xl font-semibold text-gray-900">Sınav Hedefleri</h2>
-                  <p className="text-gray-500 text-xs">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Sınav Hedefleri</h2>
+                  <p className="text-gray-500 dark:text-slate-400 text-xs">
                     Hedefin Genel Bakış&apos;ta rozet olur; Koç planını buna göre kurar
                   </p>
                 </div>
@@ -562,15 +562,15 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
         )}
 
         {activeSection === 'notifications' && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 max-w-2xl mx-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-700 p-6 max-w-2xl mx-auto">
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-xl">
+                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-500/15 flex items-center justify-center text-xl">
                   🔔
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">Bildirimler & Tercihler</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Bildirimler & Tercihler</h2>
               </div>
-              <p className="text-gray-600">Bildirim ve görünüm tercihlerinizi yönetin</p>
+              <p className="text-gray-600 dark:text-slate-300">Bildirim ve görünüm tercihlerinizi yönetin</p>
             </div>
 
             <div className="space-y-6">
@@ -629,19 +629,19 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
             {/* Header */}
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl">
+                <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-500/15 flex items-center justify-center text-xl">
                   ⚙️
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">Hesap Yönetimi</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Hesap Yönetimi</h2>
               </div>
-              <p className="text-gray-600">Şifrenizi değiştirin veya hesabınızı yönetin</p>
+              <p className="text-gray-600 dark:text-slate-300">Şifrenizi değiştirin veya hesabınızı yönetin</p>
             </div>
 
             {/* İki kart yan yana */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Şifre Değiştir Kartı */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">Şifre Değiştir</h3>
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-700 p-6">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100 mb-4">Şifre Değiştir</h3>
 
                 <div className="space-y-4">
                   <Input
@@ -688,11 +688,11 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
               </div>
 
               {/* Hesap İşlemleri Kartı */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">Hesap İşlemleri</h3>
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-700 p-6">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100 mb-4">Hesap İşlemleri</h3>
 
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-slate-300">
                     Hesabınızdan güvenli bir şekilde çıkış yapın veya hesabınızı kalıcı olarak silin.
                   </p>
 
@@ -723,11 +723,11 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
               size="sm"
             >
               <div className="space-y-4">
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
-                  <p className="text-sm font-semibold text-red-800">
+                <div className="bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-500/40 rounded-xl p-4 space-y-2">
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-400">
                     ⚠️ Bu işlem geri alınamaz:
                   </p>
-                  <ul className="text-sm text-red-700 space-y-1.5 list-disc list-inside">
+                  <ul className="text-sm text-red-700 dark:text-red-400 space-y-1.5 list-disc list-inside">
                     <li>
                       Tüm verileriniz (profil, istatistikler, çalışma geçmişi){' '}
                       <strong>kalıcı olarak silinir</strong>.
@@ -744,8 +744,8 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
                 </div>
 
                 {isGoogleUser ? (
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <p className="text-sm text-blue-800">
+                  <div className="bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/40 rounded-xl p-4">
+                    <p className="text-sm text-blue-800 dark:text-blue-400">
                       Hesabın <strong>Google</strong> ile korunduğu için şifre girmen
                       gerekmiyor. Güvenlik için hesabını silmeden önceki <strong>son 10 dakika
                       içinde</strong> giriş yapmış olman gerekiyor. “Girişiniz çok eski” şeklinde
@@ -769,7 +769,7 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
                     onChange={(e) => setDeleteConfirmed(e.target.checked)}
                     className="mt-0.5 w-4 h-4 accent-red-600 flex-shrink-0"
                   />
-                  <span className="text-sm text-gray-700">
+                  <span className="text-sm text-gray-700 dark:text-slate-300">
                     Yukarıdaki uyarıları okudum ve anladım. Hesabımın{' '}
                     <strong>kalıcı olarak</strong> silinmesini onaylıyorum.
                   </span>
@@ -819,8 +819,8 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
     <div className="max-w-5xl mx-auto">
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Ayarlar</h1>
-        <p className="text-gray-600">Profil bilgilerinizi ve tercihlerinizi yönetin</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-2">Ayarlar</h1>
+        <p className="text-gray-600 dark:text-slate-300">Profil bilgilerinizi ve tercihlerinizi yönetin</p>
       </div>
 
       {/* Section Cards Grid */}
@@ -829,22 +829,22 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
           <button
             key={section.id}
             onClick={() => setActiveSection(section.id)}
-            className="bg-white rounded-2xl border border-gray-200 p-6 text-left hover:border-purple-300 hover:shadow-lg transition-all duration-200 group"
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-700 p-6 text-left hover:border-purple-300 dark:hover:border-purple-500/40 hover:shadow-lg transition-all duration-200 group"
           >
             <div className="flex items-start gap-4">
               <div className={`w-12 h-12 rounded-xl ${section.color} flex items-center justify-center text-2xl flex-shrink-0`}>
                 {section.icon}
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
                   {section.title}
                 </h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-gray-600 dark:text-slate-300 mt-1">
                   {section.description}
                 </p>
               </div>
               <svg
-                className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition-colors"
+                className="w-5 h-5 text-gray-400 dark:text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
