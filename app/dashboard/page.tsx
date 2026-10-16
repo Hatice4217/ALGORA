@@ -851,6 +851,11 @@ export default function DashboardPage() {
                   {subscriptionSummary.subscription.credits_remaining} / {subscriptionSummary.subscription.credits_limit}
                 </button>
               )}
+              {/* Tema anahtarı — masaüstünde tek tık; mobilde hamburger menüdeki
+                  "Görünüm" satırı var (header'da yer dar) */}
+              <div className="hidden md:block">
+                <TemaDegistir />
+              </div>
               <ProfileAvatar
                 userName={userName}
                 planName={

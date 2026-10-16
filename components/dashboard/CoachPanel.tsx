@@ -198,8 +198,9 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
         <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{plan.mesaj}</p>
       </div>
 
-      {/* AI koç notu — kişiselleştirilmiş */}
-      <div className="rounded-2xl border border-purple-200 dark:border-purple-500/40 bg-gradient-to-r from-purple-50 via-white to-pink-50 p-5">
+      {/* AI koç notu — kişiselleştirilmiş. Koyu temada açık gradyan KALMAMALI:
+          kalan açık zemin + dark:text kardeşleri beyaz-beyaz yapar. */}
+      <div className="rounded-2xl border border-purple-200 dark:border-purple-500/40 bg-gradient-to-r from-purple-50 via-white to-pink-50 dark:from-purple-500/15 dark:via-slate-900 dark:to-pink-500/10 p-5">
         <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
           <h3 className="text-sm font-bold text-purple-800 dark:text-purple-400 flex items-center gap-2">
             <span>✨</span> AI Koç Notu
@@ -208,12 +209,12 @@ export function CoachPanel({ baslat, gitAyarlara }: CoachPanelProps) {
             {plan.motivasyonKaynak === 'gemini' ? 'Sana özel üretildi' : 'Koçundan'}
           </span>
         </div>
-        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{plan.motivasyon}</p>
+        <p className="text-sm text-slate-700 dark:text-purple-300 leading-relaxed">{plan.motivasyon}</p>
       </div>
 
       {/* Plan tamamlandı kutlaması */}
       {hepsiTamam && (
-        <div className="rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 dark:border-emerald-500/40 px-5 py-4 animate-toast-in">
+        <div className="rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/15 dark:to-teal-500/10 border border-emerald-200 dark:border-emerald-500/40 px-5 py-4 animate-toast-in">
           <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-2">
             <span className="text-base">🎉</span> Bugünün planı tamam!
           </h3>

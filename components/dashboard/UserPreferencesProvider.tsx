@@ -190,12 +190,12 @@ export function HedefRozeti({ onHedefBelirle }: { onHedefBelirle: () => void }) 
 
   if (uni || bolum) {
     return (
-      <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100 rounded-xl px-4 py-2.5 text-right shrink-0 max-w-[280px] shadow-sm">
+      <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-500/15 dark:to-indigo-500/15 border border-purple-100 dark:border-purple-500/40 rounded-xl px-4 py-2.5 text-right shrink-0 max-w-[280px] shadow-sm">
         {uni && (
-          <p className="text-sm font-bold text-purple-900 leading-snug">🎓 {uni}</p>
+          <p className="text-sm font-bold text-purple-900 dark:text-purple-300 leading-snug">🎓 {uni}</p>
         )}
         {bolum && (
-          <p className={`text-xs text-purple-700 leading-snug ${uni ? 'mt-0.5' : 'font-semibold'}`}>
+          <p className={`text-xs text-purple-700 dark:text-purple-400 leading-snug ${uni ? 'mt-0.5' : 'font-semibold'}`}>
             {bolum}
           </p>
         )}
@@ -205,7 +205,7 @@ export function HedefRozeti({ onHedefBelirle }: { onHedefBelirle: () => void }) 
   return (
     <button
       onClick={onHedefBelirle}
-      className="shrink-0 inline-flex items-center gap-1.5 bg-purple-100 text-purple-800 text-sm px-4 py-2.5 rounded-xl font-medium shadow-sm hover:bg-purple-200 transition-colors cursor-pointer"
+      className="shrink-0 inline-flex items-center gap-1.5 bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-400 text-sm px-4 py-2.5 rounded-xl font-medium shadow-sm hover:bg-purple-200 dark:hover:bg-purple-500/25 transition-colors cursor-pointer"
     >
       🎯 Hedefini Belirle
     </button>
