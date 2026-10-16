@@ -3279,3 +3279,23 @@ YKS'nin 3. oturumu YDT (Yabancı Dil Testi) eklendi: UI toggle 3'lü (TYT|AYT|YD
 
 ### 📌 Session Bitişi
 - Çift-AI doğrulama kod tarafı TAMAM ve canlıda (3 commit, 3 deploy SUCCESS): soru artık doğrulanmadan havuza giremez, şüpheli elenmez kuyruğa düşer, uyumsuz rejected saklanır; performans istatistikleri yalnız aktif soruları sayar. Kritik ürün farkı: havuzdaki Din cevaplarının Gemini kaynaklı olduğu belgelendi — kalibrasyon resmî anahtar sütunuyla yapılacak. Sıra: SQL çalıştırma → DOĞRULAMA çıktısı → backfill → probe.
+
+## [2026-10-16] - Cuma (Landing+Dashboard koyu tema, Koç hızı, tema geçiş animasyonu)
+
+### 🌙 Koyu Tema Tam Kapsam
+- **Landing kök neden bulundu** (`654bb2c`): `<head>`'deki inline critical CSS, stylesheet link'ten SONRA geldiğinden koşulsuz açık-tema renkleri dark: utility'leri eziyordu (`:where()` specificity katkısı sıfır). `html.dark` önekli eşlenikler eklendi → landing koyu tema düzgün (kullanıcı onaylı).
+- **Dashboard 13 dosyaya dark: sınıfları** (`e536405`): 4 paralel agent, ortak konvansiyon tablosu (slate-950 zemin / slate-900 kart / slate-100 başlık / purple-400 vurgu / emerald-red 500/15 geri bildirim). Gradyan kimlikler + text-white butonlar bilinçli dokunulmadı.
+- **Rötuş** (`e7d67dd`): AI Koç Notu + kutlama + HedefRozeti'nin açık gradyanları dark kardeşsiz kalmıştı (beyaz-beyaz) — 3 kart düzeltildi; dashboard header'a masaüstü tema butonu eklendi.
+- **Tema geçişi 300ms cross-fade** (`0b465a8`): `.theme-switching` (globals.css) yalnız anahtar anında renk transition'ı açar; `temaGecisiBaslat()` (lib/utils) reduced-motion'da devre dışı; TemaDegistir (icon+row) + SettingsPanel Tema Select'i kapsıyor.
+
+### ⚡ Koç Sekmesi Hız Fixi (`776a6ed`)
+- **Semptom:** kullanıcıda ~1 dk'da açılıyor. **Ölçüm:** canlı route 4.5 sn (Gemini notu dahil) AMA gemini-flash-lite serbest katmanı dengesiz — 3 istekten 2'si 12 sn asılı. Eski AbortSignal 12 sn → her takılan istek sekmenin tamamını ~13 sn bekletiyordu; üstüne her sekme geçişi remount+POST → 60sn/5 burst 429 → "Yeniden Dene" (reload) döngüsü.
+- **Fix:** (1) CoachPanel plan önbelleği — sessionStorage `algora_koc_plan:<userId>`, remount'ta anında boyama + arka plan sessiz SWR tazeleme, tazeleme hatasında bayat plan sessiz kalır; (2) Gemini notu timeout 12→6 sn. Kullanıcı onayı: "tamam düzelmiş".
+
+### 🔬 Çift-AI Doğrulama (devam — BLOKAJLI)
+- Doğrulayıcı maxOutputTokens 200→2048 (`44014dc`): gemini-flash-latest THINKING modeli — düşünme token'ları bütçeden sayılıyor, 200'de yanıt yarım dönüyordu. 503 high-demand da bekle-tekrara alındı.
+- Backfill 90 soruda **Gemini 429 RPD kotasında** (gece yarısı PT reset; resume çalışıyor). Karar bekliyor: ayrı Google projesi/anahtar verifier'a (önerilen) / ücretli / bekle.
+
+### 📌 Session Bitişi
+- Deploy SUCCESS: `654bb2c`, `e536405`, `e7d67dd`, `776a6ed`, `0b465a8`. Kullanıcı: landing + dashboard koyu tema ✓, Koç hızı ✓, tema geçiş animasyonu test bekliyor.
+- Sıradaki: backfill (verifier anahtar kararı) → kalibrasyon CSV → --yaz → probe P1-P6; landing "karar bekleyen" metinler (AI Koç Yakında çelişkisi, sınırsız ifadeleri) kullanıcı kararında.
