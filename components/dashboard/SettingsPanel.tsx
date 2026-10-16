@@ -9,6 +9,7 @@ import { Toggle } from '../../app/components/ui/Toggle';
 import { Modal } from '../../app/components/ui/Modal';
 import { Toast, useToast } from '../../app/components/ui/Toast';
 import { authHelpers, dbHelpers } from '../../lib/supabase';
+import { temaGecisiBaslat } from '../../lib/utils';
 import { useUserPreferences } from './UserPreferencesProvider';
 import {
   validateSettingsSection,
@@ -588,7 +589,8 @@ export function SettingsPanel({ onNameChanged }: { onNameChanged?: (ad: string) 
                   options={THEMES}
                   value={gercekTema(resolvedTheme, mounted)}
                   onChange={(e) => {
-                    // Tema ANINDA uygulanır (next-themes); DB yazımı Kaydet akışıyla sürer
+                    // Tema 300ms cross-fade ile uygulanır (next-themes); DB yazımı Kaydet akışıyla sürer
+                    temaGecisiBaslat();
                     setTheme(e.target.value);
                     handleInputChange('theme', e.target.value);
                   }}

@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Sun, Moon } from 'lucide-react';
+import { temaGecisiBaslat } from '../lib/utils';
 
 interface TemaDegistirProps {
   variant?: 'icon' | 'row';
@@ -24,10 +25,17 @@ export function TemaDegistir({ variant = 'icon' }: TemaDegistirProps) {
   const koyu = resolvedTheme === 'dark';
   const sonrakiEtiket = koyu ? 'Açık temaya geç' : 'Koyu temaya geç';
 
+  // "Pat diye" değil 300ms cross-fade ile değiştir (temaGecisiBaslat →
+  // globals.css .theme-switching). prefers-reduced-motion'da anlık korunur.
+  const temayiDegistir = () => {
+    temaGecisiBaslat();
+    setTheme(koyu ? 'light' : 'dark');
+  };
+
   if (variant === 'row') {
     return (
       <button
-        onClick={() => setTheme(koyu ? 'light' : 'dark')}
+        onClick={temayiDegistir}
         aria-label={sonrakiEtiket}
         className="w-full flex items-center justify-between px-4 py-2 text-sm font-normal text-gray-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-colors"
       >
@@ -48,7 +56,7 @@ export function TemaDegistir({ variant = 'icon' }: TemaDegistirProps) {
 
   return (
     <button
-      onClick={() => setTheme(koyu ? 'light' : 'dark')}
+      onClick={temayiDegistir}
       aria-label={sonrakiEtiket}
       title={sonrakiEtiket}
       className="w-10 h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"

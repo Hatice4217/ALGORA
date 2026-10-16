@@ -118,6 +118,22 @@ export function yerelTarihStr(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// Tema değişimini 300ms cross-fade ile yapar: html'e .theme-switching ekler,
+// 350ms sonra düşürür (kural globals.css'te). Sürekli global transition bilinçli
+// yok — yalnız anahtar anında devrede; prefers-reduced-motion'da hiç eklenmez
+// (anlık değişim). setTheme'den ÖNCE çağrılır (TemaDegistir + SettingsPanel).
+let temaGecisZamlayici: ReturnType<typeof setTimeout> | null = null;
+export function temaGecisiBaslat(): void {
+  if (typeof window === 'undefined') return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  document.documentElement.classList.add('theme-switching');
+  if (temaGecisZamlayici) clearTimeout(temaGecisZamlayici);
+  temaGecisZamlayici = setTimeout(
+    () => document.documentElement.classList.remove('theme-switching'),
+    350,
+  );
+}
+
 // "Günlük Seri": art arda aktif gün sayısı (Duolingo tarzı).
 // answered_at ISO listesinden yerel günler seti kurulur; bugün aktif değilse dünden
 // başlanır (seri, bugünkü çözüm beklenirken kaybolmaz) ve ilk boşlukta durulur.

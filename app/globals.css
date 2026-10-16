@@ -32,6 +32,20 @@ body {
   -moz-osx-font-smoothing: grayscale
 }
 
+/* Tema geçiş animasyonu — .theme-switching yalnızca anahtar basıldığı anda
+   html'e eklenir (TemaDegistir) ve 350ms sonra düşer. Sürekli global color
+   transition bilinçli YOK: hover/odak geri bildirimlerini erteletmez, ilk
+   boyamada renklerin "yüzmesini" önler. Kapsam: arka plan/kenarlık/metin/
+   ikon dolgusu + gölge — cross-fade tek seferde bütünlüklü görünsün. */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: background-color 300ms ease, border-color 300ms ease,
+    color 300ms ease, fill 300ms ease, stroke 300ms ease,
+    box-shadow 300ms ease !important
+}
+
 /* Performance optimizations */
 .gpu-accel {
   transform: translateZ(0);
