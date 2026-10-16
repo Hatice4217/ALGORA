@@ -152,7 +152,11 @@ async function tekKorCozum(config: VerifierConfig, prompt: string): Promise<TekC
         temperature: config.temperature,
         // Her çözümde farklı seed → kör çözümler bağımsız örneklemler olur
         seed: Math.floor(Math.random() * 2147483647),
-        maxOutputTokens: 200, // yalnızca {"dogruCevapIndex": x} beklenir
+        // Beklenen çıktı yalnız {"dogruCevapIndex": x} (~20 token) olsa da
+        // gemini-flash-latest bir THINKING modeli: düşünme token'ları da bu
+        // bütçeden sayılır. 200'de zor sorularda düşünme bütçeyi yiyip yanıt
+        // {"dogruCev... diye YARIM dönüyordu → şema dışı yanıt arızası.
+        maxOutputTokens: 2048,
       },
     }),
   });

@@ -85,9 +85,13 @@ async function soruDogrulaDayanikli(params: {
       const sonuc = await soruyuDogrula({ ...params, uretimTur: 0 });
       return sonuc;
     } catch (e) {
-      const digerHata = !(e instanceof GeminiUpstreamError) || e.status !== 429;
-      if (digerHata || deneme === MAX_429_DENEME) throw e;
-      console.warn(`  ⏳ 429 — ${BEKLE_429_MS / 1000} sn beklenip yeniden deneniyor (${deneme}/${MAX_429_DENEME})`);
+      // 429 (kota) ve 503 (model aşırı yükü — "high demand") GEÇİCİ: bekle-tekrar.
+      const gecici =
+        e instanceof GeminiUpstreamError && (e.status === 429 || e.status === 503);
+      if (!gecici || deneme === MAX_429_DENEME) throw e;
+      console.warn(
+        `  ⏳ HTTP ${e.status} — ${BEKLE_429_MS / 1000} sn beklenip yeniden deneniyor (${deneme}/${MAX_429_DENEME})`
+      );
       await bekla(BEKLE_429_MS);
     }
   }
@@ -159,8 +163,9 @@ async function main() {
       const mesaj = e instanceof Error ? e.message : String(e);
       console.log(`✗ arıza: ${mesaj}`);
 
-      // TÜMÜ-429 art arda KOTA_DOLU_ESIK soruyu aşarsa kota dolu: dur
-      if (e instanceof GeminiUpstreamError && e.status === 429) {
+      // TÜMÜ-geçici-hata (429 kota / 503 yüksek talep) art arda KOTA_DOLU_ESIK
+      // soruyu aşarsa sağlayıcı tarafı darboğaz: dur, resume ile sonra devam
+      if (e instanceof GeminiUpstreamError && (e.status === 429 || e.status === 503)) {
         ustUste429++;
         if (ustUste429 >= KOTA_DOLU_ESIK) {
           console.log(`\n⛔ ${KOTA_DOLU_ESIK} soru üst üste kullanım limitine çarptı — doğrulayıcı kotası dolu görünüyor.`);
